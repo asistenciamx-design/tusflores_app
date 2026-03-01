@@ -1,0 +1,32 @@
+Analyzing tusflores_app...                                      
+
+  error - The name 'Scaffold' isn't a class - lib\core\routes\app_router.dart:94:24 - creation_with_non_type
+  error - The function 'Center' isn't defined - lib\core\routes\app_router.dart:94:39 - undefined_function
+  error - The function 'Text' isn't defined - lib\core\routes\app_router.dart:94:53 - undefined_function
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\auth\presentation\screens\shop_name_claim_screen.dart:85:17 - deprecated_member_use
+  error - Target of URI doesn't exist: '../../orders/domain/models/order_model.dart' - lib\features\customer\presentation\screens\customer_order_form_screen.dart:7:8 - uri_does_not_exist
+  error - The method 'OrderModel' isn't defined for the type '_CustomerOrderFormScreenState' - lib\features\customer\presentation\screens\customer_order_form_screen.dart:181:30 - undefined_method
+  error - Undefined name 'OrderStatus' - lib\features\customer\presentation\screens\customer_order_form_screen.dart:189:26 - undefined_identifier
+  error - Target of URI doesn't exist: '../../orders/domain/models/order_model.dart' - lib\features\customer\presentation\screens\customer_order_summary_screen.dart:5:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../../orders/domain/repositories/order_repository.dart' - lib\features\customer\presentation\screens\customer_order_summary_screen.dart:6:8 - uri_does_not_exist
+  error - Undefined class 'OrderModel' - lib\features\customer\presentation\screens\customer_order_summary_screen.dart:9:9 - undefined_class
+  error - The method 'OrderRepository' isn't defined for the type '_CustomerOrderSummaryScreenState' - lib\features\customer\presentation\screens\customer_order_summary_screen.dart:18:22 - undefined_method
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:275:20 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:275:26 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:289:20 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:289:26 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\orders\presentation\screens\confirm_payment_screen.dart:199:32 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\orders\presentation\screens\confirm_payment_screen.dart:199:38 - deprecated_member_use
+warning - Duplicate import - lib\features\orders\presentation\screens\edit_order_screen.dart:8:8 - duplicate_import
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\orders\presentation\screens\orders_screen.dart:574:5 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\orders\presentation\screens\orders_screen.dart:574:11 - deprecated_member_use
+   info - Unnecessary braces in a string interpolation - lib\features\orders\presentation\screens\orders_screen.dart:620:33 - unnecessary_brace_in_string_interps
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:167:11 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:167:17 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:210:57 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:210:63 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:256:51 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:256:57 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\profile_contact_screen.dart:314:21 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\profile_contact_screen.dart:314:27 - deprecated_member_use
+

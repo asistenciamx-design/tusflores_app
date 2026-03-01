@@ -1,0 +1,24 @@
+Analyzing tusflores_app...                                      
+
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\auth\presentation\screens\shop_name_claim_screen.dart:85:17 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:275:20 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:275:26 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:289:20 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:289:26 - deprecated_member_use
+warning - The operand can't be 'null', so the condition is always 'true' - lib\features\orders\domain\models\order_model.dart:109:21 - unnecessary_null_comparison
+warning - The operand can't be 'null', so the condition is always 'true' - lib\features\orders\domain\models\order_model.dart:110:20 - unnecessary_null_comparison
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\orders\presentation\screens\confirm_payment_screen.dart:199:32 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\orders\presentation\screens\confirm_payment_screen.dart:199:38 - deprecated_member_use
+warning - Unused import: 'orders_screen.dart' - lib\features\orders\presentation\screens\edit_order_screen.dart:8:8 - unused_import
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\orders\presentation\screens\orders_screen.dart:574:5 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\orders\presentation\screens\orders_screen.dart:574:11 - deprecated_member_use
+   info - Unnecessary braces in a string interpolation - lib\features\orders\presentation\screens\orders_screen.dart:620:33 - unnecessary_brace_in_string_interps
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:167:11 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:167:17 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:210:57 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:210:63 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:256:51 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:256:57 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\profile_contact_screen.dart:314:21 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\profile_contact_screen.dart:314:27 - deprecated_member_use
+

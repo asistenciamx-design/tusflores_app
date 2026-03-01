@@ -1,0 +1,81 @@
+Analyzing tusflores_app...                                      
+
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\auth\presentation\screens\shop_name_claim_screen.dart:85:17 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:275:20 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:275:26 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:289:20 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\dashboard\presentation\screens\dashboard_screen.dart:289:26 - deprecated_member_use
+warning - The operand can't be 'null', so the condition is always 'true' - lib\features\orders\domain\models\order_model.dart:109:21 - unnecessary_null_comparison
+warning - The operand can't be 'null', so the condition is always 'true' - lib\features\orders\domain\models\order_model.dart:110:20 - unnecessary_null_comparison
+  error - Undefined class 'OrderModel' - lib\features\orders\presentation\screens\confirm_payment_screen.dart:11:9 - undefined_class
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\orders\presentation\screens\confirm_payment_screen.dart:198:32 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\orders\presentation\screens\confirm_payment_screen.dart:198:38 - deprecated_member_use
+  error - Undefined class 'OrderModel' - lib\features\orders\presentation\screens\edit_order_screen.dart:12:9 - undefined_class
+  error - Target of URI doesn't exist: '../models/order_model.dart' - lib\features\orders\presentation\screens\orders_screen.dart:9:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../repositories/order_repository.dart' - lib\features\orders\presentation\screens\orders_screen.dart:10:8 - uri_does_not_exist
+  error - The name 'OrderModel' isn't a type, so it can't be used as a type argument - lib\features\orders\presentation\screens\orders_screen.dart:32:8 - non_type_as_type_argument
+  error - The method 'OrderRepository' isn't defined for the type '_OrdersScreenState' - lib\features\orders\presentation\screens\orders_screen.dart:33:22 - undefined_method
+  error - The name 'OrderModel' isn't a type, so it can't be used as a type argument - lib\features\orders\presentation\screens\orders_screen.dart:52:8 - non_type_as_type_argument
+  error - The property 'status' can't be unconditionally accessed because the receiver can be 'null' - lib\features\orders\presentation\screens\orders_screen.dart:53:43 - unchecked_use_of_nullable_value
+  error - Undefined name 'OrderStatus' - lib\features\orders\presentation\screens\orders_screen.dart:53:74 - undefined_identifier
+  error - Undefined name 'OrderStatus' - lib\features\orders\presentation\screens\orders_screen.dart:53:96 - undefined_identifier
+  error - The property 'saleDate' can't be unconditionally accessed because the receiver can be 'null' - lib\features\orders\presentation\screens\orders_screen.dart:58:21 - unchecked_use_of_nullable_value
+  error - The property 'saleDate' can't be unconditionally accessed because the receiver can be 'null' - lib\features\orders\presentation\screens\orders_screen.dart:69:21 - unchecked_use_of_nullable_value
+  error - Undefined class 'OrderModel' - lib\features\orders\presentation\screens\orders_screen.dart:284:26 - undefined_class
+  error - Undefined name 'OrderStatus' - lib\features\orders\presentation\screens\orders_screen.dart:432:44 - undefined_identifier
+  error - Undefined name 'OrderStatus' - lib\features\orders\presentation\screens\orders_screen.dart:435:91 - undefined_identifier
+  error - Undefined name 'OrderStatus' - lib\features\orders\presentation\screens\orders_screen.dart:437:61 - undefined_identifier
+  error - Undefined name 'OrderStatus' - lib\features\orders\presentation\screens\orders_screen.dart:442:39 - undefined_identifier
+  error - Undefined class 'OrderModel' - lib\features\orders\presentation\screens\orders_screen.dart:573:20 - undefined_class
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\orders\presentation\screens\orders_screen.dart:574:5 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\orders\presentation\screens\orders_screen.dart:574:11 - deprecated_member_use
+  error - Undefined class 'OrderModel' - lib\features\orders\presentation\screens\orders_screen.dart:595:34 - undefined_class
+  error - Undefined name 'status' - lib\features\orders\presentation\screens\orders_screen.dart:597:25 - undefined_identifier
+  error - Undefined name 'OrderStatus' - lib\features\orders\presentation\screens\orders_screen.dart:597:35 - undefined_identifier
+  error - Undefined name 'isPaid' - lib\features\orders\presentation\screens\orders_screen.dart:598:22 - undefined_identifier
+  error - Undefined name 'price' - lib\features\orders\presentation\screens\orders_screen.dart:599:22 - undefined_identifier
+  error - Undefined name 'quantity' - lib\features\orders\presentation\screens\orders_screen.dart:599:30 - undefined_identifier
+  error - Undefined name 'shippingCost' - lib\features\orders\presentation\screens\orders_screen.dart:600:30 - undefined_identifier
+  error - Undefined name 'folio' - lib\features\orders\presentation\screens\orders_screen.dart:608:43 - undefined_identifier
+  error - Undefined name 'customerName' - lib\features\orders\presentation\screens\orders_screen.dart:612:33 - undefined_identifier
+  error - Undefined name 'customerPhone' - lib\features\orders\presentation\screens\orders_screen.dart:613:29 - undefined_identifier
+  error - Undefined name 'folio' - lib\features\orders\presentation\screens\orders_screen.dart:617:33 - undefined_identifier
+   info - Unnecessary braces in a string interpolation - lib\features\orders\presentation\screens\orders_screen.dart:620:33 - unnecessary_brace_in_string_interps
+  error - Undefined name 'quantity' - lib\features\orders\presentation\screens\orders_screen.dart:620:35 - undefined_identifier
+  error - Undefined name 'productName' - lib\features\orders\presentation\screens\orders_screen.dart:620:47 - undefined_identifier
+  error - Undefined name 'price' - lib\features\orders\presentation\screens\orders_screen.dart:621:38 - undefined_identifier
+  error - Undefined name 'shippingCost' - lib\features\orders\presentation\screens\orders_screen.dart:623:9 - undefined_identifier
+  error - Undefined name 'shippingCost' - lib\features\orders\presentation\screens\orders_screen.dart:624:42 - undefined_identifier
+  error - Undefined name 'saleDate' - lib\features\orders\presentation\screens\orders_screen.dart:633:37 - undefined_identifier
+  error - Undefined name 'saleDate' - lib\features\orders\presentation\screens\orders_screen.dart:634:37 - undefined_identifier
+  error - Undefined name 'isPaid' - lib\features\orders\presentation\screens\orders_screen.dart:637:11 - undefined_identifier
+  error - Undefined name 'paymentMethod' - lib\features\orders\presentation\screens\orders_screen.dart:637:21 - undefined_identifier
+  error - Undefined name 'paymentMethod' - lib\features\orders\presentation\screens\orders_screen.dart:638:43 - undefined_identifier
+  error - Undefined name 'deliveryMethod' - lib\features\orders\presentation\screens\orders_screen.dart:645:43 - undefined_identifier
+  error - Undefined name 'deliveryInfo' - lib\features\orders\presentation\screens\orders_screen.dart:646:50 - undefined_identifier
+  error - Undefined name 'deliveryMethod' - lib\features\orders\presentation\screens\orders_screen.dart:647:9 - undefined_identifier
+  error - Undefined name 'deliveryLocationType' - lib\features\orders\presentation\screens\orders_screen.dart:648:11 - undefined_identifier
+  error - Undefined name 'deliveryLocationType' - lib\features\orders\presentation\screens\orders_screen.dart:648:78 - undefined_identifier
+  error - Undefined name 'deliveryAddress' - lib\features\orders\presentation\screens\orders_screen.dart:649:11 - undefined_identifier
+  error - Undefined name 'deliveryAddress' - lib\features\orders\presentation\screens\orders_screen.dart:649:66 - undefined_identifier
+  error - Undefined name 'deliveryReferences' - lib\features\orders\presentation\screens\orders_screen.dart:650:11 - undefined_identifier
+  error - Undefined name 'deliveryReferences' - lib\features\orders\presentation\screens\orders_screen.dart:650:71 - undefined_identifier
+  error - Undefined name 'recipientName' - lib\features\orders\presentation\screens\orders_screen.dart:654:9 - undefined_identifier
+  error - Undefined name 'recipientName' - lib\features\orders\presentation\screens\orders_screen.dart:654:65 - undefined_identifier
+  error - Undefined name 'recipientPhone' - lib\features\orders\presentation\screens\orders_screen.dart:655:9 - undefined_identifier
+  error - Undefined name 'recipientPhone' - lib\features\orders\presentation\screens\orders_screen.dart:655:70 - undefined_identifier
+  error - Undefined name 'dedicationMessage' - lib\features\orders\presentation\screens\orders_screen.dart:656:9 - undefined_identifier
+  error - Undefined name 'dedicationMessage' - lib\features\orders\presentation\screens\orders_screen.dart:656:68 - undefined_identifier
+  error - Undefined name 'isAnonymous' - lib\features\orders\presentation\screens\orders_screen.dart:657:35 - undefined_identifier
+  error - Undefined name 'isPaid' - lib\features\orders\presentation\screens\orders_screen.dart:663:11 - undefined_identifier
+  error - Undefined name 'paymentMethod' - lib\features\orders\presentation\screens\orders_screen.dart:663:21 - undefined_identifier
+  error - Undefined name 'paymentMethod' - lib\features\orders\presentation\screens\orders_screen.dart:664:43 - undefined_identifier
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:167:11 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:167:17 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:210:57 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:210:63 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:256:51 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\payment_methods_screen.dart:256:57 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead - lib\features\profile\presentation\screens\profile_contact_screen.dart:314:21 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead - lib\features\profile\presentation\screens\profile_contact_screen.dart:314:27 - deprecated_member_use
+
