@@ -70,11 +70,11 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
 
               // Logo/Título
               Center(
@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Text('tusflores.app',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textLight, letterSpacing: -0.5)),
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
 
               // Header Formulario
               const Text('Iniciar Sesión',

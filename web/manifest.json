@@ -1,11 +1,11 @@
 {
-    "name": "tusflores_app",
-    "short_name": "tusflores_app",
-    "start_url": ".",
+    "name": "tusflores.app",
+    "short_name": "tusflores",
+    "start_url": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#C2185B",
+    "description": "Gestiona tu floristería: catálogo, pedidos y clientes desde un solo lugar.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
