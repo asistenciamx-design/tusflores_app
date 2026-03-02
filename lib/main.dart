@@ -4,9 +4,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_router.dart';
 import 'core/services/supabase_service.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
+
 
 void main() async {
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
+
   
   // Load environment variables
   await dotenv.load(fileName: ".env");
