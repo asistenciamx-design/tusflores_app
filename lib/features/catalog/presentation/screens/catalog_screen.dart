@@ -11,7 +11,7 @@ class ProductItem {
   String name;
   double price;
   List<String> tags;
-  String? imagePath;
+  List<String> imageUrls;
   String? description;
   bool isVisible;
 
@@ -20,18 +20,25 @@ class ProductItem {
     required this.name,
     required this.price,
     this.tags = const [],
-    this.imagePath,
+    this.imageUrls = const [],
     this.description,
     this.isVisible = true,
   });
 
   factory ProductItem.fromJson(Map<String, dynamic> json) {
+    List<String> parseUrls = [];
+    if (json['image_urls'] != null) {
+      parseUrls = List<String>.from(json['image_urls']);
+    } else if (json['image_url'] != null) {
+      parseUrls = [json['image_url']];
+    }
+    
     return ProductItem(
       id: json['id'],
       name: json['name'] ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       tags: List<String>.from(json['tags'] ?? []),
-      imagePath: json['image_url'],
+      imageUrls: parseUrls,
       description: json['description'],
       isVisible: json['is_active'] ?? true,
     );
@@ -247,10 +254,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: product.imagePath != null
+                child: product.imageUrls.isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: Image.network(product.imagePath!, fit: BoxFit.cover,
+                        child: Image.network(product.imageUrls.first, fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const Icon(Icons.local_florist, color: AppTheme.primary, size: 36)),
                       )
                     : Icon(Icons.local_florist, color: product.isVisible ? AppTheme.primary : Colors.grey, size: 36),

@@ -25,8 +25,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   late TextEditingController _descCtrl;
 
   List<String> _tags = [];
-  String? _imagePath;
-  XFile? _selectedImageFile;
+  List<dynamic> _images = []; // mixed: String (network url) or XFile
   bool _isLoading = false;
   final _repo = ProductRepository();
 
@@ -41,7 +40,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _tagCtrl = TextEditingController();
     _descCtrl = TextEditingController(text: widget.product?.description ?? '');
     _tags = widget.product != null ? List.from(widget.product!.tags) : [];
-    _imagePath = widget.product?.imagePath;
+    if (widget.product != null) {
+      _images = List.from(widget.product!.imageUrls);
+    }
   }
 
   @override
@@ -69,17 +70,27 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     });
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    // Using gallery source, which on web opens the file picker
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickImages() async {
+    if (_images.length >= 5) return;
     
-    if (pickedFile != null) {
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage();
+    
+    if (pickedFiles.isNotEmpty) {
       setState(() {
-        _selectedImageFile = pickedFile;
-        _imagePath = pickedFile.path;
+        for (var file in pickedFiles) {
+          if (_images.length < 5) {
+            _images.add(file);
+          }
+        }
       });
     }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
   }
 
   Future<void> _saveProduct() async {
@@ -94,13 +105,16 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         final price = double.parse(_priceCtrl.text.trim().replaceAll(',', ''));
         final desc = _descCtrl.text.trim();
         
-        String? finalImageUrl = widget.product?.imagePath;
+        List<String> finalImageUrls = [];
 
-        // Upload new image if selected
-        if (_selectedImageFile != null) {
-          final uploadedUrl = await _repo.uploadProductImage(user.id, _selectedImageFile!);
-          if (uploadedUrl != null) {
-            finalImageUrl = uploadedUrl;
+        for (var item in _images) {
+          if (item is String) {
+            finalImageUrls.add(item);
+          } else if (item is XFile) {
+            final uploadedUrl = await _repo.uploadProductImage(user.id, item);
+            if (uploadedUrl != null) {
+              finalImageUrls.add(uploadedUrl);
+            }
           }
         }
 
@@ -109,7 +123,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           'price': price,
           'description': desc.isNotEmpty ? desc : null,
           'tags': _tags,
-          'image_url': finalImageUrl,
+          'image_urls': finalImageUrls,
           'is_active': widget.product?.isVisible ?? true,
         };
 
@@ -161,7 +175,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildImagePicker(),
+                      _buildImageGallery(),
                       const SizedBox(height: 28),
                       
                       // Nombre
@@ -295,51 +309,94 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     );
   }
 
-  Widget _buildImagePicker() {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: Container(
-        width: double.infinity,
-        height: 220,
-        decoration: BoxDecoration(
-          color: AppTheme.primary.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(24),
-          // Using a light dashed-like visual effect via a thin border with some transparency
-          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.5),
-        ),
-        child: _imagePath != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: _imagePath!.startsWith('http') || kIsWeb || _imagePath!.startsWith('blob:')
-                    ? Image.network(_imagePath!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholderIcon())
-                    : Image.file(File(_imagePath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholderIcon()),
-              )
-            : _placeholderIcon(),
-      ),
-    );
-  }
-
-  Widget _placeholderIcon() {
+  Widget _buildImageGallery() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.add_a_photo, size: 32, color: AppTheme.primary),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildLabel('Fotos del Producto (Máx 5)'),
+            Text(
+              '\${_images.length}/5',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _images.length < 5 ? AppTheme.primary : Colors.grey.shade400,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Subir Foto', 
-          style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Toca para agregar imagen', 
-          style: TextStyle(color: AppTheme.primary.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              if (_images.length < 5)
+                GestureDetector(
+                  onTap: _pickImages,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.5),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.add_a_photo, size: 28, color: AppTheme.primary),
+                        const SizedBox(height: 8),
+                        Text('Agregar', style: TextStyle(color: AppTheme.primary.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ...List.generate(_images.length, (index) {
+                final item = _images[index];
+                return Stack(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.grey[200],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: item is String
+                            ? Image.network(item, fit: BoxFit.cover)
+                            : item is XFile
+                                ? (kIsWeb
+                                    ? Image.network(item.path, fit: BoxFit.cover)
+                                    : Image.file(File(item.path), fit: BoxFit.cover))
+                                : const SizedBox(),
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: () => _removeImage(index),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close, size: 16, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ],
+          ),
         ),
       ],
     );
