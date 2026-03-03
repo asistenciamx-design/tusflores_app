@@ -625,7 +625,8 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                       return;
                     }
                     setState(() {
-                      _milestones.add(MilestoneData(
+                      // Insert at the beginning so newest is on top
+                      _milestones.insert(0, MilestoneData(
                         year: year,
                         title: title,
                         description: _newMilestoneDescCtrl.text.trim(),
