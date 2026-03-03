@@ -27,10 +27,10 @@ class ProductItem {
 
   factory ProductItem.fromJson(Map<String, dynamic> json) {
     List<String> parseUrls = [];
-    if (json['image_urls'] != null) {
-      parseUrls = List<String>.from(json['image_urls']);
+    if (json['image_urls'] != null && json['image_urls'] is List) {
+      parseUrls = (json['image_urls'] as List).map((e) => e.toString()).toList();
     } else if (json['image_url'] != null) {
-      parseUrls = [json['image_url']];
+      parseUrls = [json['image_url'].toString()];
     }
     
     return ProductItem(

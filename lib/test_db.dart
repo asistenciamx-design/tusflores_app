@@ -10,22 +10,15 @@ void main() async {
   
   final client = Supabase.instance.client;
   
-  // Login with existing user token if possible or just try anonymous insert to read the exact error.
   try {
-    // Attempting a direct insert with a fake UUID to see if it's an RLS issue or schema issue.
-    final data = {
-      'name': 'Test',
-      'price': 100.0,
-      'description': 'test',
-      'tags': ['Test'],
-      'image_url': 'test',
-      'is_active': true,
-      'florist_id': '00000000-0000-0000-0000-000000000000'
-    };
-    final response = await client.from('products').insert(data).select().single();
-    print("SUCCESS: \$response");
-  } on PostgrestException catch (e) {
-    print("POSTGREST ERROR: code=\${e.code}, message=\${e.message}, details=\${e.details}");
+    final response = await client.from('products').select().order('created_at', ascending: false).limit(3);
+    for (var r in response) {
+       print("ID: \${r['id']}");
+       print("NAME: \${r['name']}");
+       print("IMAGE_URLS RAW: \${r['image_urls']}");
+       print("IMAGE_URLS TYPE: \${r['image_urls'].runtimeType}");
+       print("TAGS RAW: \${r['tags']}");
+    }
   } catch (e) {
     print("GENERAL ERROR: \$e");
   }
