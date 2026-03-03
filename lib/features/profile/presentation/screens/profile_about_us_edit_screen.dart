@@ -482,6 +482,7 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
           int idx = entry.key;
           MilestoneData milestone = entry.value;
           return Container(
+            key: ObjectKey(milestone),
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
