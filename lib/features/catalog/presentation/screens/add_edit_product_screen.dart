@@ -318,7 +318,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           children: [
             _buildLabel('Fotos del Producto (Máx 5)'),
             Text(
-              '\${_images.length}/5',
+              _images.length.toString() + '/5',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -369,11 +369,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: item is String
-                            ? Image.network(item, fit: BoxFit.cover)
+                            ? Image.network(item, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image))
                             : item is XFile
                                 ? (kIsWeb
-                                    ? Image.network(item.path, fit: BoxFit.cover)
-                                    : Image.file(File(item.path), fit: BoxFit.cover))
+                                    ? Image.network(item.path, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image))
+                                    : Image.file(File(item.path), fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image)))
                                 : const SizedBox(),
                       ),
                     ),

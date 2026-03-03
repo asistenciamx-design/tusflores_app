@@ -46,7 +46,7 @@ class ProductRepository {
       );
       return _supabase.storage.from('products').getPublicUrl(path);
     } catch (e) {
-      return null;
+      rethrow;
     }
   }
 }
