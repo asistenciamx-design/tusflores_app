@@ -572,29 +572,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     );
   }
 
-  InputDecoration _buildInputDecoration({String? label, IconData? icon}) {
-    return InputDecoration(
-      hintText: label,
-      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-      filled: true,
-      fillColor: Colors.grey.shade50,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade200),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade200),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppTheme.primary),
-      ),
-      prefixIcon: icon != null ? Icon(icon, color: AppTheme.mutedLight, size: 20) : null,
-      prefixIconConstraints: icon != null ? const BoxConstraints(minWidth: 40) : null,
-    );
-  }
+
 
   Widget _buildTextField(
     TextEditingController controller,

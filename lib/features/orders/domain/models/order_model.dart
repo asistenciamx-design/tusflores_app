@@ -205,4 +205,6 @@ class OrderModel {
       deliveryCity: deliveryCity ?? this.deliveryCity,
     );
   }
+
+  double get total => quantity * price;
 }

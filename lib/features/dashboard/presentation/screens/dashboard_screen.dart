@@ -7,7 +7,11 @@ import '../../../catalog/presentation/screens/add_edit_product_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
+import '../../../catalog/domain/repositories/product_repository.dart';
+import '../../../../features/orders/domain/repositories/order_repository.dart';
+import '../../../../features/orders/domain/models/order_model.dart';
 import 'weekly_stats_screen.dart';
+import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
@@ -20,11 +24,72 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _shopName = 'Cargando...';
   String _userName = '...';
+  
+  bool _isLoadingData = true;
+  int _pendingCount = 0;
+  int _deliveredCount = 0;
+  int _catalogCount = 0;
+  double _todaySales = 0.0;
+  OrderModel? _latestOrder;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      // Load products count
+      final products = await ProductRepository().getProducts(user.id);
+      
+      // Load orders
+      final orders = await OrderRepository().getOrders(user.id);
+      
+      int pending = 0;
+      int delivered = 0;
+      double sales = 0;
+      OrderModel? latest;
+      
+      final today = DateTime.now();
+      
+      for (var order in orders) {
+        if (order.status == OrderStatus.pending) pending++;
+        if (order.status == OrderStatus.delivered) delivered++;
+        
+        // Sales today
+        if (order.createdAt != null &&
+            order.createdAt!.year == today.year &&
+            order.createdAt!.month == today.month &&
+            order.createdAt!.day == today.day) {
+          sales += order.total;
+        }
+      }
+      
+      if (orders.isNotEmpty) {
+        latest = orders.first;
+      }
+
+      if (mounted) {
+        setState(() {
+          _catalogCount = products.length;
+          _pendingCount = pending;
+          _deliveredCount = delivered;
+          _todaySales = sales;
+          _latestOrder = latest;
+          _isLoadingData = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading dashboard data: $e');
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+      }
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -150,13 +215,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '\$1,250',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
+              _isLoadingData
+                  ? const SizedBox(
+                      height: 36,
+                      width: 100,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : Text(
+                      NumberFormat.currency(locale: 'es_MX', symbol: '\$').format(_todaySales),
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                     ),
-              ),
               const SizedBox(width: 12),
               Column(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -226,6 +297,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStatsGrid(BuildContext context) {
+    if (_isLoadingData) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(24.0),
+        child: CircularProgressIndicator(),
+      ));
+    }
     return Row(
       children: [
         Expanded(
@@ -233,7 +310,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icons.pending_actions,
             iconColor: Colors.orange,
             iconBg: Colors.orange.withValues(alpha: 0.1),
-            value: '4',
+            value: _pendingCount.toString(),
             label: 'Pendientes',
           ),
         ),
@@ -243,7 +320,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icons.local_shipping,
             iconColor: Colors.blue,
             iconBg: Colors.blue.withValues(alpha: 0.1),
-            value: '10',
+            value: _deliveredCount.toString(),
             label: 'Entregados',
           ),
         ),
@@ -253,7 +330,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icons.inventory_2,
             iconColor: Colors.purple,
             iconBg: Colors.purple.withValues(alpha: 0.1),
-            value: '25',
+            value: _catalogCount.toString(),
             label: 'Catálogo',
           ),
         ),
@@ -356,6 +433,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildLatestOrder(BuildContext context) {
+    if (_isLoadingData) {
+      return const SizedBox.shrink();
+    }
+    
+    if (_latestOrder == null) {
+      return Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'ÚLTIMO PEDIDO',
+                style: TextStyle(
+                  color: AppTheme.mutedLight,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              InkWell(
+                onTap: widget.onNavigateToOrders,
+                child: Text(
+                  'Ver todos',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+            ),
+            child: const Center(
+              child: Text(
+                'Aún no hay pedidos registrados',
+                style: TextStyle(color: AppTheme.mutedLight),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    final order = _latestOrder!;
+    final timeDiff = DateTime.now().difference(order.createdAt);
+    String timeAgo = '';
+    if (timeDiff.inMinutes < 60) {
+      timeAgo = 'Hace ${timeDiff.inMinutes} min';
+    } else if (timeDiff.inHours < 24) {
+      timeAgo = 'Hace ${timeDiff.inHours} hrs';
+    } else {
+      timeAgo = 'Hace ${timeDiff.inDays} días';
+    }
+    
+    String statusText = 'PENDIENTE';
+    Color statusColor = AppTheme.accentYellowText;
+    Color statusBg = AppTheme.accentYellow;
+    
+    if (order.status == OrderStatus.delivered) {
+      statusText = 'ENTREGADO';
+      statusColor = Colors.green.shade700;
+      statusBg = Colors.green.shade100;
+    } else if (order.status == OrderStatus.cancelled) {
+      statusText = 'CANCELADO';
+      statusColor = Colors.red.shade700;
+      statusBg = Colors.red.shade100;
+    }
+
     return Column(
       children: [
         Row(
@@ -398,14 +551,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  color: AppTheme.secondaryBg,
                   border: Border.all(color: AppTheme.secondaryBg, width: 2),
-                  image: const DecorationImage(
-                    image: NetworkImage(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBw_vr5D_6z5JXwKUz48nrPUT8wU5SqEl5jodyjF6qiO2u4NYuzwPBCW3F-YFq5jrObgoSyrjXKwrZ6reMMGx8w9N1EnQibJNCpVzjJcYA3rvk3K1WT6Jfky4K5nVi1lt4PSJQsisVMqrh6-n8S9uqFTrn__sfVzpcVLe2RUv18qwmV-iQMh7OhuALNQJYqpFaNKrvM9Kk5baW1hGFdPFyuSNl6K2-0CEmwsFFduWkwQrgIykblRQsAVueFpkRliOGtl0nrhyqUvlNc',
-                    ),
-                    fit: BoxFit.cover,
-                  ),
                 ),
+                child: const Icon(Icons.shopping_bag, color: AppTheme.mutedLight),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -418,36 +567,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Folio #0045',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                              const Text(
-                                'Ramo de Rosas Rojas...',
-                                style: TextStyle(
-                                  color: AppTheme.mutedLight,
-                                  fontSize: 14,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text(
+                                 'Folio ${order.folio}',
+                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                       fontWeight: FontWeight.bold,
+                                     ),
+                               ),
+                               Text(
+                                 order.customerName,
+                                 style: const TextStyle(
+                                   color: AppTheme.mutedLight,
+                                   fontSize: 14,
+                                 ),
+                                 maxLines: 1,
+                                 overflow: TextOverflow.ellipsis,
+                               ),
+                             ],
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppTheme.accentYellow,
+                            color: statusBg,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Text(
-                            'PENDIENTE',
+                          child: Text(
+                            statusText,
                             style: TextStyle(
-                              color: AppTheme.accentYellowText,
+                              color: statusColor,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
@@ -458,7 +607,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Hace 15 min',
+                      timeAgo,
                       style: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 12,
