@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../auth/domain/repositories/profile_repository.dart';
+import '../../../../features/auth/domain/repositories/profile_repository.dart';
 
 class ProfileAboutUsEditScreen extends StatefulWidget {
   const ProfileAboutUsEditScreen({super.key});
