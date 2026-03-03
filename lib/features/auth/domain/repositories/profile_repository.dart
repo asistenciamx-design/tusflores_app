@@ -37,9 +37,7 @@ class ProfileRepository {
 
     if (updates.isEmpty) return;
 
-    updates['id'] = user.id;
-
-    await _client.from('profiles').upsert(updates);
+    await _client.from('profiles').update(updates).eq('id', user.id);
   }
 
   Future<String?> uploadLogo(XFile file) async {
