@@ -11,6 +11,7 @@ import 'payment_methods_screen.dart'; // To navigate to "Métodos de Pago"
 import 'profile_faq_edit_screen.dart'; // To navigate to "Preguntas Frecuentes"
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
+import '../../../../features/orders/domain/repositories/order_repository.dart';
 
 class MainProfileSettingsScreen extends StatefulWidget {
   const MainProfileSettingsScreen({super.key});
@@ -21,9 +22,12 @@ class MainProfileSettingsScreen extends StatefulWidget {
 
 class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
   final _repo = ProfileRepository();
+  final _orderRepo = OrderRepository();
   bool _isLoading = true;
   String _ownerName = '';
   String _shopName = '';
+  int _orderCount = 0;
+  double _rating = 0.0;
 
   @override
   void initState() {
@@ -41,6 +45,11 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
         if (profile != null) {
           _shopName = profile['shop_name'] ?? 'Mi Florería';
         }
+        
+        final shopId = user.id;
+        final orders = await _orderRepo.getOrders(shopId);
+        _orderCount = orders.length;
+        _rating = 0.0; // To be implemented with real reviews system, default to 0.0
       }
     } catch (e) {
       debugPrint('Error loading profile: $e');
@@ -243,18 +252,18 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Text(
-                    '124',
-                    style: TextStyle(
+                    '$_orderCount',
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primary,
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'PEDIDOS',
                     style: TextStyle(
                       fontSize: 10,
@@ -276,16 +285,16 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.star, color: Colors.amber, size: 20),
-                      SizedBox(width: 4),
+                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const SizedBox(width: 4),
                       Text(
-                        '4.9',
-                        style: TextStyle(
+                        _rating.toStringAsFixed(1),
+                        style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primary,
@@ -293,8 +302,8 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 4),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'RATING',
                     style: TextStyle(
                       fontSize: 10,
