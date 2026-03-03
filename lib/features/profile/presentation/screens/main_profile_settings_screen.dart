@@ -9,6 +9,7 @@ import 'profile_contact_screen.dart'; // To navigate to "Datos de contacto"
 import 'profile_branch_edit_screen.dart'; // To navigate to "Sucursal"
 import 'payment_methods_screen.dart'; // To navigate to "Métodos de Pago"
 import 'profile_faq_edit_screen.dart'; // To navigate to "Preguntas Frecuentes"
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
 import '../../../../features/orders/domain/repositories/order_repository.dart';
@@ -28,6 +29,8 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
   String _shopName = '';
   int _orderCount = 0;
   double _rating = 0.0;
+  String? _logoUrl;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -44,6 +47,7 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
         final profile = await _repo.getProfile();
         if (profile != null) {
           _shopName = profile['shop_name'] ?? 'Mi Florería';
+          _logoUrl = profile['logo_url'];
         }
         
         final shopId = user.id;
@@ -53,6 +57,29 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
       }
     } catch (e) {
       debugPrint('Error loading profile: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+      if (image == null) return;
+      
+      setState(() => _isLoading = true);
+      final url = await _repo.uploadLogo(image);
+      if (url != null) {
+        setState(() => _logoUrl = url);
+        await _repo.updateProfile(logoUrl: url);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Foto de perfil actualizada')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error al subir: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -105,7 +132,7 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
             alignment: Alignment.topRight,
             child: IconButton(
               icon: const Icon(Icons.edit, color: AppTheme.primary),
-              onPressed: () {},
+              onPressed: _isLoading ? null : _pickAndUploadImage,
             ),
           ),
           Stack(
@@ -116,11 +143,11 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: AppTheme.primary, width: 2),
                 ),
-                child: const CircleAvatar(
+                child: CircleAvatar(
                   radius: 48,
-                  backgroundImage: NetworkImage(
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuCJ6Zw7Z5Grcts4idUwIDYAwatFdjxEn-yENbE5mnBBnLhseVmqtyHWTjaCMMAL8eEf4j4EAe6KvtgpBtqn7zqKVDtJoEyw4bu29K4IbvTePZ6Og0jhrKB75S4BHbFj3uBxdMYXjIal9IA9fMdR6Q6sMhYtelpzIECU09oL4fJVu83sMe78ISc6RgapNHWWuFzcP9VSDAqUeN1S_80ztdgCZjaJeGPz4CLUlQyDtrUxJn3OXC25Yrw7xB_Z5fIj6vNSE15XWSPtX9Xf',
-                  ),
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: _logoUrl != null ? NetworkImage(_logoUrl!) : null,
+                  child: _logoUrl == null ? const Icon(Icons.store, size: 40, color: Colors.grey) : null,
                 ),
               ),
               Positioned(

@@ -59,7 +59,7 @@ class ProfileRepository {
       );
       return _client.storage.from('shop_assets').getPublicUrl(path);
     } catch (e) {
-      return null;
+      throw Exception('Error al subir imagen: $e');
     }
   }
 }
