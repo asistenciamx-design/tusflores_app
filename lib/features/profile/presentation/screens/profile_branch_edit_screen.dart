@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/shop_settings_model.dart';
 import '../../domain/repositories/shop_settings_repository.dart';
+import '../../../../features/auth/domain/repositories/profile_repository.dart';
 
 // ─── Country / State / City data ─────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
   // Image
   final ImagePicker _picker = ImagePicker();
   String? _branchImagePath;
+  XFile? _selectedImageFile;
 
   // Location
   String _selectedCountry = 'México';
@@ -246,8 +248,17 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
     if (_shopId == null) return;
     setState(() => _isSaving = true);
 
+    String? finalImagePath = _branchImagePath;
+    if (_selectedImageFile != null) {
+      final profileRepo = ProfileRepository();
+      final uploadedUrl = await profileRepo.uploadImage(_selectedImageFile!, folder: 'sucursales');
+      if (uploadedUrl != null) {
+         finalImagePath = uploadedUrl;
+      }
+    }
+
     final updatedModel = ShopSettingsModel(
-      branchImagePath: _branchImagePath,
+      branchImagePath: finalImagePath,
       country: _selectedCountry,
       state: _selectedState,
       city: _selectedCity,
@@ -339,7 +350,12 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
       onTap: () async {
         try {
           final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-          if (image != null) setState(() => _branchImagePath = image.path);
+          if (image != null) {
+            setState(() {
+              _branchImagePath = image.path;
+              _selectedImageFile = image;
+            });
+          }
         } catch (_) {}
       },
       child: Container(
@@ -357,7 +373,10 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
             ? Stack(children: [
                 Positioned(top: 8, right: 8,
                   child: GestureDetector(
-                    onTap: () => setState(() => _branchImagePath = null),
+                    onTap: () => setState(() {
+                      _branchImagePath = null;
+                      _selectedImageFile = null;
+                    }),
                     child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16)),
                   ),
                 ),

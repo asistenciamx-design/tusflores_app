@@ -49,10 +49,7 @@ class _PaymentMethodSuccessScreenState extends State<PaymentMethodSuccessScreen>
                 alignment: Alignment.centerLeft,
                 child: IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () {
-                    Navigator.of(context).popUntil((route) => route.isFirst || route.settings.name == '/payment-methods');
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
             ),
@@ -118,9 +115,7 @@ class _PaymentMethodSuccessScreenState extends State<PaymentMethodSuccessScreen>
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).popUntil((route) => route.isFirst);
-                      },
+                      onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
@@ -135,7 +130,9 @@ class _PaymentMethodSuccessScreenState extends State<PaymentMethodSuccessScreen>
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        Navigator.pop(context, true);
+                      },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.textLight,
                         side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),

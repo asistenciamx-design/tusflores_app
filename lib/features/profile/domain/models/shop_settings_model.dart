@@ -125,6 +125,26 @@ class ShippingRate {
   );
 }
 
+class FaqItem {
+  String question;
+  String answer;
+  bool isVisible;
+
+  FaqItem({required this.question, required this.answer, this.isVisible = true});
+
+  Map<String, dynamic> toJson() => {
+    'question': question,
+    'answer': answer,
+    'is_visible': isVisible,
+  };
+
+  factory FaqItem.fromJson(Map<String, dynamic> json) => FaqItem(
+    question: json['question'] ?? '',
+    answer: json['answer'] ?? '',
+    isVisible: json['is_visible'] ?? true,
+  );
+}
+
 class ShopSettingsModel {
   final Map<String, dynamic>? rawData;
 
@@ -146,6 +166,7 @@ class ShopSettingsModel {
   final List<ShippingRate> shippingRates;
   final List<BankMethod> bankMethods;
   final List<LinkMethod> linkMethods;
+  final List<FaqItem> faqs;
 
   ShopSettingsModel({
     required this.storeHours,
@@ -153,6 +174,7 @@ class ShopSettingsModel {
     required this.shippingRates,
     this.bankMethods = const [],
     this.linkMethods = const [],
+    this.faqs = const [],
     this.branchImagePath,
     this.country,
     this.state,
@@ -192,12 +214,18 @@ class ShopSettingsModel {
       links = (json['link_methods'] as List).map((e) => LinkMethod.fromJson(e)).toList();
     }
 
+    List<FaqItem> loadedFaqs = [];
+    if (json['faqs'] != null) {
+      loadedFaqs = (json['faqs'] as List).map((e) => FaqItem.fromJson(e)).toList();
+    }
+
     return ShopSettingsModel(
       storeHours: hours,
       deliveryRanges: ranges,
       shippingRates: rates,
       bankMethods: banks,
       linkMethods: links,
+      faqs: loadedFaqs,
       branchImagePath: json['branch_image_path'],
       country: json['country'],
       state: json['state'],
@@ -218,6 +246,7 @@ class ShopSettingsModel {
     'shipping_rates': shippingRates.map((e) => e.toJson()).toList(),
     'bank_methods': bankMethods.map((e) => e.toJson()).toList(),
     'link_methods': linkMethods.map((e) => e.toJson()).toList(),
+    'faqs': faqs.map((e) => e.toJson()).toList(),
     'branch_image_path': branchImagePath,
     'country': country,
     'state': state,

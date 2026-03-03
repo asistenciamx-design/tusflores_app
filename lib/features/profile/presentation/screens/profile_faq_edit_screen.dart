@@ -1,15 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
-
-// ─── Data Model ───────────────────────────────────────────────────────────────
-
-class FaqItem {
-  String question;
-  String answer;
-  bool isVisible;
-
-  FaqItem({required this.question, required this.answer, this.isVisible = true});
-}
+import '../../domain/models/shop_settings_model.dart';
+import '../../domain/repositories/shop_settings_repository.dart';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -21,23 +14,59 @@ class ProfileFaqEditScreen extends StatefulWidget {
 }
 
 class _ProfileFaqEditScreenState extends State<ProfileFaqEditScreen> {
-  final List<FaqItem> _faqs = [
-    FaqItem(
-      question: '¿Hacen envíos a domicilio?',
-      answer: 'Sí, entregamos en toda la CDMX de 9am a 6pm. Contamos con envío express en zonas seleccionadas.',
-      isVisible: true,
-    ),
-    FaqItem(
-      question: '¿Cuáles son los métodos de pago?',
-      answer: 'Aceptamos todas las tarjetas de crédito y débito, PayPal y transferencias bancarias SPEI.',
-      isVisible: true,
-    ),
-    FaqItem(
-      question: '¿Puedo personalizar mi arreglo floral?',
-      answer: 'Claro, puedes elegir las flores y colores de tu preferencia contactándonos por WhatsApp después de tu compra.',
-      isVisible: false,
-    ),
-  ];
+  List<FaqItem> _faqs = [];
+  bool _isLoading = true;
+  final _repo = ShopSettingsRepository();
+  ShopSettingsModel? _settings;
+  String _shopId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      _shopId = user.id;
+      final settings = await _repo.getSettings(_shopId);
+      if (mounted) {
+        setState(() {
+          _settings = settings;
+          _faqs = List.from(settings?.faqs ?? []);
+          _isLoading = false;
+        });
+      }
+    } else {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    if (_settings != null) {
+      final newSettings = ShopSettingsModel(
+        storeHours: _settings!.storeHours,
+        deliveryRanges: _settings!.deliveryRanges,
+        shippingRates: _settings!.shippingRates,
+        bankMethods: _settings!.bankMethods,
+        linkMethods: _settings!.linkMethods,
+        faqs: _faqs,
+        branchImagePath: _settings!.branchImagePath,
+        country: _settings!.country,
+        state: _settings!.state,
+        city: _settings!.city,
+        address: _settings!.address,
+        mapsUrl: _settings!.mapsUrl,
+        references: _settings!.references,
+        phone: _settings!.phone,
+        whatsapp: _settings!.whatsapp,
+        showMapOnProfile: _settings!.showMapOnProfile,
+      );
+      await _repo.updateSettings(_shopId, newSettings);
+      _settings = newSettings;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +80,9 @@ class _ProfileFaqEditScreenState extends State<ProfileFaqEditScreen> {
         scrolledUnderElevation: 2,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
       ),
-      body: ListView(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(
         padding: const EdgeInsets.all(24),
         children: [
           // Add button
@@ -170,7 +201,10 @@ class _ProfileFaqEditScreenState extends State<ProfileFaqEditScreen> {
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.mutedLight)),
               Switch(
                 value: faq.isVisible,
-                onChanged: (val) => setState(() => faq.isVisible = val),
+                onChanged: (val) {
+                  setState(() => faq.isVisible = val);
+                  _saveSettings();
+                },
                 activeThumbColor: Colors.white,
                 activeTrackColor: AppTheme.primary,
                 inactiveThumbColor: Colors.white,
@@ -256,6 +290,7 @@ class _ProfileFaqEditScreenState extends State<ProfileFaqEditScreen> {
                         ));
                       }
                     });
+                    _saveSettings();
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -323,6 +358,7 @@ class _ProfileFaqEditScreenState extends State<ProfileFaqEditScreen> {
           ElevatedButton(
             onPressed: () {
               setState(() => _faqs.removeAt(idx));
+              _saveSettings();
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Pregunta eliminada.'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),

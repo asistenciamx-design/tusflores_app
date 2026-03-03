@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/shop_settings_model.dart';
 import '../../domain/repositories/shop_settings_repository.dart';
 import 'add_payment_method_screen.dart';
+import 'payment_method_success_screen.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -292,59 +293,71 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
     );
   }
 
+  void _openAddMethod() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddPaymentMethodScreen()),
+    );
+    if (result != null && mounted && _settings != null) {
+      if (result is BankMethod) {
+        setState(() {
+           _settings = ShopSettingsModel(
+             storeHours: _settings!.storeHours,
+             deliveryRanges: _settings!.deliveryRanges,
+             shippingRates: _settings!.shippingRates,
+             bankMethods: [..._settings!.bankMethods, result],
+             linkMethods: _settings!.linkMethods,
+             faqs: _settings!.faqs,
+             branchImagePath: _settings!.branchImagePath,
+             country: _settings!.country,
+             state: _settings!.state,
+             city: _settings!.city,
+             address: _settings!.address,
+             mapsUrl: _settings!.mapsUrl,
+             references: _settings!.references,
+             phone: _settings!.phone,
+             whatsapp: _settings!.whatsapp,
+             showMapOnProfile: _settings!.showMapOnProfile,
+           );
+        });
+        await _saveSettings();
+        if (mounted) {
+          final addAnother = await Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentMethodSuccessScreen(bankMethod: result))) ?? false;
+          if (addAnother) _openAddMethod();
+        }
+      } else if (result is LinkMethod) {
+        setState(() {
+           _settings = ShopSettingsModel(
+             storeHours: _settings!.storeHours,
+             deliveryRanges: _settings!.deliveryRanges,
+             shippingRates: _settings!.shippingRates,
+             bankMethods: _settings!.bankMethods,
+             linkMethods: [..._settings!.linkMethods, result],
+             faqs: _settings!.faqs,
+             branchImagePath: _settings!.branchImagePath,
+             country: _settings!.country,
+             state: _settings!.state,
+             city: _settings!.city,
+             address: _settings!.address,
+             mapsUrl: _settings!.mapsUrl,
+             references: _settings!.references,
+             phone: _settings!.phone,
+             whatsapp: _settings!.whatsapp,
+             showMapOnProfile: _settings!.showMapOnProfile,
+           );
+        });
+        await _saveSettings();
+        if (mounted) {
+          final addAnother = await Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentMethodSuccessScreen(linkMethod: result))) ?? false;
+          if (addAnother) _openAddMethod();
+        }
+      }
+    }
+  }
+
   Widget _buildAddMethodButton() {
     return GestureDetector(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AddPaymentMethodScreen()),
-        );
-        if (result != null && mounted && _settings != null) {
-          if (result is BankMethod) {
-            setState(() {
-               _settings = ShopSettingsModel(
-                 storeHours: _settings!.storeHours,
-                 deliveryRanges: _settings!.deliveryRanges,
-                 shippingRates: _settings!.shippingRates,
-                 bankMethods: [..._settings!.bankMethods, result],
-                 linkMethods: _settings!.linkMethods,
-                 branchImagePath: _settings!.branchImagePath,
-                 country: _settings!.country,
-                 state: _settings!.state,
-                 city: _settings!.city,
-                 address: _settings!.address,
-                 mapsUrl: _settings!.mapsUrl,
-                 references: _settings!.references,
-                 phone: _settings!.phone,
-                 whatsapp: _settings!.whatsapp,
-                 showMapOnProfile: _settings!.showMapOnProfile,
-               );
-            });
-            await _saveSettings();
-          } else if (result is LinkMethod) {
-            setState(() {
-               _settings = ShopSettingsModel(
-                 storeHours: _settings!.storeHours,
-                 deliveryRanges: _settings!.deliveryRanges,
-                 shippingRates: _settings!.shippingRates,
-                 bankMethods: _settings!.bankMethods,
-                 linkMethods: [..._settings!.linkMethods, result],
-                 branchImagePath: _settings!.branchImagePath,
-                 country: _settings!.country,
-                 state: _settings!.state,
-                 city: _settings!.city,
-                 address: _settings!.address,
-                 mapsUrl: _settings!.mapsUrl,
-                 references: _settings!.references,
-                 phone: _settings!.phone,
-                 whatsapp: _settings!.whatsapp,
-                 showMapOnProfile: _settings!.showMapOnProfile,
-               );
-            });
-            await _saveSettings();
-          }
-        }
-      },
+      onTap: _openAddMethod,
       child: Container(
         margin: const EdgeInsets.only(top: 4),
         padding: const EdgeInsets.symmetric(vertical: 16),

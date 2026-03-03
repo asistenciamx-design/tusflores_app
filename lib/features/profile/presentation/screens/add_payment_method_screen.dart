@@ -57,14 +57,14 @@ class _AddPaymentMethodScreenState extends State<AddPaymentMethodScreen> with Si
         accountNumber: _accountCtrl.text.trim(),
         clabe: _clabeCtrl.text.trim(),
       );
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PaymentMethodSuccessScreen(bankMethod: method)));
+      Navigator.pop(context, method);
     } else {
       if (_serviceNameCtrl.text.isEmpty || _urlCtrl.text.isEmpty) {
         _showSnack('Por favor llena el nombre del servicio y la URL.');
         return;
       }
       final method = LinkMethod(serviceName: _serviceNameCtrl.text.trim(), url: _urlCtrl.text.trim());
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PaymentMethodSuccessScreen(linkMethod: method)));
+      Navigator.pop(context, method);
     }
   }
 
