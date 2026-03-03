@@ -298,9 +298,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 child: Container(
                   color: Colors.grey[100],
                   width: double.infinity,
-                  child: product.imagePath != null
+                  child: product.imageUrls.isNotEmpty
                       ? Image.network(
-                          product.imagePath!,
+                          product.imageUrls.first,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Icon(Icons.image_outlined, size: 48, color: Colors.grey[400]),
                         )
