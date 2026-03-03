@@ -110,10 +110,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         for (var item in _images) {
           if (item is String) {
             finalImageUrls.add(item);
-          } else if (item is XFile) {
-            final uploadedUrl = await _repo.uploadProductImage(user.id, item);
-            if (uploadedUrl != null) {
-              finalImageUrls.add(uploadedUrl);
+          } else {
+            try {
+              final uploadedUrl = await _repo.uploadProductImage(user.id, item as XFile);
+              if (uploadedUrl != null) {
+                finalImageUrls.add(uploadedUrl);
+              }
+            } catch (e) {
+              debugPrint('Error uploading image: \$e');
+              rethrow;
             }
           }
         }

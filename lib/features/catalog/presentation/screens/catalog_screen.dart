@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -27,8 +28,21 @@ class ProductItem {
 
   factory ProductItem.fromJson(Map<String, dynamic> json) {
     List<String> parseUrls = [];
-    if (json['image_urls'] != null && json['image_urls'] is List) {
-      parseUrls = (json['image_urls'] as List).map((e) => e.toString()).toList();
+    if (json['image_urls'] != null) {
+      if (json['image_urls'] is List) {
+        parseUrls = (json['image_urls'] as List).map((e) => e.toString()).toList();
+      } else if (json['image_urls'] is String) {
+        try {
+          final decoded = jsonDecode(json['image_urls']);
+          if (decoded is List) {
+            parseUrls = decoded.map((e) => e.toString()).toList();
+          } else {
+            parseUrls = [json['image_urls'].toString()];
+          }
+        } catch (_) {
+          parseUrls = [json['image_urls'].toString()];
+        }
+      }
     } else if (json['image_url'] != null) {
       parseUrls = [json['image_url'].toString()];
     }
