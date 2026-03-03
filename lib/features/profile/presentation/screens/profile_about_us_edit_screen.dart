@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../auth/domain/repositories/profile_repository.dart';
 
 class ProfileAboutUsEditScreen extends StatefulWidget {
   const ProfileAboutUsEditScreen({super.key});
@@ -11,28 +12,72 @@ class ProfileAboutUsEditScreen extends StatefulWidget {
 }
 
 class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
-  int yearsOfExperience = 5;
+  final ProfileRepository _repo = ProfileRepository();
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  int yearsOfExperience = 0;
   final ImagePicker _picker = ImagePicker();
   
   bool _isUploadingLogo = false;
   String? _uploadedLogoUrl;
   
   bool _isUploadingGallery = false;
-  final List<String> _galleryPhotos = []; // Keep it empty for real use case
+  final List<String> _galleryPhotos = []; 
   
   final List<String> _specialties = ['Bodas', 'Eventos Corporativos', 'Rosas', 'Mayoreo', 'Arreglos Florales'];
-  final Set<String> _selectedSpecialties = {'Bodas', 'Rosas'};
+  final Set<String> _selectedSpecialties = {};
 
-  final List<MilestoneData> _milestones = [
-    MilestoneData(year: '2018', title: 'Fundación del Negocio', description: 'Comenzamos con un pequeño local en el mercado de Jamaica.')
-  ];
+  final List<MilestoneData> _milestones = [];
   
+  final TextEditingController _bioController = TextEditingController();
   final TextEditingController _newMilestoneYearCtrl = TextEditingController();
   final TextEditingController _newMilestoneTitleCtrl = TextEditingController();
   final TextEditingController _newMilestoneDescCtrl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    try {
+      final data = await _repo.getProfile();
+      if (data != null) {
+        setState(() {
+          _uploadedLogoUrl = data['logo_url'];
+          _bioController.text = data['biography'] ?? '';
+          yearsOfExperience = data['years_of_experience'] ?? 0;
+          
+          if (data['specialties'] != null) {
+            final specs = List<String>.from(data['specialties']);
+            _selectedSpecialties.addAll(specs);
+            for (var s in specs) {
+              if (!_specialties.contains(s)) _specialties.add(s);
+            }
+          }
+          
+          if (data['milestones'] != null) {
+             final ms = List<Map<String,dynamic>>.from(data['milestones']);
+             _milestones.addAll(ms.map((m) => MilestoneData(year: m['year'] ?? '', title: m['title'] ?? '', description: m['description'] ?? '')));
+          }
+
+          if (data['gallery'] != null) {
+             _galleryPhotos.addAll(List<String>.from(data['gallery']));
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   void dispose() {
+    _bioController.dispose();
     _newMilestoneYearCtrl.dispose();
     _newMilestoneTitleCtrl.dispose();
     _newMilestoneDescCtrl.dispose();
@@ -49,15 +94,10 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
         backgroundColor: AppTheme.cardLight,
         elevation: 0,
         scrolledUnderElevation: 2,
-        actions: [
-          TextButton(
-            onPressed: () {},
-            child: const Text('Guardar', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
-      body: Stack(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+        : Stack(
         children: [
           SingleChildScrollView(
             padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
@@ -117,8 +157,32 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                 ),
               ),
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
+                onPressed: _isSaving ? null : () async {
+                  setState(() => _isSaving = true);
+                  try {
+                    final milestonesData = _milestones.map((m) => {
+                      'year': m.year,
+                      'title': m.title,
+                      'description': m.description,
+                    }).toList();
+
+                    await _repo.updateProfile(
+                      logoUrl: _uploadedLogoUrl,
+                      biography: _bioController.text,
+                      yearsOfExperience: yearsOfExperience,
+                      specialties: _selectedSpecialties.toList(),
+                      milestones: milestonesData,
+                      gallery: _galleryPhotos,
+                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Información guardada exitosamente'), backgroundColor: Colors.green));
+                      Navigator.pop(context);
+                    }
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar: $e'), backgroundColor: Colors.red));
+                  } finally {
+                    if (mounted) setState(() => _isSaving = false);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
@@ -128,7 +192,9 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                   elevation: 4,
                   shadowColor: AppTheme.primary.withValues(alpha: 0.3),
                 ),
-                child: const Text('Guardar cambios', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _isSaving
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Guardar cambios', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ),
@@ -174,13 +240,16 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
               try {
                 final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
                 if (image != null) {
+                  setState(() => _isUploadingLogo = true);
+                  final url = await _repo.uploadLogo(image);
                   setState(() {
-                    _uploadedLogoUrl = image.path; // Image.network handles blob paths on Web Web
+                    if (url != null) _uploadedLogoUrl = url;
+                    _isUploadingLogo = false;
                   });
                 }
               } catch (e) {
-                // Catch any errors
                 setState(() => _isUploadingLogo = false);
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error subiendo imagen: $e')));
               }
             },
             child: Container(
@@ -234,6 +303,7 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
         Stack(
           children: [
             TextFormField(
+              controller: _bioController,
               maxLines: 5,
               style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
               decoration: InputDecoration(
@@ -672,12 +742,16 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
             try {
                final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
                if (image != null) {
+                 setState(() => _isUploadingGallery = true);
+                 final url = await _repo.uploadImage(image, folder: 'gallery');
                  setState(() {
-                    _galleryPhotos.add(image.path);
+                    if (url != null) _galleryPhotos.add(url);
+                    _isUploadingGallery = false;
                  });
                }
             } catch (e) {
                setState(() => _isUploadingGallery = false);
+               if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
             }
           },
           child: Container(

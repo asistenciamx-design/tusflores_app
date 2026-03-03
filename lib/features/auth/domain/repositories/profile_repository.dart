@@ -26,6 +26,11 @@ class ProfileRepository {
     String? shopName,
     String? whatsappNumber,
     String? logoUrl,
+    String? biography,
+    int? yearsOfExperience,
+    List<String>? specialties,
+    List<dynamic>? milestones,
+    List<String>? gallery,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('No autenticado');
@@ -34,6 +39,11 @@ class ProfileRepository {
     if (shopName != null) updates['shop_name'] = shopName;
     if (whatsappNumber != null) updates['whatsapp_number'] = whatsappNumber;
     if (logoUrl != null) updates['logo_url'] = logoUrl;
+    if (biography != null) updates['biography'] = biography;
+    if (yearsOfExperience != null) updates['years_of_experience'] = yearsOfExperience;
+    if (specialties != null) updates['specialties'] = specialties;
+    if (milestones != null) updates['milestones'] = milestones;
+    if (gallery != null) updates['gallery'] = gallery;
 
     if (updates.isEmpty) return;
 
@@ -41,6 +51,10 @@ class ProfileRepository {
   }
 
   Future<String?> uploadLogo(XFile file) async {
+    return uploadImage(file, folder: 'logos');
+  }
+
+  Future<String?> uploadImage(XFile file, {String folder = 'assets'}) async {
     try {
       final user = _client.auth.currentUser;
       if (user == null) return null;
@@ -48,7 +62,7 @@ class ProfileRepository {
       final bytes = await file.readAsBytes();
       final ext = file.name.split('.').last;
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final path = '${user.id}/$fileName';
+      final path = '${user.id}/$folder/$fileName';
       
       await _client.storage.from('shop_assets').uploadBinary(
         path, 
