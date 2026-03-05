@@ -400,17 +400,17 @@ class _CustomerOrderSummaryScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('DATOS DEL CLIENTE',
+                Text('DATOS DE DESTINATARIO',
                     style: TextStyle(
                         color: Colors.blueGrey[400],
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5)),
                 const SizedBox(height: 12),
-                _buildDataRow(Icons.person_pin, 'Quien compra:',
+                _buildDataRow(Icons.person_pin, 'Quien recibe:',
                     widget.order.customerName),
                 const SizedBox(height: 8),
-                _buildDataRow(Icons.phone_iphone, 'Teléfono del cliente:',
+                _buildDataRow(Icons.phone_iphone, 'Teléfono del destinatario:',
                     widget.order.customerPhone),
               ],
             ),
