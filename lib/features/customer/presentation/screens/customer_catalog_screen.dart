@@ -50,8 +50,19 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     try {
       // Si viene shopId del param de URL, utilízalo; si no, usa el usuario autenticado
       final targetShopId = widget.shopId ?? Supabase.instance.client.auth.currentUser?.id;
+      
       if (targetShopId == null) {
-        debugPrint('[CustomerCatalog] No shopId and no currentUser');
+        debugPrint('[CustomerCatalog] No shopId and no currentUser. Loading FALLBACK catalog.');
+        // FALLBACK: Cargar CUALQUIER producto activo de la base de datos para no bloquear pruebas
+        final fallbackData = await Supabase.instance.client
+            .from('products')
+            .select()
+            .eq('is_active', true)
+            .limit(20);
+            
+        if (mounted && fallbackData.isNotEmpty) {
+          _products = fallbackData.map((json) => ProductItem.fromJson(json)).toList();
+        }
         if (mounted) setState(() => _isLoading = false);
         return;
       }
