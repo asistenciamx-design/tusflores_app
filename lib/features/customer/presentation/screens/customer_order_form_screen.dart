@@ -1289,7 +1289,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   Widget _buildOrderTotals() {
     double subtotal = 0;
     if (_mainProductQty > 0) {
-      subtotal += 700.0 * _mainProductQty;
+      subtotal += (widget.product?.price ?? 700.0) * _mainProductQty;
     }
     for (var p in _additionalProducts) {
       subtotal += (p['price'] as double) * (p['quantity'] as int);
