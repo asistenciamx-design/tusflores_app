@@ -13,6 +13,7 @@ import '../../features/auth/presentation/screens/account_verified_screen.dart';
 
 import '../../features/customer/presentation/screens/customer_main_layout.dart';
 import '../../features/customer/presentation/screens/customer_catalog_screen.dart';
+import '../../features/customer/presentation/screens/public_customer_main_layout.dart';
 import '../../features/customer/presentation/screens/customer_branch_screen.dart';
 import '../../features/customer/presentation/screens/customer_about_us_screen.dart';
 import '../../features/customer/presentation/screens/customer_faq_screen.dart';
@@ -260,7 +261,7 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
       );
     }
     
-    return CustomerCatalogScreen(shopId: _shopId, shopName: _shopName);
+    return PublicCustomerMainLayout(shopId: _shopId, shopName: _shopName);
   }
 }
 
