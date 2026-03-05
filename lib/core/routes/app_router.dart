@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/main/presentation/screens/main_layout.dart';
 import '../../features/auth/domain/repositories/profile_repository.dart';
@@ -143,21 +144,32 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   }
 
   Future<void> _resolveSlug() async {
-    // URL-decode the slug in case the browser encoded special chars
-    final decodedSlug = Uri.decodeComponent(widget.slug);
-    debugPrint('[PublicStore] Resolving slug: "$decodedSlug" (raw: "${widget.slug}")');
+    try {
+      // URL-decode the slug in case the browser encoded special chars
+      final decodedSlug = Uri.decodeComponent(widget.slug);
+      debugPrint('[PublicStore] Resolving slug: "$decodedSlug"');
 
-    final profile = await ProfileRepository().getProfileBySlug(decodedSlug);
-    debugPrint('[PublicStore] Profile result: ${profile != null ? "found id=${profile['id']}" : "NOT FOUND"}');
+      // Query Supabase directly (works with anon key)
+      final result = await Supabase.instance.client
+          .from('profiles')
+          .select('id, shop_name, full_name')
+          .eq('shop_name', decodedSlug)
+          .maybeSingle();
 
-    if (!mounted) return;
-    if (profile == null) {
-      setState(() => _notFound = true);
-    } else {
-      setState(() {
-        _shopId = profile['id'] as String?;
-        _shopName = (profile['shop_name'] ?? profile['full_name'] ?? '') as String;
-      });
+      debugPrint('[PublicStore] Result: $result');
+
+      if (!mounted) return;
+      if (result == null) {
+        setState(() => _notFound = true);
+      } else {
+        setState(() {
+          _shopId = result['id'] as String?;
+          _shopName = (result['shop_name'] ?? result['full_name'] ?? '') as String;
+        });
+      }
+    } catch (e) {
+      debugPrint('[PublicStore] ERROR resolving slug: $e');
+      if (mounted) setState(() => _notFound = true);
     }
   }
 
