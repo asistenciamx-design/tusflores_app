@@ -181,8 +181,8 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
       if (!mounted) return;
       if (match != null) {
         setState(() {
-          _shopId = match['id'] as String?;
-          _shopName = (match['shop_name'] ?? match['full_name'] ?? '') as String;
+          _shopId = match!['id'] as String?;
+          _shopName = (match!['shop_name'] ?? match!['full_name'] ?? '') as String;
         });
       } else {
         // Collect all available shop names to show on the debug screen
