@@ -145,12 +145,8 @@ class _CustomerOrderSummaryScreenState
     buffer.writeln('Método: ${widget.order.deliveryMethod}');
     buffer.writeln('Fecha/Hora: ${widget.order.deliveryInfo}');
     if (widget.order.deliveryMethod != 'Recoger en tienda') {
-      buffer
-          .writeln('Para: ${widget.order.recipientName ?? 'No especificado'}');
       buffer.writeln(
-          'Tel. Destinatario: ${widget.order.recipientPhone ?? 'No especificado'}');
-      buffer.writeln(
-          'Dirección: ${widget.order.recipientAddress ?? 'No especificado'}');
+          'Dirección: ${widget.order.deliveryAddress ?? 'No especificado'}');
       if (widget.order.deliveryReferences?.isNotEmpty == true) {
         buffer.writeln('Referencias: ${widget.order.deliveryReferences}');
       }
@@ -565,14 +561,6 @@ class _CustomerOrderSummaryScreenState
                   _buildDataRow(Icons.calendar_today, 'Fecha/Hora:',
                       widget.order.deliveryInfo),
                   const SizedBox(height: 8),
-                  if (widget.order.deliveryMethod != 'Recoger en tienda') ...[
-                    _buildDataRow(Icons.person, 'Para:',
-                        widget.order.recipientName ?? 'No especificado'),
-                    const SizedBox(height: 8),
-                    _buildDataRow(Icons.phone, 'Teléfono destinatario:',
-                        widget.order.recipientPhone ?? 'No especificado'),
-                    const SizedBox(height: 8),
-                  ],
                   if (widget.order.deliveryAddress?.isNotEmpty == true &&
                       widget.order.deliveryMethod != 'Recoger en tienda') ...[
                     _buildDataRow(Icons.location_on, 'Dirección:',
