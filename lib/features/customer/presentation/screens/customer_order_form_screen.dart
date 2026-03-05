@@ -551,7 +551,35 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     );
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 2)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF00E676),
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+      });
+    }
+  }
+
   Widget _buildDateOptions() {
+    bool isCustomDate = _selectedDate != 'Hoy' && _selectedDate != 'Mañana';
+    
     return Row(
       children: [
         _buildPillButton(
@@ -567,10 +595,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         ),
         const SizedBox(width: 12),
         _buildPillButton(
-          title: 'Otro',
+          title: isCustomDate ? _selectedDate : 'Otro',
           icon: Icons.calendar_today,
-          isSelected: _selectedDate == 'Otro',
-          onTap: () => setState(() => _selectedDate = 'Otro'),
+          isSelected: isCustomDate,
+          onTap: () => _selectDate(context),
         ),
       ],
     );
@@ -608,8 +636,50 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   }
 
   Widget _buildTimeOptions() {
-    if (_settings == null || _settings!.deliveryRanges.isEmpty) {
-      return const Text('No hay horarios configurados.', style: TextStyle(color: Colors.grey, fontSize: 13));
+    if (_settings == null) {
+      return const Text('Cargando horarios...', style: TextStyle(color: Colors.grey, fontSize: 13));
+    }
+
+    if (_deliveryMethod == 'Recoger en tienda') {
+      if (_settings!.storeHours.isEmpty) {
+        return const Text('No hay horarios de sucursal configurados.', style: TextStyle(color: Colors.grey, fontSize: 13));
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _settings!.storeHours.map((hour) {
+            String fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+            final label = '${fmt(hour.start)} - ${fmt(hour.end)}';
+
+            IconData icon = Icons.storefront;
+            if (hour.start.hour < 12) {
+              icon = Icons.wb_sunny_outlined;
+            } else if (hour.start.hour < 18) {
+              icon = Icons.wb_twilight_outlined;
+            } else {
+              icon = Icons.nights_stay_outlined;
+            }
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: SizedBox(
+                width: 140,
+                child: _buildTimeCard(
+                  id: label,
+                  icon: icon,
+                  title: 'Horario Tienda',
+                  subtitle: label,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    if (_settings!.deliveryRanges.isEmpty) {
+      return const Text('No hay horarios de entrega configurados.', style: TextStyle(color: Colors.grey, fontSize: 13));
     }
 
     return SingleChildScrollView(
