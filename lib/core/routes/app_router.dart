@@ -136,6 +136,7 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   String? _shopId;
   String? _shopName;
   bool _notFound = false;
+  String _debugInfo = '';
 
   @override
   void initState() {
@@ -186,24 +187,67 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
           _shopName = (match['shop_name'] ?? match['full_name'] ?? '') as String;
         });
       } else {
-        // FALLBACK FOR DEVELOPMENT: if we can't find it (or RLS blocked us), 
-        // we'll just show the catalog with whatever products we can load
+        // Collect all available shop names to show on the debug screen
+        final availableNames = profiles.map((p) => "'${p['shop_name']}'").join(', ');
         setState(() {
-          _shopId = null; // Forces fallback in CustomerCatalogScreen
-          _shopName = 'TusFlores (Demo)';
+          _notFound = true;
+          _debugInfo = '❌ Sin coincidencias.\nSlug buscado: "$targetNormalized"\nDisponibles: [$availableNames]';
         });
       }
     } catch (e) {
       debugPrint('[PublicStore] ERROR: $e');
-      if (mounted) setState(() {
-          _shopId = null;
-          _shopName = 'TusFlores (Error)';
-      });
+      if (mounted) {
+        setState(() {
+          _notFound = true;
+          _debugInfo = '⚠️ Error Supabase: $e';
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_notFound) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.local_florist_outlined, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text(
+                  'Florería no encontrada',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Verifica que el enlace sea correcto.',
+                  style: TextStyle(color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    '--- INFO TÉCNICA (pantallazo para soporte) ---\n$_debugInfo',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54, fontFamily: 'monospace'),
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    
     // Si todavía estamos intentando cargar (estado inicial)
     if (_shopId == null && _shopName == null) {
       return const Scaffold(
@@ -211,7 +255,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
       );
     }
     
-    // Bypass the "Not Found" error completely and let the catalog screen handle it
     return CustomerCatalogScreen(shopId: _shopId, shopName: _shopName);
   }
 }
