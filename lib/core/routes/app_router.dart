@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/main/presentation/screens/main_layout.dart';
+import '../../features/auth/domain/repositories/profile_repository.dart';
 
 import '../../features/auth/presentation/screens/create_account_screen.dart';
 import '../../features/auth/presentation/screens/shop_name_claim_screen.dart';
@@ -22,7 +23,7 @@ import '../../features/catalog/presentation/screens/catalog_message_screen.dart'
 import '../../features/orders/domain/models/order_model.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/login', // Starting at the Onboarding flow
+  initialLocation: '/login',
   routes: [
     GoRoute(
       path: '/login',
@@ -55,6 +56,16 @@ final appRouter = GoRouter(
       path: '/',
       builder: (context, state) => const MainLayout(),
     ),
+    // ── Ruta pública de la tienda ──────────────────────────────────────────
+    // Visitantes acceden por: tusflores.app/mx/{slug}
+    GoRoute(
+      path: '/mx/:slug',
+      builder: (context, state) {
+        final slug = state.pathParameters['slug'] ?? '';
+        return _PublicStoreLoader(slug: slug);
+      },
+    ),
+    // ── Rutas del cliente (con barra de navegación inferior) ───────────────
     ShellRoute(
       builder: (context, state, child) {
         return CustomerMainLayout(child: child);
@@ -110,3 +121,70 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+// ── Widget auxiliar: resuelve el slug y carga la tienda pública ────────────
+class _PublicStoreLoader extends StatefulWidget {
+  final String slug;
+  const _PublicStoreLoader({required this.slug});
+
+  @override
+  State<_PublicStoreLoader> createState() => _PublicStoreLoaderState();
+}
+
+class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
+  String? _shopId;
+  bool _notFound = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveSlug();
+  }
+
+  Future<void> _resolveSlug() async {
+    final profile = await ProfileRepository().getProfileBySlug(widget.slug);
+    if (!mounted) return;
+    if (profile == null) {
+      setState(() => _notFound = true);
+    } else {
+      setState(() => _shopId = profile['id'] as String?);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_notFound) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.local_florist_outlined, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text(
+                'Florería no encontrada',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Verifica que el enlace sea correcto.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Ir al inicio'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_shopId == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return CustomerCatalogScreen(shopId: _shopId);
+  }
+}

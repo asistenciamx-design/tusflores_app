@@ -21,6 +21,21 @@ class ProfileRepository {
     return response;
   }
 
+  /// Fetch a florist's profile by their shop slug (shop_name field)
+  Future<Map<String, dynamic>?> getProfileBySlug(String slug) async {
+    try {
+      final response = await _client
+          .from('profiles')
+          .select()
+          .eq('shop_name', slug)
+          .maybeSingle();
+      return response;
+    } catch (e) {
+      debugPrint('Error getProfileBySlug: $e');
+      return null;
+    }
+  }
+
   /// Update the current user's profile
   Future<void> updateProfile({
     String? shopName,

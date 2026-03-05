@@ -7,7 +7,8 @@ import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductI
 import '../../../../core/theme/app_theme.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
-  const CustomerCatalogScreen({super.key});
+  final String? shopId; // null = usar el florista autenticado
+  const CustomerCatalogScreen({super.key, this.shopId});
 
   @override
   State<CustomerCatalogScreen> createState() => _CustomerCatalogScreenState();
@@ -46,15 +47,23 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   Future<void> _loadStoreData() async {
     setState(() => _isLoading = true);
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        // Load Profile
-        final profile = await _profileRepo.getProfile();
-        if (profile != null) {
-          _shopName = profile['shop_name'] ?? 'Mi Florería';
-        }
-        // Load Products
-        final prodData = await _productRepo.getPublicProducts(user.id);
+      // Si viene shopId del param de URL, utilízalo; si no, usa el usuario autenticado
+      final targetShopId = widget.shopId ?? Supabase.instance.client.auth.currentUser?.id;
+      if (targetShopId == null) return;
+
+      // Cargar perfil de la florería
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('shop_name, full_name, logo_url, biography')
+          .eq('id', targetShopId)
+          .maybeSingle();
+      if (profile != null && mounted) {
+        _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
+      }
+
+      // Cargar solo productos activos (public)
+      final prodData = await _productRepo.getPublicProducts(targetShopId);
+      if (mounted) {
         _products = prodData.map((json) => ProductItem.fromJson(json)).toList();
       }
     } catch (e) {
