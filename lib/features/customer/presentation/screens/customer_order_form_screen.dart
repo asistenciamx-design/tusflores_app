@@ -235,7 +235,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                         // Simulate save and continue
                         double basePrice = widget.product?.price ?? 700.0;
                         double subtotal = basePrice * _mainProductQty;
-                        
+
                         List<Map<String, dynamic>> allProducts = [];
                         allProducts.add({
                           'name': widget.product?.name ?? 'Pedido',
@@ -829,10 +829,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             child: SizedBox(
               width: 140,
               child: _buildTimeCard(
-                id: range.label, // use label as id
+                id: range
+                    .timeLabel, // Use timeLabel as id to pass the real hours (e.g., "08:00 - 14:00") instead of "Rango X"
                 icon: icon,
                 title: range.label,
-                subtitle: range.timeLabel, // e.g. "08:00 - 13:00"
+                subtitle: range.timeLabel,
               ),
             ),
           );
