@@ -21,6 +21,7 @@ import '../../features/customer/presentation/screens/customer_order_form_screen.
 import '../../features/customer/presentation/screens/customer_order_summary_screen.dart';
 import '../../features/customer/presentation/screens/customer_payment_methods_screen.dart';
 import '../../features/catalog/presentation/screens/catalog_message_screen.dart';
+import '../../features/catalog/presentation/screens/catalog_screen.dart' show ProductItem;
 import '../../features/orders/domain/models/order_model.dart';
 
 final appRouter = GoRouter(
@@ -93,11 +94,17 @@ final appRouter = GoRouter(
     // Rutas de flujo de pedido (sin barra de navegación inferior)
     GoRoute(
       path: '/shop/product',
-      builder: (context, state) => const CustomerProductDetailScreen(),
+      builder: (context, state) {
+        final product = state.extra as ProductItem?;
+        return CustomerProductDetailScreen(product: product);
+      },
     ),
     GoRoute(
       path: '/shop/checkout',
-      builder: (context, state) => const CustomerOrderFormScreen(),
+      builder: (context, state) {
+        final product = state.extra as ProductItem?;
+        return CustomerOrderFormScreen(product: product);
+      },
     ),
     GoRoute(
       path: '/shop/summary',

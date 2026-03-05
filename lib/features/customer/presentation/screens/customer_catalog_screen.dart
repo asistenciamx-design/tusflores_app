@@ -297,7 +297,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
   Widget _buildProductCard(BuildContext context, ProductItem product) {
       return GestureDetector(
-        onTap: () => context.push('/shop/product'),
+        onTap: () => context.push('/shop/product', extra: product),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,

@@ -6,9 +6,11 @@ import '../../../profile/domain/models/shop_settings_model.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../orders/domain/models/order_model.dart';
+import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
 
 class CustomerOrderFormScreen extends StatefulWidget {
-  const CustomerOrderFormScreen({super.key});
+  final ProductItem? product;
+  const CustomerOrderFormScreen({super.key, this.product});
 
   @override
   State<CustomerOrderFormScreen> createState() => _CustomerOrderFormScreenState();
@@ -202,7 +204,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           child: ElevatedButton.icon(
              onPressed: () {
                // Simulate save and continue
-               double subtotal = 700.0 * _mainProductQty;
+               double basePrice = widget.product?.price ?? 700.0;
+               double subtotal = basePrice * _mainProductQty;
                for (var p in _additionalProducts) {
                  subtotal += (p['price'] as double) * (p['quantity'] as int);
                }
@@ -210,7 +213,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                final order = OrderModel(
                  folio: '#0000',
                  shopId: _shopId ?? '', // Using currently loaded shopId
-                 productName: _additionalProducts.isEmpty ? 'Ramo Amor Eterno' : 'Pedido Personalizado',
+                 productName: widget.product?.name ?? (_additionalProducts.isEmpty ? 'Pedido' : 'Pedido Personalizado'),
                  customerName: _nameCtrl.text.isEmpty ? 'Cliente' : _nameCtrl.text,
                  customerPhone: _phoneCtrl.text,
                  quantity: _mainProductQty > 0 ? _mainProductQty : 1,
@@ -262,7 +265,12 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   }
 
   Widget _buildProductSummary() {
-    final double total = 1200.0 * _mainProductQty;
+    final double basePrice = widget.product?.price ?? 1200.0;
+    final double total = basePrice * _mainProductQty;
+    final image = (widget.product?.imageUrls.isNotEmpty == true) 
+        ? widget.product!.imageUrls.first 
+        : 'https://lh3.googleusercontent.com/aida-public/AB6AXuB3E2VbL-G75lTtz3Z1_Tf84D_wL10x4tF6C-K0K00fO2n8l2yqT6t7sJcRbbN2uEqOEq9NxtgP0X9K_3y-PjQ4d0f_y9G0K2jQfN8oR1qE5k6Mv7H1r9b2rI5k9wE7T3iX2yB0pY1eU3gV8cT0bN4yR6G3fL2wT9jN6oV4iR9wJ7G9oE7Q8f2R9cE6jR4';
+    final name = widget.product?.name ?? 'Ramo Amor Eterno';
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -276,12 +284,12 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
              child: Image.network(
-               'https://lh3.googleusercontent.com/aida-public/AB6AXuB3E2VbL-G75lTtz3Z1_Tf84D_wL10x4tF6C-K0K00fO2n8l2yqT6t7sJcRbbN2uEqOEq9NxtgP0X9K_3y-PjQ4d0f_y9G0K2jQfN8oR1qE5k6Mv7H1r9b2rI5k9wE7T3iX2yB0pY1eU3gV8cT0bN4yR6G3fL2wT9jN6oV4iR9wJ7G9oE7Q8f2R9cE6jR4',
+               image,
                height: 50,
                width: 50,
                fit: BoxFit.cover,
                errorBuilder: (ctx, err, stack) => Container(
-                 height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.image),
+                 height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.local_florist, color: Colors.grey),
                ),
              ),
           ),
@@ -290,7 +298,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Ramo Amor Eterno', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text(
                   '\$${total.toStringAsFixed(0)}',

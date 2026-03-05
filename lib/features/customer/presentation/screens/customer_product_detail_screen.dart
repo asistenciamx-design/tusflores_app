@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
 
 class CustomerProductDetailScreen extends StatefulWidget {
-  const CustomerProductDetailScreen({super.key});
+  final ProductItem? product;
+  const CustomerProductDetailScreen({super.key, this.product});
 
   @override
   State<CustomerProductDetailScreen> createState() => _CustomerProductDetailScreenState();
@@ -11,15 +13,25 @@ class CustomerProductDetailScreen extends StatefulWidget {
 class _CustomerProductDetailScreenState extends State<CustomerProductDetailScreen> {
   int _selectedImageIndex = 0;
 
-  final List<String> _images = [
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuB3E2VbL-G75lTtz3Z1_Tf84D_wL10x4tF6C-K0K00fO2n8l2yqT6t7sJcRbbN2uEqOEq9NxtgP0X9K_3y-PjQ4d0f_y9G0K2jQfN8oR1qE5k6Mv7H1r9b2rI5k9wE7T3iX2yB0pY1eU3gV8cT0bN4yR6G3fL2wT9jN6oV4iR9wJ7G9oE7Q8f2R9cE6jR4',
-    // Fallback images if the URL fails, though we can just use placeholders or other pics
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCH1K4vO1U0E1J7Y1T3L1Q4rE1A0F5G6J0T5A1H7P2L3D7Y1S0R4P7K3J1E4H4A5G6F0T1U3P2V3A1S0H4T6K0R1Y5D2P1G7C3',
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuDO0A0K1C6T2F7D4Y5K9A6V1P0J7R4F2E0S5T9Y0J6C3G1L2A4Q9U8S0R3K5A5D2Y8J1H0F4Q1P6J9G0E7A2R3K0T9C6S1F4A',
-  ];
+  List<String> get _images {
+    if (widget.product == null || widget.product!.imageUrls.isEmpty) {
+      return [];
+    }
+    return widget.product!.imageUrls;
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.product == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Producto no encontrado')),
+        body: const Center(child: Text('La información del producto no está disponible.')),
+      );
+    }
+
+    final product = widget.product!;
+    final currentImage = _images.isNotEmpty ? _images[_selectedImageIndex] : '';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -36,7 +48,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.favorite, color: Colors.black, size: 24),
+            icon: const Icon(Icons.favorite_outline, color: Colors.black, size: 24),
             onPressed: () {
                // TODO: Toggle favorite
             },
@@ -52,33 +64,31 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
                // Main Image
                ClipRRect(
                  borderRadius: BorderRadius.circular(16),
-                 child: Image.network(
-                   _images[_selectedImageIndex],
-                   height: 350,
-                   width: double.infinity,
-                   fit: BoxFit.cover,
-                   errorBuilder: (ctx, err, stack) => Container(
+                 child: currentImage.isNotEmpty
+                  ? Image.network(
+                     currentImage,
                      height: 350,
                      width: double.infinity,
-                     color: Colors.grey[200],
-                     child: const Icon(Icons.local_florist, size: 80, color: Colors.grey),
-                   ),
-                 ),
+                     fit: BoxFit.cover,
+                     errorBuilder: (ctx, err, stack) => _buildPlaceholderImage(),
+                   )
+                  : _buildPlaceholderImage(),
                ),
                const SizedBox(height: 12),
                // Gallery
-               Row(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 children: List.generate(_images.length, (index) {
-                   return _buildGalleryThumbnail(index);
-                 }),
-               ),
+               if (_images.length > 1)
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.center,
+                   children: List.generate(_images.length, (index) {
+                     return _buildGalleryThumbnail(index);
+                   }),
+                 ),
                const SizedBox(height: 24),
                
                // Title
-               const Text(
-                 'Ramo Amor Eterno',
-                 style: TextStyle(
+               Text(
+                 product.name,
+                 style: const TextStyle(
                    fontSize: 26,
                    fontWeight: FontWeight.bold,
                    color: Colors.black87,
@@ -88,9 +98,9 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
                const SizedBox(height: 8),
 
                // Price
-               const Text(
-                 '\$1,200 MXN',
-                 style: TextStyle(
+               Text(
+                 '\$${product.price.toStringAsFixed(2)} MXN',
+                 style: const TextStyle(
                    fontSize: 20,
                    fontWeight: FontWeight.bold,
                    color: Color(0xFF00C853), // Green typical of price/whatsapp
@@ -100,21 +110,19 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
                const SizedBox(height: 16),
 
                // Tags
-               Wrap(
-                 spacing: 8,
-                 runSpacing: 8,
-                 alignment: WrapAlignment.center,
-                 children: [
-                   _buildTagChip('#Aniversario'),
-                   _buildTagChip('#RosasRojas'),
-                   _buildTagChip('#Premium'),
-                 ],
-               ),
-               const SizedBox(height: 24),
+               if (product.tags.isNotEmpty)
+                 Wrap(
+                   spacing: 8,
+                   runSpacing: 8,
+                   alignment: WrapAlignment.center,
+                   children: product.tags.map((t) => _buildTagChip(t.startsWith('#') ? t : '#$t')).toList(),
+                 ),
+               if (product.tags.isNotEmpty)
+                 const SizedBox(height: 24),
 
                // Description
                Text(
-                 'Un arreglo espectacular de 24 rosas rojas de invernadero con follaje fino, envueltas en papel francés y listón de seda premium.',
+                 product.description?.isNotEmpty == true ? product.description! : 'Sin descripción detallada.',
                  style: TextStyle(
                    fontSize: 15,
                    color: Colors.grey[700],
@@ -132,7 +140,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton.icon(
              onPressed: () {
-                context.push('/shop/checkout');
+                context.push('/shop/checkout', extra: product);
              },
              icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 24),
              label: const Text(
@@ -151,6 +159,15 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      height: 350,
+      width: double.infinity,
+      color: Colors.grey[200],
+      child: const Icon(Icons.local_florist, size: 80, color: Colors.grey),
     );
   }
 
