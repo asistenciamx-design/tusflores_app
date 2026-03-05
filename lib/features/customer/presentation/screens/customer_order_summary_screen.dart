@@ -171,22 +171,9 @@ class _CustomerOrderSummaryScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ElevatedButton.icon(
+              ElevatedButton(
                 onPressed:
                     _isSaving || _isLoadingProfile ? null : _saveAndShare,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.chat_bubble_outline,
-                        color: Colors.white, size: 20),
-                label: Text(
-                  _isSaving ? 'Enviando...' : 'Compartir por WhatsApp',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00E676), // WhatsApp Greenish
                   foregroundColor: Colors.white,
@@ -197,28 +184,17 @@ class _CustomerOrderSummaryScreenState
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => context.pop(),
-                icon: const Icon(Icons.close, color: Colors.black87, size: 20),
-                label: const Text(
-                  'Cerrar',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87),
-                ),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  minimumSize: const Size(double.infinity, 54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text(
+                        'Guardar y confirmar pedido',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
               ),
             ],
           ),
@@ -498,18 +474,6 @@ class _CustomerOrderSummaryScreenState
                       'El envío se realizará de forma anónima.'),
                 ],
               ],
-            ),
-          ),
-
-          _buildDashedLine(),
-
-          // Footer Text
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Text(
-              'Este es un comprobante digital generado\npara tu comodidad.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[400], fontSize: 11),
             ),
           ),
         ],
