@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -234,10 +235,27 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                         // Simulate save and continue
                         double basePrice = widget.product?.price ?? 700.0;
                         double subtotal = basePrice * _mainProductQty;
+                        
+                        List<Map<String, dynamic>> allProducts = [];
+                        allProducts.add({
+                          'name': widget.product?.name ?? 'Pedido',
+                          'qty': _mainProductQty > 0 ? _mainProductQty : 1,
+                          'price': basePrice,
+                        });
+
                         for (var p in _additionalProducts) {
-                          subtotal +=
-                              (p['price'] as double) * (p['quantity'] as int);
+                          double pPrice = p['price'] as double;
+                          int pQty = p['quantity'] as int;
+                          subtotal += pPrice * pQty;
+                          allProducts.add({
+                            'name': p['name'] ?? 'Extra',
+                            'qty': pQty,
+                            'price': pPrice,
+                          });
                         }
+
+                        // Encode all products into the productName field
+                        String encodedProducts = jsonEncode(allProducts);
 
                         String finalReferences = _refCtrl.text;
                         if (_mapsUrlCtrl.text.isNotEmpty) {
@@ -250,15 +268,12 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           folio: '#0000',
                           shopId: widget.shopId ??
                               '', // Using currently loaded shopId
-                          productName: widget.product?.name ??
-                              (_additionalProducts.isEmpty
-                                  ? 'Pedido'
-                                  : 'Pedido Personalizado'),
+                          productName: encodedProducts,
                           customerName: _nameCtrl.text.isEmpty
                               ? 'Cliente'
                               : _nameCtrl.text,
                           customerPhone: _phoneCtrl.text,
-                          quantity: _mainProductQty > 0 ? _mainProductQty : 1,
+                          quantity: 1, // Store as 1 bundle
                           price: subtotal,
                           status: OrderStatus.pending,
                           createdAt: DateTime.now(),

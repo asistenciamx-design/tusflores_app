@@ -302,29 +302,67 @@ class _CustomerOrderSummaryScreenState
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${widget.order.quantity}x',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
+                ...() {
+                  try {
+                    // Try parsing productName as JSON. If successful it's an array of products
+                    final List<dynamic> productsData =
+                        jsonDecode(widget.order.productName);
+                    return productsData.map((p) {
+                      final name = p['name'] as String? ?? 'Producto';
+                      final qty = p['qty'] as int? ?? 1;
+                      final price = p['price'] as double? ?? 0.0;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${qty}x',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 14)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
+                            ),
+                            Text('\$${price.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                      );
+                    }).toList();
+                  } catch (e) {
+                    // Fallback to legacy single product string
+                    return [
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(widget.order.productName,
+                          Text('${widget.order.quantity}x',
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 14)),
+                                  fontWeight: FontWeight.bold, fontSize: 14)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(widget.order.productName,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14)),
+                              ],
+                            ),
+                          ),
+                          Text('\$${widget.order.price.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
                       ),
-                    ),
-                    Text('\$${widget.order.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14)),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                      const SizedBox(height: 12),
+                    ];
+                  }
+                }(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
