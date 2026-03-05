@@ -29,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _pendingCount = 0;
   int _deliveredCount = 0;
   int _catalogCount = 0;
+  int _pausedCount = 0;
   double _todaySales = 0.0;
   OrderModel? _latestOrder;
 
@@ -44,9 +45,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user == null) return;
     
     try {
-      // Load products count
+      // Load products count (all, including paused)
       final products = await ProductRepository().getProducts(user.id);
-      
+      final activeCount = products.where((p) => p['is_active'] == true).length;
+      final pausedCount = products.where((p) => p['is_active'] == false).length;
+
       // Load orders
       final orders = await OrderRepository().getOrders(user.id);
       
@@ -76,7 +79,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (mounted) {
         setState(() {
-          _catalogCount = products.length;
+          _catalogCount = activeCount;
+          _pausedCount = pausedCount;
           _pendingCount = pending;
           _deliveredCount = delivered;
           _todaySales = sales;
@@ -303,37 +307,106 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: CircularProgressIndicator(),
       ));
     }
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _StatCard(
-            icon: Icons.pending_actions,
-            iconColor: Colors.orange,
-            iconBg: Colors.orange.withValues(alpha: 0.1),
-            value: _pendingCount.toString(),
-            label: 'Pendientes',
-          ),
+        // Fila 1: Pendientes | Entregados | Catálogo
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                icon: Icons.pending_actions,
+                iconColor: Colors.orange,
+                iconBg: Colors.orange.withValues(alpha: 0.1),
+                value: _pendingCount.toString(),
+                label: 'Pendientes',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                icon: Icons.local_shipping,
+                iconColor: Colors.blue,
+                iconBg: Colors.blue.withValues(alpha: 0.1),
+                value: _deliveredCount.toString(),
+                label: 'Entregados',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                icon: Icons.inventory_2,
+                iconColor: Colors.purple,
+                iconBg: Colors.purple.withValues(alpha: 0.1),
+                value: _catalogCount.toString(),
+                label: 'Catálogo',
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.local_shipping,
-            iconColor: Colors.blue,
-            iconBg: Colors.blue.withValues(alpha: 0.1),
-            value: _deliveredCount.toString(),
-            label: 'Entregados',
+        // Fila 2: En Pausa (ancho completo)
+        if (_pausedCount > 0) ...[
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => context.go('/catalog'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.pause_circle_outline, color: Colors.grey, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'En Pausa',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          '$_pausedCount producto${_pausedCount == 1 ? '' : 's'} oculto${_pausedCount == 1 ? '' : 's'} del catálogo público',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _pausedCount.toString(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+                ],
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.inventory_2,
-            iconColor: Colors.purple,
-            iconBg: Colors.purple.withValues(alpha: 0.1),
-            value: _catalogCount.toString(),
-            label: 'Catálogo',
-          ),
-        ),
+        ],
       ],
     );
   }
