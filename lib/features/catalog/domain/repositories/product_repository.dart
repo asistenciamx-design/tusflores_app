@@ -4,7 +4,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class ProductRepository {
   final _supabase = Supabase.instance.client;
 
+  /// Carga TODOS los productos del florista (activos e inactivos).
+  /// Usado en la pantalla de catálogo del florista para gestión.
   Future<List<Map<String, dynamic>>> getProducts(String floristId) async {
+    final response = await _supabase
+        .from('products')
+        .select()
+        .eq('florist_id', floristId)
+        .order('created_at', ascending: false);
+    
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Carga solo los productos ACTIVOS del florista.
+  /// Usado en la vista pública del catálogo (vista del cliente).
+  Future<List<Map<String, dynamic>>> getPublicProducts(String floristId) async {
     final response = await _supabase
         .from('products')
         .select()

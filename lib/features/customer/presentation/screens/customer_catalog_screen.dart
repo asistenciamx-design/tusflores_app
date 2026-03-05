@@ -54,7 +54,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
           _shopName = profile['shop_name'] ?? 'Mi Florería';
         }
         // Load Products
-        final prodData = await _productRepo.getProducts(user.id);
+        final prodData = await _productRepo.getPublicProducts(user.id);
         _products = prodData.map((json) => ProductItem.fromJson(json)).toList();
       }
     } catch (e) {
