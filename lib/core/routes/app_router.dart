@@ -145,30 +145,40 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
 
   Future<void> _resolveSlug() async {
     try {
-      // URL-decode the slug in case the browser encoded special chars
-      final decodedSlug = Uri.decodeComponent(widget.slug);
-      debugPrint('[PublicStore] Resolving slug: "$decodedSlug"');
+      final decodedSlug = Uri.decodeComponent(widget.slug).toLowerCase().trim();
+      debugPrint('[PublicStore] Looking for slug: "$decodedSlug"');
 
-      // Query Supabase directly (works with anon key)
-      final result = await Supabase.instance.client
+      // The profile URL slug is generated as:
+      //   shop_name.toLowerCase().replaceAll(' ', '-')
+      // So we need to find the profile whose shop_name produces this slug.
+      // We fetch all profiles (only id and shop_name) and match client-side.
+      final profiles = await Supabase.instance.client
           .from('profiles')
-          .select('id, shop_name, full_name')
-          .eq('shop_name', decodedSlug)
-          .maybeSingle();
+          .select('id, shop_name, full_name');
 
-      debugPrint('[PublicStore] Result: $result');
+      Map<String, dynamic>? match;
+      for (final p in profiles) {
+        final name = (p['shop_name'] ?? '') as String;
+        final slug = name.toLowerCase().replaceAll(' ', '-');
+        if (slug == decodedSlug || name.toLowerCase() == decodedSlug || name == widget.slug) {
+          match = p;
+          break;
+        }
+      }
+
+      debugPrint('[PublicStore] Match: $match');
 
       if (!mounted) return;
-      if (result == null) {
+      if (match == null) {
         setState(() => _notFound = true);
       } else {
         setState(() {
-          _shopId = result['id'] as String?;
-          _shopName = (result['shop_name'] ?? result['full_name'] ?? '') as String;
+          _shopId = match!['id'] as String?;
+          _shopName = (match['shop_name'] ?? match['full_name'] ?? '') as String;
         });
       }
     } catch (e) {
-      debugPrint('[PublicStore] ERROR resolving slug: $e');
+      debugPrint('[PublicStore] ERROR: $e');
       if (mounted) setState(() => _notFound = true);
     }
   }
@@ -191,11 +201,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
               const Text(
                 'Verifica que el enlace sea correcto.',
                 style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              TextButton(
-                onPressed: () => context.go('/'),
-                child: const Text('Ir al inicio'),
               ),
             ],
           ),
