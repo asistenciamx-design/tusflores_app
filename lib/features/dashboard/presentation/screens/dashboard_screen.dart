@@ -377,14 +377,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                  onTap: () async {
                    final userId = Supabase.instance.client.auth.currentUser?.id;
                    if (userId == null) return;
+
+                   // Leer settings (mensaje personalizado + imagen) y perfil (slug para URL)
                    final settings = await ShopSettingsRepository().getSettings(userId);
-                   final shopName = settings?.rawData?['catalog_shop_name'] ?? _shopName;
-                   final customMsg = settings?.catalogMessage;
-                   const String catalogUrl = 'tusflores.app/floreria';
-                   final String message = customMsg != null && customMsg.isNotEmpty
-                       ? '$customMsg\n\n🌸 Visita nuestro catálogo: $catalogUrl'
-                       : '✨ ¡Bienvenido a $shopName! ✨ Nuestras flores más frescas ya están listas para ti. Mira nuestro catálogo: $catalogUrl';
-                   Share.share(message);
+                   final profile = await ProfileRepository().getProfile();
+
+                   // Nombre para encabezado: del campo catalog_shop_name guardado
+                   final catalogName = (settings?.rawData?['catalog_shop_name'] as String?)?.trim() ?? '';
+                   final displayName = catalogName.isNotEmpty ? catalogName : _shopName;
+
+                   // URL real de la tienda usando el slug (shop_name del perfil)
+                   final slug = (profile?['shop_name'] as String?)?.trim() ?? '';
+                   final storeUrl = slug.isNotEmpty
+                       ? 'https://tusflores.app/mx/$slug'
+                       : 'https://tusflores.app';
+
+                   // Mensaje personalizado y/o imagen
+                   final customMsg = (settings?.catalogMessage as String?)?.trim() ?? '';
+                   final imageUrl = (settings?.catalogImageUrl as String?)?.trim() ?? '';
+
+                   // Construir mensaje final
+                   final buffer = StringBuffer();
+                   buffer.writeln('🌸 *$displayName*');
+                   buffer.writeln();
+                   if (customMsg.isNotEmpty) {
+                     buffer.writeln(customMsg);
+                     buffer.writeln();
+                   }
+                   buffer.writeln('👉 Visita nuestro catálogo:');
+                   buffer.writeln(storeUrl);
+                   if (imageUrl.isNotEmpty) {
+                     buffer.writeln();
+                     buffer.writeln('📸 $imageUrl');
+                   }
+
+                   Share.share(buffer.toString().trim());
                  },
                  onEdit: () async {
                    final result = await context.push('/shop/catalog-message');
