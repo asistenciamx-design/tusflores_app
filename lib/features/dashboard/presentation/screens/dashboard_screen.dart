@@ -392,9 +392,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                        ? 'https://tusflores.app/mx/$slug'
                        : 'https://tusflores.app';
 
-                   // Mensaje personalizado y/o imagen
+                   // Mensaje personalizado
                    final customMsg = (settings?.catalogMessage as String?)?.trim() ?? '';
-                   final imageUrl = (settings?.catalogImageUrl as String?)?.trim() ?? '';
 
                    // Construir mensaje final
                    final buffer = StringBuffer();
@@ -406,10 +405,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                    }
                    buffer.writeln('👉 Visita nuestro catálogo:');
                    buffer.writeln(storeUrl);
-                   if (imageUrl.isNotEmpty) {
-                     buffer.writeln();
-                     buffer.writeln('📸 $imageUrl');
-                   }
 
                    Share.share(buffer.toString().trim());
                  },
