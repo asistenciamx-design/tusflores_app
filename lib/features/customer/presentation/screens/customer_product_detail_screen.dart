@@ -4,7 +4,8 @@ import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductI
 
 class CustomerProductDetailScreen extends StatefulWidget {
   final ProductItem? product;
-  const CustomerProductDetailScreen({super.key, this.product});
+  final String? shopId;
+  const CustomerProductDetailScreen({super.key, this.product, this.shopId});
 
   @override
   State<CustomerProductDetailScreen> createState() => _CustomerProductDetailScreenState();
@@ -140,7 +141,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton.icon(
              onPressed: () {
-                context.push('/shop/checkout', extra: product);
+                context.push('/shop/checkout', extra: {'product': product, 'shopId': widget.shopId});
              },
              icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 24),
              label: const Text(

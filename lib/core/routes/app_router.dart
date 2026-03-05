@@ -96,15 +96,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/shop/product',
       builder: (context, state) {
-        final product = state.extra as ProductItem?;
-        return CustomerProductDetailScreen(product: product);
+        final extra = state.extra as Map<String, dynamic>?;
+        final product = extra?['product'] as ProductItem?;
+        final shopId = extra?['shopId'] as String?;
+        return CustomerProductDetailScreen(product: product, shopId: shopId);
       },
     ),
     GoRoute(
       path: '/shop/checkout',
       builder: (context, state) {
-        final product = state.extra as ProductItem?;
-        return CustomerOrderFormScreen(product: product);
+        final extra = state.extra as Map<String, dynamic>?;
+        final product = extra?['product'] as ProductItem?;
+        final shopId = extra?['shopId'] as String?;
+        return CustomerOrderFormScreen(product: product, shopId: shopId);
       },
     ),
     GoRoute(

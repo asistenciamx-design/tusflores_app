@@ -4,13 +4,15 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/models/shop_settings_model.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
+import '../../../catalog/domain/repositories/product_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../orders/domain/models/order_model.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
 
 class CustomerOrderFormScreen extends StatefulWidget {
   final ProductItem? product;
-  const CustomerOrderFormScreen({super.key, this.product});
+  final String? shopId;
+  const CustomerOrderFormScreen({super.key, this.product, this.shopId});
 
   @override
   State<CustomerOrderFormScreen> createState() => _CustomerOrderFormScreenState();
@@ -23,24 +25,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   // Store additional products selected by the user
   final List<Map<String, dynamic>> _additionalProducts = [];
 
-  // Dummy catalog data to pick from
-  final List<Map<String, dynamic>> _catalogProducts = [
-    {
-      'name': 'Arreglo Girasoles',
-      'price': 380.0,
-      'image': 'https://images.unsplash.com/photo-1559564478-e54619d83df2?q=80&w=200&h=200&fit=crop',
-    },
-    {
-      'name': 'Orquídea Blanca',
-      'price': 600.0,
-      'image': 'https://images.unsplash.com/photo-1596434446-dc68f1841e24?q=80&w=200&h=200&fit=crop',
-    },
-    {
-      'name': 'Ramo de Rosas Rojas',
-      'price': 450.0,
-      'image': 'https://images.unsplash.com/photo-1562690868-60bbe7293e94?q=80&w=200&h=200&fit=crop',
-    },
-  ];
+  // Actual catalog data to pick from
+  List<ProductItem> _catalogProducts = [];
 
   // Date/Time state
   String _selectedDate = 'Hoy';
@@ -67,28 +53,53 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
 
   bool _isLoadingSettings = true;
   ShopSettingsModel? _settings;
-  String? _shopId;
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _loadData();
   }
 
-  Future<void> _loadSettings() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    _shopId = user?.id ?? '';
-    final repo = ShopSettingsRepository();
-    final settings = await repo.getSettings(_shopId!);
+  Future<void> _loadData() async {
+    if (widget.shopId == null || widget.shopId!.isEmpty) {
+      if (mounted) {
+        setState(() => _isLoadingSettings = false);
+      }
+      return;
+    }
 
-    if (mounted) {
-      setState(() {
-         _settings = settings;
-         _isLoadingSettings = false;
-         if (settings != null && settings.deliveryRanges.isNotEmpty) {
-           _selectedTime = settings.deliveryRanges.first.label;
-         }
-      });
+    try {
+      final settingsRepo = ShopSettingsRepository();
+      final productRepo = ProductRepository();
+      
+      final results = await Future.wait([
+        settingsRepo.getSettings(widget.shopId!),
+        productRepo.getPublicProducts(widget.shopId!),
+      ]);
+      
+      final settings = results[0] as ShopSettingsModel?;
+      final productsRaw = results[1] as List<Map<String, dynamic>>;
+
+      if (mounted) {
+        setState(() {
+           _settings = settings;
+           _catalogProducts = productsRaw
+              .map((p) => ProductItem.fromJson(p))
+              .where((p) => p.id != widget.product?.id) // Don't show the main product as an extra
+              .toList();
+           
+           _isLoadingSettings = false;
+           
+           if (settings != null && settings.deliveryRanges.isNotEmpty) {
+             _selectedTime = settings.deliveryRanges.first.label;
+           }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading order form data: $e');
+      if (mounted) {
+        setState(() => _isLoadingSettings = false);
+      }
     }
   }
 
@@ -190,9 +201,14 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             _buildRecipientData(),
             const SizedBox(height: 24),
 
-            _buildSectionTitle('Dirección de Entrega'),
-            const SizedBox(height: 12),
-            _buildDeliveryAddress(),
+            if (_deliveryMethod != 'Recoger en tienda') ...[
+              _buildSectionTitle('Dirección de Entrega'),
+              const SizedBox(height: 12),
+              _buildDeliveryAddress(),
+              const SizedBox(height: 24),
+            ],
+
+            _buildOrderTotals(),
             const SizedBox(height: 100), // padding for bottom button
           ],
         ),
@@ -212,7 +228,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                
                final order = OrderModel(
                  folio: '#0000',
-                 shopId: _shopId ?? '', // Using currently loaded shopId
+                 shopId: widget.shopId ?? '', // Using currently loaded shopId
                  productName: widget.product?.name ?? (_additionalProducts.isEmpty ? 'Pedido' : 'Pedido Personalizado'),
                  customerName: _nameCtrl.text.isEmpty ? 'Cliente' : _nameCtrl.text,
                  customerPhone: _phoneCtrl.text,
@@ -475,31 +491,41 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                       itemCount: _catalogProducts.length,
                       separatorBuilder: (context, index) => const Divider(height: 24),
                       itemBuilder: (context, index) {
-                        final product = _catalogProducts[index];
+                        final productItem = _catalogProducts[index];
+                        final productImage = productItem.imageUrls.isNotEmpty ? productItem.imageUrls.first : null;
+
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              product['image'],
+                            child: productImage != null ? Image.network(
+                              productImage,
                               width: 50,
                               height: 50,
                               fit: BoxFit.cover,
                               errorBuilder: (ctx, err, stack) => Container(
                                 height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.local_florist, color: AppTheme.primary),
                               ),
+                            ) : Container(
+                                height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.local_florist, color: AppTheme.primary),
                             ),
                           ),
-                          title: Text(product['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          subtitle: Text('\$${product['price'].toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF00C853), fontWeight: FontWeight.bold)),
+                          title: Text(productItem.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          subtitle: Text('\$${productItem.price.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF00C853), fontWeight: FontWeight.bold)),
                           trailing: ElevatedButton(
                             onPressed: () {
                               setState(() {
-                                final existingIdx = _additionalProducts.indexWhere((p) => p['name'] == product['name']);
+                                final existingIdx = _additionalProducts.indexWhere((p) => p['name'] == productItem.name);
                                 if (existingIdx >= 0) {
                                   _additionalProducts[existingIdx]['quantity'] = (_additionalProducts[existingIdx]['quantity'] ?? 1) + 1;
                                 } else {
-                                  _additionalProducts.add({...product, 'quantity': 1});
+                                  _additionalProducts.add({
+                                    'id': productItem.id,
+                                    'name': productItem.name,
+                                    'price': productItem.price,
+                                    'image': productImage,
+                                    'quantity': 1,
+                                  });
                                 }
                               });
                               Navigator.pop(context);
@@ -922,8 +948,6 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                _buildLocationTypeBtn('Hospital', Icons.local_hospital),
              ],
           ),
-          const SizedBox(height: 32),
-          _buildOrderTotals(),
         ],
       ),
     );
