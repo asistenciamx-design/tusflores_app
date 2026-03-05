@@ -8,7 +8,8 @@ import '../../../../core/theme/app_theme.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
   final String? shopId; // null = usar el florista autenticado
-  const CustomerCatalogScreen({super.key, this.shopId});
+  final String? shopName; // nombre resuelto desde el slug
+  const CustomerCatalogScreen({super.key, this.shopId, this.shopName});
 
   @override
   State<CustomerCatalogScreen> createState() => _CustomerCatalogScreenState();
@@ -17,9 +18,8 @@ class CustomerCatalogScreen extends StatefulWidget {
 class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   int _selectedCategoryIndex = 0;
   bool _isLoading = true;
-  String _shopName = 'TusFlores';
+  late String _shopName;
   
-  final _profileRepo = ProfileRepository();
   final _productRepo = ProductRepository();
   List<ProductItem> _products = [];
   
@@ -41,6 +41,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   @override
   void initState() {
     super.initState();
+    _shopName = widget.shopName ?? 'TusFlores';
     _loadStoreData();
   }
 
@@ -49,25 +50,35 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     try {
       // Si viene shopId del param de URL, utilízalo; si no, usa el usuario autenticado
       final targetShopId = widget.shopId ?? Supabase.instance.client.auth.currentUser?.id;
-      if (targetShopId == null) return;
+      if (targetShopId == null) {
+        debugPrint('[CustomerCatalog] No shopId and no currentUser');
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
 
-      // Cargar perfil de la florería
-      final profile = await Supabase.instance.client
-          .from('profiles')
-          .select('shop_name, full_name, logo_url, biography')
-          .eq('id', targetShopId)
-          .maybeSingle();
-      if (profile != null && mounted) {
-        _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
+      debugPrint('[CustomerCatalog] Loading store for shopId: $targetShopId');
+
+      // Cargar perfil de la florería (si no vino shopName ya resuelto)
+      if (widget.shopName == null || widget.shopName!.isEmpty) {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('shop_name, full_name, logo_url, biography')
+            .eq('id', targetShopId)
+            .maybeSingle();
+        if (profile != null && mounted) {
+          _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
+        }
       }
 
       // Cargar solo productos activos (public)
+      debugPrint('[CustomerCatalog] Loading public products...');
       final prodData = await _productRepo.getPublicProducts(targetShopId);
+      debugPrint('[CustomerCatalog] Got ${prodData.length} products');
       if (mounted) {
         _products = prodData.map((json) => ProductItem.fromJson(json)).toList();
       }
     } catch (e) {
-      debugPrint('Error loading customer catalog: $e');
+      debugPrint('[CustomerCatalog] Error loading catalog: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

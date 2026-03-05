@@ -133,6 +133,7 @@ class _PublicStoreLoader extends StatefulWidget {
 
 class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   String? _shopId;
+  String? _shopName;
   bool _notFound = false;
 
   @override
@@ -142,12 +143,21 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   }
 
   Future<void> _resolveSlug() async {
-    final profile = await ProfileRepository().getProfileBySlug(widget.slug);
+    // URL-decode the slug in case the browser encoded special chars
+    final decodedSlug = Uri.decodeComponent(widget.slug);
+    debugPrint('[PublicStore] Resolving slug: "$decodedSlug" (raw: "${widget.slug}")');
+
+    final profile = await ProfileRepository().getProfileBySlug(decodedSlug);
+    debugPrint('[PublicStore] Profile result: ${profile != null ? "found id=${profile['id']}" : "NOT FOUND"}');
+
     if (!mounted) return;
     if (profile == null) {
       setState(() => _notFound = true);
     } else {
-      setState(() => _shopId = profile['id'] as String?);
+      setState(() {
+        _shopId = profile['id'] as String?;
+        _shopName = (profile['shop_name'] ?? profile['full_name'] ?? '') as String;
+      });
     }
   }
 
@@ -185,6 +195,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    return CustomerCatalogScreen(shopId: _shopId);
+    return CustomerCatalogScreen(shopId: _shopId, shopName: _shopName);
   }
 }
