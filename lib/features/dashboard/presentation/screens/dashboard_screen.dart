@@ -309,7 +309,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     return Column(
       children: [
-        // Fila 1: Pendientes | Entregados | Catálogo
+        // Fila 1: Pendientes | Entregados
         Row(
           children: [
             Expanded(
@@ -331,7 +331,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Entregados',
               ),
             ),
-            const SizedBox(width: 12),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Fila 2: Catálogo | En Pausa
+        Row(
+          children: [
             Expanded(
               child: _StatCard(
                 icon: Icons.inventory_2,
@@ -341,72 +346,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Catálogo',
               ),
             ),
-          ],
-        ),
-        // Fila 2: En Pausa (ancho completo)
-        if (_pausedCount > 0) ...[
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () => context.go('/catalog'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.pause_circle_outline, color: Colors.grey, size: 20),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'En Pausa',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Text(
-                          '$_pausedCount producto${_pausedCount == 1 ? '' : 's'} oculto${_pausedCount == 1 ? '' : 's'} del catálogo público',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _pausedCount.toString(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
-                ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => context.go('/catalog'),
+                child: _StatCard(
+                  icon: Icons.pause_circle_outline,
+                  iconColor: Colors.grey.shade600,
+                  iconBg: Colors.grey.shade200,
+                  value: _pausedCount.toString(),
+                  label: 'En Pausa',
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ],
     );
   }
