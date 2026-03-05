@@ -4,19 +4,13 @@
 -- Ejecuta en: Supabase > SQL Editor
 -- =======================================================
 
--- 1. PROFILES: Visitantes necesitan leer perfiles para ver la tienda
-CREATE POLICY "Public read profiles" ON public.profiles
+
+-- 3. SHOP_SETTINGS: Visitantes necesitan ver los horarios y costos de envío en el Checkout
+CREATE POLICY "Public read shop settings" ON public.shop_settings
 FOR SELECT USING (true);
 
--- 2. PRODUCTS: Visitantes necesitan ver productos activos
-CREATE POLICY "Public read active products" ON public.products
-FOR SELECT TO anon USING (is_active = true);
-
--- Si alguna de las líneas anteriores da error "policy already exists",
--- significa que la política YA existe y está bien. Puedes ignorar ese error.
-
--- 3. VERIFICACIÓN: Ejecuta esto para ver las políticas actuales:
+-- 4. VERIFICACIÓN: Ejecuta esto para ver las políticas actuales:
 SELECT tablename, policyname, roles, cmd 
 FROM pg_policies 
-WHERE tablename IN ('profiles', 'products')
+WHERE tablename IN ('profiles', 'products', 'shop_settings')
 ORDER BY tablename, policyname;

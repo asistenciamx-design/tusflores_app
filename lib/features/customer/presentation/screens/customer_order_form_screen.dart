@@ -209,65 +209,62 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             ],
 
             _buildOrderTotals(),
-            const SizedBox(height: 100), // padding for bottom button
-          ],
-        ),
-      ),
-      bottomSheet: Container(
-        color: const Color(0xFFF9FAFB),
-        padding: const EdgeInsets.all(16.0),
-        child: SafeArea(
-          child: ElevatedButton.icon(
-             onPressed: () {
-               // Simulate save and continue
-               double basePrice = widget.product?.price ?? 700.0;
-               double subtotal = basePrice * _mainProductQty;
-               for (var p in _additionalProducts) {
-                 subtotal += (p['price'] as double) * (p['quantity'] as int);
-               }
-               
-               final order = OrderModel(
-                 folio: '#0000',
-                 shopId: widget.shopId ?? '', // Using currently loaded shopId
-                 productName: widget.product?.name ?? (_additionalProducts.isEmpty ? 'Pedido' : 'Pedido Personalizado'),
-                 customerName: _nameCtrl.text.isEmpty ? 'Cliente' : _nameCtrl.text,
-                 customerPhone: _phoneCtrl.text,
-                 quantity: _mainProductQty > 0 ? _mainProductQty : 1,
-                 price: subtotal,
-                 status: OrderStatus.pending,
-                 createdAt: DateTime.now(),
-                 saleDate: DateTime.now(), // Real parsing if needed
-                 deliveryInfo: '$_selectedDate, $_selectedTime',
-                 isPaid: false,
-                 shippingCost: _deliveryMethod == 'Recoger en tienda' ? 0.0 : _shippingCost,
-                 deliveryMethod: _deliveryMethod,
-                 isAnonymous: _isAnonymous,
-                 recipientName: _nameCtrl.text,
-                 recipientPhone: _phoneCtrl.text,
-                 dedicationMessage: _messageCtrl.text,
-                 deliveryAddress: '${_streetCtrl.text}, ${_suburbCtrl.text}, ${_zipCtrl.text}, ${_selectedCity ?? ''}, ${_selectedState ?? ''}',
-                 deliveryReferences: _refCtrl.text,
-                 deliveryLocationType: _deliveryLocationType,
-               );
+            const SizedBox(height: 32),
+            SafeArea(
+              child: ElevatedButton.icon(
+                 onPressed: () {
+                   // Simulate save and continue
+                   double basePrice = widget.product?.price ?? 700.0;
+                   double subtotal = basePrice * _mainProductQty;
+                   for (var p in _additionalProducts) {
+                     subtotal += (p['price'] as double) * (p['quantity'] as int);
+                   }
+                   
+                   final order = OrderModel(
+                     folio: '#0000',
+                     shopId: widget.shopId ?? '', // Using currently loaded shopId
+                     productName: widget.product?.name ?? (_additionalProducts.isEmpty ? 'Pedido' : 'Pedido Personalizado'),
+                     customerName: _nameCtrl.text.isEmpty ? 'Cliente' : _nameCtrl.text,
+                     customerPhone: _phoneCtrl.text,
+                     quantity: _mainProductQty > 0 ? _mainProductQty : 1,
+                     price: subtotal,
+                     status: OrderStatus.pending,
+                     createdAt: DateTime.now(),
+                     saleDate: DateTime.now(), // Real parsing if needed
+                     deliveryInfo: '$_selectedDate, $_selectedTime',
+                     isPaid: false,
+                     shippingCost: _deliveryMethod == 'Recoger en tienda' ? 0.0 : _shippingCost,
+                     deliveryMethod: _deliveryMethod,
+                     isAnonymous: _isAnonymous,
+                     recipientName: _nameCtrl.text,
+                     recipientPhone: _phoneCtrl.text,
+                     dedicationMessage: _messageCtrl.text,
+                     deliveryAddress: '${_streetCtrl.text}, ${_suburbCtrl.text}, ${_zipCtrl.text}, ${_selectedCity ?? ''}, ${_selectedState ?? ''}',
+                     deliveryReferences: _refCtrl.text,
+                     deliveryLocationType: _deliveryLocationType,
+                   );
 
-               context.push('/shop/summary', extra: order);
-             },
-             icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-             label: const Text(
-               'Guardar y continuar',
-               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-             ),
-             style: ElevatedButton.styleFrom(
-               backgroundColor: const Color(0xFF00E676), // WhatsApp Greenish
-               foregroundColor: Colors.white,
-               padding: const EdgeInsets.symmetric(vertical: 16),
-               minimumSize: const Size(double.infinity, 54),
-               elevation: 0,
-               shape: RoundedRectangleBorder(
-                 borderRadius: BorderRadius.circular(12),
-               ),
-             ),
-          ),
+                   context.push('/shop/summary', extra: order);
+                 },
+                 icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
+                 label: const Text(
+                   'Guardar y continuar',
+                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                 ),
+                 style: ElevatedButton.styleFrom(
+                   backgroundColor: const Color(0xFF00E676), // WhatsApp Greenish
+                   foregroundColor: Colors.white,
+                   padding: const EdgeInsets.symmetric(vertical: 16),
+                   minimumSize: const Size(double.infinity, 54),
+                   elevation: 0,
+                   shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.circular(12),
+                   ),
+                 ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );
@@ -836,11 +833,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
          _buildInputLabel('Nombre de quien recibe'),
-         _buildTextField(controller: _nameCtrl, hint: 'Ej. María Pérez'),
+         _buildTextField(controller: _nameCtrl, hint: 'Ej. María Pérez', autofillHints: const [AutofillHints.name]),
          const SizedBox(height: 16),
          
          _buildInputLabel('Teléfono destinatario'),
-         _buildTextField(controller: _phoneCtrl, hint: 'Ej. 55 1234 5678', keyboardType: TextInputType.phone),
+         _buildTextField(controller: _phoneCtrl, hint: 'Ej. 55 1234 5678', keyboardType: TextInputType.phone, autofillHints: const [AutofillHints.telephoneNumber]),
          const SizedBox(height: 16),
 
          Row(
@@ -921,7 +918,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           const SizedBox(height: 16),
 
           _buildInputLabel('CALLE Y NÚMERO'),
-          _buildTextField(controller: _streetCtrl, hint: 'Av. Reforma 222'),
+          _buildTextField(controller: _streetCtrl, hint: 'Av. Reforma 222', autofillHints: const [AutofillHints.streetAddressLine1]),
           const SizedBox(height: 16),
 
           Row(
@@ -931,7 +928,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildInputLabel('COLONIA / BARRIO'),
-                    _buildTextField(controller: _suburbCtrl, hint: 'Col. Juárez'),
+                    _buildTextField(controller: _suburbCtrl, hint: 'Col. Juárez', autofillHints: const [AutofillHints.addressCity]),
                   ],
                 ),
               ),
@@ -941,7 +938,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildInputLabel('CÓDIGO POSTAL'),
-                    _buildTextField(controller: _zipCtrl, hint: '06600', keyboardType: TextInputType.number),
+                    _buildTextField(controller: _zipCtrl, hint: '06600', keyboardType: TextInputType.number, autofillHints: const [AutofillHints.postalCode]),
                   ],
                 ),
               ),
@@ -1155,11 +1152,15 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     int maxLines = 1,
     TextInputType? keyboardType,
     Widget? suffixIcon,
+    Iterable<String>? autofillHints,
+    TextInputAction? textInputAction,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      textInputAction: textInputAction ?? TextInputAction.next,
+      autofillHints: autofillHints,
       style: const TextStyle(fontSize: 13),
       decoration: InputDecoration(
         hintText: hint,
