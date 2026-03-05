@@ -60,6 +60,14 @@ class _CustomerOrderSummaryScreenState
       String address = '';
       if (settingsRow != null && settingsRow['settings'] != null) {
         final settings = settingsRow['settings'] as Map<String, dynamic>;
+
+        // Use the specifically configured catalog name if it exists (e.g., "Mercado Jamaica" instead of "mercado-jamaica")
+        final catalogName =
+            (settings['catalog_shop_name'] as String?)?.trim() ?? '';
+        if (catalogName.isNotEmpty) {
+          name = catalogName;
+        }
+
         address = settings['address'] ?? '';
         final city = settings['city'] ?? '';
         final state = settings['state'] ?? '';
