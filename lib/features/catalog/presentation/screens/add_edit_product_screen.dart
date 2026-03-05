@@ -99,26 +99,26 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
       try {
         final user = Supabase.instance.client.auth.currentUser;
-        if (user == null) throw Exception('No session found');
+        if (user == null) throw Exception('No session found — cierra sesión e intenta de nuevo.');
 
         final name = _nameCtrl.text.trim();
         final price = double.parse(_priceCtrl.text.trim().replaceAll(',', ''));
         final desc = _descCtrl.text.trim();
         
+        debugPrint('[SaveProduct] user=${user.id}, name=$name, price=$price, images=${_images.length}');
+
         List<String> finalImageUrls = [];
 
-        for (var item in _images) {
+        for (int i = 0; i < _images.length; i++) {
+          final item = _images[i];
           if (item is String) {
             finalImageUrls.add(item);
           } else {
-            try {
-              final uploadedUrl = await _repo.uploadProductImage(user.id, item as XFile);
-              if (uploadedUrl != null) {
-                finalImageUrls.add(uploadedUrl);
-              }
-            } catch (e) {
-              debugPrint('Error uploading image: \$e');
-              rethrow;
+            debugPrint('[SaveProduct] Uploading image $i ...');
+            final uploadedUrl = await _repo.uploadProductImage(user.id, item as XFile);
+            if (uploadedUrl != null) {
+              finalImageUrls.add(uploadedUrl);
+              debugPrint('[SaveProduct] Image $i uploaded: $uploadedUrl');
             }
           }
         }
@@ -132,6 +132,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           'is_active': widget.product?.isVisible ?? true,
         };
 
+        debugPrint('[SaveProduct] productData=$productData');
+
         if (isEditing && widget.product!.id != null) {
           await _repo.updateProduct(widget.product!.id!, productData);
         } else {
@@ -140,9 +142,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
         if (mounted) Navigator.pop(context, true);
       } catch (e) {
+        debugPrint('[SaveProduct] ERROR: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error al guardar el producto')),
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red.shade700,
+              duration: const Duration(seconds: 6),
+              action: SnackBarAction(
+                label: 'OK',
+                textColor: Colors.white,
+                onPressed: () {},
+              ),
+            ),
           );
         }
       } finally {
