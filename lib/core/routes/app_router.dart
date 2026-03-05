@@ -161,18 +161,16 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
 
       final profiles = await Supabase.instance.client
           .from('profiles')
-          .select('id, shop_name, full_name');
+          .select('id, shop_name');
 
       Map<String, dynamic>? match;
       for (final p in profiles) {
         final name = (p['shop_name'] ?? '') as String;
-        final fullName = (p['full_name'] ?? '') as String;
         
         // Match against exact generated slug, or the heavily normalized string
         final standardSlug = name.toLowerCase().replaceAll(' ', '-');
         if (standardSlug == decodedSlug || 
-            normalize(name) == targetNormalized || 
-            normalize(fullName) == targetNormalized) {
+            normalize(name) == targetNormalized) {
           match = p;
           break;
         }
