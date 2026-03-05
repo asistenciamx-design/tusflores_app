@@ -148,10 +148,16 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
       final decodedSlug = Uri.decodeComponent(widget.slug).toLowerCase().trim();
       debugPrint('[PublicStore] Looking for slug: "$decodedSlug"');
 
-      // The profile URL slug is generated as:
-      //   shop_name.toLowerCase().replaceAll(' ', '-')
-      // So we need to find the profile whose shop_name produces this slug.
-      // We fetch all profiles (only id and shop_name) and match client-side.
+      // Helper for bulletproof matching: removes ALL spaces, hyphens, and special chars.
+      // E.g., "Mercado Jamaica's" -> "mercadojamaicas"
+      // "Mercado Jamaican" -> "mercadojamaican"
+      // "tus-flores" -> "tusflores"
+      String normalize(String s) {
+        return s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+      }
+
+      final targetNormalized = normalize(decodedSlug);
+
       final profiles = await Supabase.instance.client
           .from('profiles')
           .select('id, shop_name, full_name');
@@ -159,8 +165,13 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
       Map<String, dynamic>? match;
       for (final p in profiles) {
         final name = (p['shop_name'] ?? '') as String;
-        final slug = name.toLowerCase().replaceAll(' ', '-');
-        if (slug == decodedSlug || name.toLowerCase() == decodedSlug || name == widget.slug) {
+        final fullName = (p['full_name'] ?? '') as String;
+        
+        // Match against exact generated slug, or the heavily normalized string
+        final standardSlug = name.toLowerCase().replaceAll(' ', '-');
+        if (standardSlug == decodedSlug || 
+            normalize(name) == targetNormalized || 
+            normalize(fullName) == targetNormalized) {
           match = p;
           break;
         }
