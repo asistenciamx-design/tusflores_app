@@ -374,13 +374,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                child: _OutlineActionButton(
                  icon: Icons.share,
                  label: 'Compartir catálogo',
-                 onTap: () {
+                 onTap: () async {
+                   final userId = Supabase.instance.client.auth.currentUser?.id;
+                   if (userId == null) return;
+                   final settings = await ShopSettingsRepository().getSettings(userId);
+                   final shopName = settings?.rawData?['catalog_shop_name'] ?? _shopName;
+                   final customMsg = settings?.catalogMessage;
                    const String catalogUrl = 'tusflores.app/floreria';
-                   final String message = '✨ ¡Bienvenido a $_shopName! ✨ Nuestras flores más frescas ya están listas para ti. Mira nuestro catálogo actualizado y elige el detalle perfecto para hoy: $catalogUrl';
+                   final String message = customMsg != null && customMsg.isNotEmpty
+                       ? '$customMsg\n\n🌸 Visita nuestro catálogo: $catalogUrl'
+                       : '✨ ¡Bienvenido a $shopName! ✨ Nuestras flores más frescas ya están listas para ti. Mira nuestro catálogo: $catalogUrl';
                    Share.share(message);
                  },
-                 onEdit: () {
-                   context.push('/shop/catalog-message');
+                 onEdit: () async {
+                   final result = await context.push('/shop/catalog-message');
+                   if (result == true && mounted) _loadProfile();
                  },
                ),
              ),
