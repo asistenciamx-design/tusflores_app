@@ -7,7 +7,8 @@ import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../catalog/domain/repositories/product_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../orders/domain/models/order_model.dart';
-import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
+import '../../../catalog/presentation/screens/catalog_screen.dart'
+    show ProductItem;
 
 class CustomerOrderFormScreen extends StatefulWidget {
   final ProductItem? product;
@@ -15,7 +16,8 @@ class CustomerOrderFormScreen extends StatefulWidget {
   const CustomerOrderFormScreen({super.key, this.product, this.shopId});
 
   @override
-  State<CustomerOrderFormScreen> createState() => _CustomerOrderFormScreenState();
+  State<CustomerOrderFormScreen> createState() =>
+      _CustomerOrderFormScreenState();
 }
 
 class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
@@ -71,28 +73,30 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     try {
       final settingsRepo = ShopSettingsRepository();
       final productRepo = ProductRepository();
-      
+
       final results = await Future.wait([
         settingsRepo.getSettings(widget.shopId!),
         productRepo.getPublicProducts(widget.shopId!),
       ]);
-      
+
       final settings = results[0] as ShopSettingsModel?;
       final productsRaw = results[1] as List<Map<String, dynamic>>;
 
       if (mounted) {
         setState(() {
-           _settings = settings;
-           _catalogProducts = productsRaw
+          _settings = settings;
+          _catalogProducts = productsRaw
               .map((p) => ProductItem.fromJson(p))
-              .where((p) => p.id != widget.product?.id) // Don't show the main product as an extra
+              .where((p) =>
+                  p.id !=
+                  widget.product?.id) // Don't show the main product as an extra
               .toList();
-           
-           _isLoadingSettings = false;
-           
-           if (settings != null && settings.deliveryRanges.isNotEmpty) {
-             _selectedTime = settings.deliveryRanges.first.label;
-           }
+
+          _isLoadingSettings = false;
+
+          if (settings != null && settings.deliveryRanges.isNotEmpty) {
+            _selectedTime = settings.deliveryRanges.first.label;
+          }
         });
       }
     } catch (e) {
@@ -105,12 +109,23 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
 
   List<String> get _availableStates {
     if (_settings == null) return [];
-    return _settings!.shippingRates.map((r) => r.estado).whereType<String>().toSet().toList()..sort();
+    return _settings!.shippingRates
+        .map((r) => r.estado)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
   }
 
   List<String> get _availableCities {
     if (_settings == null || _selectedState == null) return [];
-    return _settings!.shippingRates.where((r) => r.estado == _selectedState).map((r) => r.ciudad).whereType<String>().toSet().toList()..sort();
+    return _settings!.shippingRates
+        .where((r) => r.estado == _selectedState)
+        .map((r) => r.ciudad)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
   }
 
   void _updateShippingCost() {
@@ -145,11 +160,13 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB), // Very light grey / off-white app background
+      backgroundColor:
+          const Color(0xFFF9FAFB), // Very light grey / off-white app background
       appBar: AppBar(
         title: const Text(
           'Datos de Compra',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 16),
+          style: TextStyle(
+              color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 16),
         ),
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
@@ -159,129 +176,151 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: _isLoadingSettings 
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_mainProductQty > 0) _buildProductSummary(),
-            if (_mainProductQty > 0 && _additionalProducts.isNotEmpty) const SizedBox(height: 12),
-            if (_additionalProducts.isNotEmpty) ...[
-              ..._additionalProducts.map((p) => _buildAdditionalProductItem(p)),
-            ],
-            const SizedBox(height: 12),
-            Center(
-              child: TextButton.icon(
-                onPressed: _showProductSelector,
-                icon: const Icon(Icons.add, color: AppTheme.primary, size: 20),
-                label: const Text('Agregar otro producto', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+      body: _isLoadingSettings
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_mainProductQty > 0) _buildProductSummary(),
+                  if (_mainProductQty > 0 && _additionalProducts.isNotEmpty)
+                    const SizedBox(height: 12),
+                  if (_additionalProducts.isNotEmpty) ...[
+                    ..._additionalProducts
+                        .map((p) => _buildAdditionalProductItem(p)),
+                  ],
+                  const SizedBox(height: 12),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _showProductSelector,
+                      icon: const Icon(Icons.add,
+                          color: AppTheme.primary, size: 20),
+                      label: const Text('Agregar otro producto',
+                          style: TextStyle(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Fecha de entrega'),
+                  const SizedBox(height: 12),
+                  _buildDateOptions(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Horario'),
+                  const SizedBox(height: 12),
+                  _buildTimeOptions(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Método de entrega'),
+                  const SizedBox(height: 12),
+                  _buildDeliveryMethods(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Datos para la tarjeta'),
+                  const SizedBox(height: 12),
+                  _buildRecipientData(),
+                  const SizedBox(height: 24),
+                  if (_deliveryMethod != 'Recoger en tienda') ...[
+                    _buildSectionTitle('Dirección de Entrega'),
+                    const SizedBox(height: 12),
+                    _buildDeliveryAddress(),
+                    const SizedBox(height: 24),
+                  ],
+                  _buildOrderTotals(),
+                  const SizedBox(height: 32),
+                  SafeArea(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // Simulate save and continue
+                        double basePrice = widget.product?.price ?? 700.0;
+                        double subtotal = basePrice * _mainProductQty;
+                        for (var p in _additionalProducts) {
+                          subtotal +=
+                              (p['price'] as double) * (p['quantity'] as int);
+                        }
+
+                        String finalReferences = _refCtrl.text;
+                        if (_mapsUrlCtrl.text.isNotEmpty) {
+                          finalReferences += finalReferences.isEmpty
+                              ? 'Maps: ${_mapsUrlCtrl.text}'
+                              : '\nMaps: ${_mapsUrlCtrl.text}';
+                        }
+
+                        final order = OrderModel(
+                          folio: '#0000',
+                          shopId: widget.shopId ??
+                              '', // Using currently loaded shopId
+                          productName: widget.product?.name ??
+                              (_additionalProducts.isEmpty
+                                  ? 'Pedido'
+                                  : 'Pedido Personalizado'),
+                          customerName: _nameCtrl.text.isEmpty
+                              ? 'Cliente'
+                              : _nameCtrl.text,
+                          customerPhone: _phoneCtrl.text,
+                          quantity: _mainProductQty > 0 ? _mainProductQty : 1,
+                          price: subtotal,
+                          status: OrderStatus.pending,
+                          createdAt: DateTime.now(),
+                          saleDate: DateTime.now(), // Real parsing if needed
+                          deliveryInfo: '$_selectedDate, $_selectedTime',
+                          isPaid: false,
+                          shippingCost: _deliveryMethod == 'Recoger en tienda'
+                              ? 0.0
+                              : _shippingCost,
+                          deliveryMethod: _deliveryMethod,
+                          isAnonymous: _isAnonymous,
+                          recipientName: _nameCtrl.text,
+                          recipientPhone: _phoneCtrl.text,
+                          dedicationMessage: _messageCtrl.text,
+                          deliveryAddress:
+                              '${_streetCtrl.text}, ${_suburbCtrl.text}, ${_zipCtrl.text}, ${_selectedCity ?? ''}, ${_selectedState ?? ''}',
+                          deliveryReferences: finalReferences,
+                          deliveryLocationType: _deliveryLocationType,
+                        );
+
+                        context.push('/shop/summary', extra: order);
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline,
+                          color: Colors.white, size: 20),
+                      label: const Text(
+                        'Guardar y continuar',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFF00E676), // WhatsApp Greenish
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        minimumSize: const Size(double.infinity, 54),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            
-            _buildSectionTitle('Fecha de entrega'),
-            const SizedBox(height: 12),
-            _buildDateOptions(),
-            const SizedBox(height: 24),
-            
-            _buildSectionTitle('Horario'),
-            const SizedBox(height: 12),
-            _buildTimeOptions(),
-            const SizedBox(height: 24),
-
-            _buildSectionTitle('Método de entrega'),
-            const SizedBox(height: 12),
-            _buildDeliveryMethods(),
-            const SizedBox(height: 24),
-
-            _buildSectionTitle('Datos para la tarjeta'),
-            const SizedBox(height: 12),
-            _buildRecipientData(),
-            const SizedBox(height: 24),
-
-            if (_deliveryMethod != 'Recoger en tienda') ...[
-              _buildSectionTitle('Dirección de Entrega'),
-              const SizedBox(height: 12),
-              _buildDeliveryAddress(),
-              const SizedBox(height: 24),
-            ],
-
-            _buildOrderTotals(),
-            const SizedBox(height: 32),
-            SafeArea(
-              child: ElevatedButton.icon(
-                 onPressed: () {
-                   // Simulate save and continue
-                   double basePrice = widget.product?.price ?? 700.0;
-                   double subtotal = basePrice * _mainProductQty;
-                   for (var p in _additionalProducts) {
-                     subtotal += (p['price'] as double) * (p['quantity'] as int);
-                   }
-                   
-                   final order = OrderModel(
-                     folio: '#0000',
-                     shopId: widget.shopId ?? '', // Using currently loaded shopId
-                     productName: widget.product?.name ?? (_additionalProducts.isEmpty ? 'Pedido' : 'Pedido Personalizado'),
-                     customerName: _nameCtrl.text.isEmpty ? 'Cliente' : _nameCtrl.text,
-                     customerPhone: _phoneCtrl.text,
-                     quantity: _mainProductQty > 0 ? _mainProductQty : 1,
-                     price: subtotal,
-                     status: OrderStatus.pending,
-                     createdAt: DateTime.now(),
-                     saleDate: DateTime.now(), // Real parsing if needed
-                     deliveryInfo: '$_selectedDate, $_selectedTime',
-                     isPaid: false,
-                     shippingCost: _deliveryMethod == 'Recoger en tienda' ? 0.0 : _shippingCost,
-                     deliveryMethod: _deliveryMethod,
-                     isAnonymous: _isAnonymous,
-                     recipientName: _nameCtrl.text,
-                     recipientPhone: _phoneCtrl.text,
-                     dedicationMessage: _messageCtrl.text,
-                     deliveryAddress: '${_streetCtrl.text}, ${_suburbCtrl.text}, ${_zipCtrl.text}, ${_selectedCity ?? ''}, ${_selectedState ?? ''}',
-                     deliveryReferences: _refCtrl.text,
-                     deliveryLocationType: _deliveryLocationType,
-                   );
-
-                   context.push('/shop/summary', extra: order);
-                 },
-                 icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
-                 label: const Text(
-                   'Guardar y continuar',
-                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                 ),
-                 style: ElevatedButton.styleFrom(
-                   backgroundColor: const Color(0xFF00E676), // WhatsApp Greenish
-                   foregroundColor: Colors.white,
-                   padding: const EdgeInsets.symmetric(vertical: 16),
-                   minimumSize: const Size(double.infinity, 54),
-                   elevation: 0,
-                   shape: RoundedRectangleBorder(
-                     borderRadius: BorderRadius.circular(12),
-                   ),
-                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+      style: const TextStyle(
+          fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
     );
   }
 
   Widget _buildProductSummary() {
     final double basePrice = widget.product?.price ?? 1200.0;
     final double total = basePrice * _mainProductQty;
-    final image = (widget.product?.imageUrls.isNotEmpty == true) 
-        ? widget.product!.imageUrls.first 
+    final image = (widget.product?.imageUrls.isNotEmpty == true)
+        ? widget.product!.imageUrls.first
         : 'https://lh3.googleusercontent.com/aida-public/AB6AXuB3E2VbL-G75lTtz3Z1_Tf84D_wL10x4tF6C-K0K00fO2n8l2yqT6t7sJcRbbN2uEqOEq9NxtgP0X9K_3y-PjQ4d0f_y9G0K2jQfN8oR1qE5k6Mv7H1r9b2rI5k9wE7T3iX2yB0pY1eU3gV8cT0bN4yR6G3fL2wT9jN6oV4iR9wJ7G9oE7Q8f2R9cE6jR4';
     final name = widget.product?.name ?? 'Ramo Amor Eterno';
 
@@ -296,26 +335,34 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-             child: Image.network(
-               image,
-               height: 50,
-               width: 50,
-               fit: BoxFit.cover,
-               errorBuilder: (ctx, err, stack) => Container(
-                 height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.local_florist, color: Colors.grey),
-               ),
-             ),
+            child: Image.network(
+              image,
+              height: 50,
+              width: 50,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, err, stack) => Container(
+                height: 50,
+                width: 50,
+                color: Colors.grey[200],
+                child: const Icon(Icons.local_florist, color: Colors.grey),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text(
                   '\$${total.toStringAsFixed(0)}',
-                  style: const TextStyle(color: Color(0xFF00C853), fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                      color: Color(0xFF00C853),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14),
                 ),
               ],
             ),
@@ -338,11 +385,21 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                     }
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    child: Icon(_mainProductQty > 1 ? Icons.remove : Icons.delete_outline, size: 16, color: _mainProductQty > 1 ? Colors.black87 : Colors.redAccent),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    child: Icon(
+                        _mainProductQty > 1
+                            ? Icons.remove
+                            : Icons.delete_outline,
+                        size: 16,
+                        color: _mainProductQty > 1
+                            ? Colors.black87
+                            : Colors.redAccent),
                   ),
                 ),
-                Text('$_mainProductQty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('$_mainProductQty',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 GestureDetector(
                   onTap: () {
                     setState(() {
@@ -385,7 +442,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               width: 50,
               fit: BoxFit.cover,
               errorBuilder: (ctx, err, stack) => Container(
-                height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.image, size: 20),
+                height: 50,
+                width: 50,
+                color: Colors.grey[200],
+                child: const Icon(Icons.image, size: 20),
               ),
             ),
           ),
@@ -394,11 +454,16 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(product['name'],
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text(
                   '\$${total.toStringAsFixed(0)}',
-                  style: const TextStyle(color: Color(0xFF00C853), fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                      color: Color(0xFF00C853),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14),
                 ),
               ],
             ),
@@ -423,11 +488,16 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                     });
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    child: Icon(qty > 1 ? Icons.remove : Icons.delete_outline, size: 16, color: qty > 1 ? Colors.black87 : Colors.redAccent),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    child: Icon(qty > 1 ? Icons.remove : Icons.delete_outline,
+                        size: 16,
+                        color: qty > 1 ? Colors.black87 : Colors.redAccent),
                   ),
                 ),
-                Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('$qty',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 GestureDetector(
                   onTap: () {
                     setState(() {
@@ -478,43 +548,75 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Catálogo de productos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const Text('Catálogo de productos',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87)),
                   const SizedBox(height: 8),
-                  Text('Selecciona el producto que deseas agregar a este pedido.', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                  Text(
+                      'Selecciona el producto que deseas agregar a este pedido.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                   const SizedBox(height: 20),
                   Expanded(
                     child: ListView.separated(
                       controller: scrollController,
                       itemCount: _catalogProducts.length,
-                      separatorBuilder: (context, index) => const Divider(height: 24),
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 24),
                       itemBuilder: (context, index) {
                         final productItem = _catalogProducts[index];
-                        final productImage = productItem.imageUrls.isNotEmpty ? productItem.imageUrls.first : null;
+                        final productImage = productItem.imageUrls.isNotEmpty
+                            ? productItem.imageUrls.first
+                            : null;
 
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: productImage != null ? Image.network(
-                              productImage,
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => Container(
-                                height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.local_florist, color: AppTheme.primary),
-                              ),
-                            ) : Container(
-                                height: 50, width: 50, color: Colors.grey[200], child: const Icon(Icons.local_florist, color: AppTheme.primary),
-                            ),
+                            child: productImage != null
+                                ? Image.network(
+                                    productImage,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, err, stack) =>
+                                        Container(
+                                      height: 50,
+                                      width: 50,
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.local_florist,
+                                          color: AppTheme.primary),
+                                    ),
+                                  )
+                                : Container(
+                                    height: 50,
+                                    width: 50,
+                                    color: Colors.grey[200],
+                                    child: const Icon(Icons.local_florist,
+                                        color: AppTheme.primary),
+                                  ),
                           ),
-                          title: Text(productItem.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          subtitle: Text('\$${productItem.price.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF00C853), fontWeight: FontWeight.bold)),
+                          title: Text(productItem.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 14)),
+                          subtitle: Text(
+                              '\$${productItem.price.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                  color: Color(0xFF00C853),
+                                  fontWeight: FontWeight.bold)),
                           trailing: ElevatedButton(
                             onPressed: () {
                               setState(() {
-                                final existingIdx = _additionalProducts.indexWhere((p) => p['name'] == productItem.name);
+                                final existingIdx =
+                                    _additionalProducts.indexWhere(
+                                        (p) => p['name'] == productItem.name);
                                 if (existingIdx >= 0) {
-                                  _additionalProducts[existingIdx]['quantity'] = (_additionalProducts[existingIdx]['quantity'] ?? 1) + 1;
+                                  _additionalProducts[existingIdx]['quantity'] =
+                                      (_additionalProducts[existingIdx]
+                                                  ['quantity'] ??
+                                              1) +
+                                          1;
                                 } else {
                                   _additionalProducts.add({
                                     'id': productItem.id,
@@ -528,10 +630,12 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                               Navigator.pop(context);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                              backgroundColor:
+                                  AppTheme.primary.withValues(alpha: 0.1),
                               foregroundColor: AppTheme.primary,
                               elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
                             ),
                             child: const Text('Agregar'),
                           ),
@@ -569,14 +673,15 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     );
     if (picked != null) {
       setState(() {
-        _selectedDate = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+        _selectedDate =
+            "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
       });
     }
   }
 
   Widget _buildDateOptions() {
     bool isCustomDate = _selectedDate != 'Hoy' && _selectedDate != 'Mañana';
-    
+
     return Row(
       children: [
         _buildPillButton(
@@ -601,7 +706,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     );
   }
 
-  Widget _buildPillButton({required String title, IconData? icon, required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildPillButton(
+      {required String title,
+      IconData? icon,
+      required bool isSelected,
+      required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -609,22 +718,26 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF00E676) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? const Color(0xFF00E676) : Colors.grey.withValues(alpha: 0.3)),
+          border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF00E676)
+                  : Colors.grey.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 14, color: isSelected ? Colors.white : Colors.black87),
+              Icon(icon,
+                  size: 14, color: isSelected ? Colors.white : Colors.black87),
               const SizedBox(width: 6),
             ],
             Text(
-               title,
-               style: TextStyle(
-                 color: isSelected ? Colors.white : Colors.black87,
-                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                 fontSize: 12,
-               ),
+              title,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -634,19 +747,22 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
 
   Widget _buildTimeOptions() {
     if (_settings == null) {
-      return const Text('Cargando horarios...', style: TextStyle(color: Colors.grey, fontSize: 13));
+      return const Text('Cargando horarios...',
+          style: TextStyle(color: Colors.grey, fontSize: 13));
     }
 
     if (_deliveryMethod == 'Recoger en tienda') {
       if (_settings!.storeHours.isEmpty) {
-        return const Text('No hay horarios de sucursal configurados.', style: TextStyle(color: Colors.grey, fontSize: 13));
+        return const Text('No hay horarios de sucursal configurados.',
+            style: TextStyle(color: Colors.grey, fontSize: 13));
       }
 
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: _settings!.storeHours.map((hour) {
-            String fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+            String fmt(TimeOfDay t) =>
+                '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
             final label = '${fmt(hour.start)} - ${fmt(hour.end)}';
 
             IconData icon = Icons.storefront;
@@ -676,7 +792,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     }
 
     if (_settings!.deliveryRanges.isEmpty) {
-      return const Text('No hay horarios de entrega configurados.', style: TextStyle(color: Colors.grey, fontSize: 13));
+      return const Text('No hay horarios de entrega configurados.',
+          style: TextStyle(color: Colors.grey, fontSize: 13));
     }
 
     return SingleChildScrollView(
@@ -709,15 +826,19 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     );
   }
 
-   Widget _buildTimeCard({
+  Widget _buildTimeCard({
     required String id,
     required IconData icon,
     required String title,
     required String subtitle,
   }) {
     final isSelected = _selectedTime == id;
-    final colorBorder = isSelected ? const Color(0xFF00E676) : Colors.grey.withValues(alpha: 0.2);
-    final bgColor = isSelected ? const Color(0xFF00E676).withValues(alpha: 0.05) : Colors.white;
+    final colorBorder = isSelected
+        ? const Color(0xFF00E676)
+        : Colors.grey.withValues(alpha: 0.2);
+    final bgColor = isSelected
+        ? const Color(0xFF00E676).withValues(alpha: 0.05)
+        : Colors.white;
 
     return GestureDetector(
       onTap: () {
@@ -733,7 +854,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colorBorder, width: isSelected ? 1.5 : 1),
+              border:
+                  Border.all(color: colorBorder, width: isSelected ? 1.5 : 1),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -741,11 +863,18 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, color: isSelected ? const Color(0xFF00C853) : Colors.grey, size: 24),
+                    Icon(icon,
+                        color:
+                            isSelected ? const Color(0xFF00C853) : Colors.grey,
+                        size: 24),
                     const SizedBox(height: 8),
-                    Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    Text(subtitle,
+                        style:
+                            const TextStyle(fontSize: 10, color: Colors.grey)),
                   ],
                 ),
               ],
@@ -770,124 +899,146 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   }
 
   Widget _buildDeliveryMethods() {
-     return Column(
-       children: [
-          _buildDeliveryOption(
-            id: 'Envío a domicilio',
-            icon: Icons.local_shipping,
-            title: 'Envío a domicilio',
-          ),
-          const SizedBox(height: 12),
-          _buildDeliveryOption(
-            id: 'Recoger en tienda',
-            icon: Icons.storefront,
-            title: 'Recoger en tienda',
-          ),
-       ],
-     );
+    return Column(
+      children: [
+        _buildDeliveryOption(
+          id: 'Envío a domicilio',
+          icon: Icons.local_shipping,
+          title: 'Envío a domicilio',
+        ),
+        const SizedBox(height: 12),
+        _buildDeliveryOption(
+          id: 'Recoger en tienda',
+          icon: Icons.storefront,
+          title: 'Recoger en tienda',
+        ),
+      ],
+    );
   }
 
-  Widget _buildDeliveryOption({required String id, required IconData icon, required String title}) {
-     final isSelected = _deliveryMethod == id;
-     final colorBorder = isSelected ? const Color(0xFF00E676) : Colors.grey.withValues(alpha: 0.2);
-     final bgColor = isSelected ? const Color(0xFF00E676).withValues(alpha: 0.05) : Colors.white;
+  Widget _buildDeliveryOption(
+      {required String id, required IconData icon, required String title}) {
+    final isSelected = _deliveryMethod == id;
+    final colorBorder = isSelected
+        ? const Color(0xFF00E676)
+        : Colors.grey.withValues(alpha: 0.2);
+    final bgColor = isSelected
+        ? const Color(0xFF00E676).withValues(alpha: 0.05)
+        : Colors.white;
 
-     return GestureDetector(
-       onTap: () => setState(() => _deliveryMethod = id),
-       child: Container(
-         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-         decoration: BoxDecoration(
-           color: bgColor,
-           borderRadius: BorderRadius.circular(12),
-           border: Border.all(color: colorBorder, width: 1),
-         ),
-         child: Row(
-           children: [
-             Container(
-               padding: const EdgeInsets.all(6),
-               decoration: BoxDecoration(
-                 color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
-                 shape: BoxShape.circle,
-               ),
-               child: Icon(icon, color: Colors.white, size: 16),
-             ),
-             const SizedBox(width: 16),
-             Expanded(
-               child: Text(
-                 title,
-                 style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Colors.black87),
-               ),
-             ),
-             Icon(
-               isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-               color: isSelected ? const Color(0xFF00E676) : Colors.grey[300],
-             ),
-           ],
-         ),
-       ),
-     );
+    return GestureDetector(
+      onTap: () => setState(() => _deliveryMethod = id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorBorder, width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF00E676) : Colors.grey[400],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: Colors.black87),
+              ),
+            ),
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: isSelected ? const Color(0xFF00E676) : Colors.grey[300],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildRecipientData() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-         _buildInputLabel('Nombre de quien recibe'),
-         _buildTextField(controller: _nameCtrl, hint: 'Ej. María Pérez', autofillHints: const [AutofillHints.name]),
-         const SizedBox(height: 16),
-         
-         _buildInputLabel('Teléfono destinatario'),
-         _buildTextField(controller: _phoneCtrl, hint: 'Ej. 55 1234 5678', keyboardType: TextInputType.phone, autofillHints: const [AutofillHints.telephoneNumber]),
-         const SizedBox(height: 16),
-
-         Row(
-           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-           children: [
-             _buildInputLabel('Dedicatoria (Opcional)'),
-             Text('0/150', style: TextStyle(color: Colors.grey[400], fontSize: 10)),
-           ],
-         ),
-         _buildTextField(
-           controller: _messageCtrl,
-           hint: 'Escribe un mensaje bonito aquí...',
-           maxLines: 4,
-         ),
-         const SizedBox(height: 16),
-
-         Container(
-           padding: const EdgeInsets.all(12),
-           decoration: BoxDecoration(
-             color: Colors.white,
-             borderRadius: BorderRadius.circular(12),
-             border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-           ),
-           child: Row(
-             crossAxisAlignment: CrossAxisAlignment.start,
-             children: [
-               SizedBox(
-                 width: 20,
-                 height: 20,
-                 child: Checkbox(
-                   value: _isAnonymous,
-                   onChanged: (val) => setState(() => _isAnonymous = val ?? false),
-                   activeColor: Colors.black87,
-                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                 ),
-               ),
-               const SizedBox(width: 12),
-               Expanded(
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     const Text('¿Enviar como anónimo?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                     const SizedBox(height: 2),
-                     Text('No incluiremos tu nombre en la tarjeta del destinatario.', style: TextStyle(color: Colors.grey[500], fontSize: 10)),
-                   ],
-                 ),
-               ),
-             ],
-           ),
-         ),
+        _buildInputLabel('Nombre de quien recibe'),
+        _buildTextField(
+            controller: _nameCtrl,
+            hint: 'Ej. María Pérez',
+            autofillHints: const [AutofillHints.name]),
+        const SizedBox(height: 16),
+        _buildInputLabel('Teléfono destinatario'),
+        _buildTextField(
+            controller: _phoneCtrl,
+            hint: 'Ej. 55 1234 5678',
+            keyboardType: TextInputType.phone,
+            autofillHints: const [AutofillHints.telephoneNumber]),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildInputLabel('Dedicatoria (Opcional)'),
+            Text('0/150',
+                style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+          ],
+        ),
+        _buildTextField(
+          controller: _messageCtrl,
+          hint: 'Escribe un mensaje bonito aquí...',
+          maxLines: 4,
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Checkbox(
+                  value: _isAnonymous,
+                  onChanged: (val) =>
+                      setState(() => _isAnonymous = val ?? false),
+                  activeColor: Colors.black87,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('¿Enviar como anónimo?',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(height: 2),
+                    Text(
+                        'No incluiremos tu nombre en la tarjeta del destinatario.',
+                        style:
+                            TextStyle(color: Colors.grey[500], fontSize: 10)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -916,11 +1067,12 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             ],
           ),
           const SizedBox(height: 16),
-
           _buildInputLabel('CALLE Y NÚMERO'),
-          _buildTextField(controller: _streetCtrl, hint: 'Av. Reforma 222', autofillHints: const [AutofillHints.streetAddressLine1]),
+          _buildTextField(
+              controller: _streetCtrl,
+              hint: 'Av. Reforma 222',
+              autofillHints: const [AutofillHints.streetAddressLine1]),
           const SizedBox(height: 16),
-
           Row(
             children: [
               Expanded(
@@ -928,7 +1080,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildInputLabel('COLONIA / BARRIO'),
-                    _buildTextField(controller: _suburbCtrl, hint: 'Col. Juárez', autofillHints: const [AutofillHints.addressCity]),
+                    _buildTextField(
+                        controller: _suburbCtrl,
+                        hint: 'Col. Juárez',
+                        autofillHints: const [AutofillHints.addressCity]),
                   ],
                 ),
               ),
@@ -938,15 +1093,19 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildInputLabel('CÓDIGO POSTAL'),
-                    _buildTextField(controller: _zipCtrl, hint: '06600', keyboardType: TextInputType.number, autofillHints: const [AutofillHints.postalCode]),
+                    _buildTextField(
+                        controller: _zipCtrl,
+                        hint: '06600',
+                        keyboardType: TextInputType.number,
+                        autofillHints: const [AutofillHints.postalCode]),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-
-          _buildDropdown('ESTADO / PROVINCIA / DEPARTAMENTO', _availableStates, _selectedState, (val) {
+          _buildDropdown('ESTADO / PROVINCIA / DEPARTAMENTO', _availableStates,
+              _selectedState, (val) {
             setState(() {
               _selectedState = val;
               _selectedCity = null;
@@ -954,19 +1113,20 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             });
           }, hint: 'Seleccionar estado...'),
           const SizedBox(height: 16),
-
-          _buildDropdown('CIUDAD / MUNICIPIO', _availableCities, _selectedCity, (val) {
+          _buildDropdown('CIUDAD / MUNICIPIO', _availableCities, _selectedCity,
+              (val) {
             setState(() {
               _selectedCity = val;
               _updateShippingCost();
             });
           }, hint: 'Seleccionar ciudad...'),
           const SizedBox(height: 16),
-
           _buildInputLabel('REFERENCIAS ADICIONALES'),
-          _buildTextField(controller: _refCtrl, hint: 'Ej. Edificio blanco, dejar en recepción', maxLines: 2),
+          _buildTextField(
+              controller: _refCtrl,
+              hint: 'Ej. Edificio blanco, dejar en recepción',
+              maxLines: 2),
           const SizedBox(height: 16),
-
           _buildInputLabel('URL GOOGLE MAPS'),
           _buildTextField(
             controller: _mapsUrlCtrl,
@@ -982,7 +1142,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                       Clipboard.setData(ClipboardData(text: _mapsUrlCtrl.text));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('URL copiada al portapapeles', style: TextStyle(color: Colors.white)),
+                          content: Text('URL copiada al portapapeles',
+                              style: TextStyle(color: Colors.white)),
                           backgroundColor: Colors.black87,
                           duration: Duration(seconds: 2),
                         ),
@@ -999,21 +1160,19 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             ),
           ),
           const SizedBox(height: 24),
-
           _buildInputLabel('Lugar de entrega:', baseLabel: true),
           const SizedBox(height: 12),
-          
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-               _buildLocationTypeBtn('Casa', Icons.home),
-               _buildLocationTypeBtn('Edificio', Icons.business),
-               _buildLocationTypeBtn('Fracc.', Icons.holiday_village),
-               _buildLocationTypeBtn('Empresa', Icons.domain),
-               _buildLocationTypeBtn('Funeraria', Icons.church), // Placeholders
-               _buildLocationTypeBtn('Hospital', Icons.local_hospital),
-             ],
+              _buildLocationTypeBtn('Casa', Icons.home),
+              _buildLocationTypeBtn('Edificio', Icons.business),
+              _buildLocationTypeBtn('Fracc.', Icons.holiday_village),
+              _buildLocationTypeBtn('Empresa', Icons.domain),
+              _buildLocationTypeBtn('Funeraria', Icons.church), // Placeholders
+              _buildLocationTypeBtn('Hospital', Icons.local_hospital),
+            ],
           ),
         ],
       ),
@@ -1021,28 +1180,38 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   }
 
   Widget _buildLocationTypeBtn(String id, IconData icon) {
-     final isSelected = _deliveryLocationType == id;
-     const activeColor = Color(0xFF00E676);
-     
-     return GestureDetector(
-       onTap: () => setState(() => _deliveryLocationType = id),
-       child: Container(
-         width: 65,
-         padding: const EdgeInsets.symmetric(vertical: 8),
-         decoration: BoxDecoration(
-           color: isSelected ? activeColor.withValues(alpha: 0.05) : Colors.white,
-           borderRadius: BorderRadius.circular(8),
-           border: Border.all(color: isSelected ? activeColor : Colors.grey.withValues(alpha: 0.2)),
-         ),
-         child: Column(
-           children: [
-             Icon(icon, size: 20, color: isSelected ? activeColor : Colors.blueGrey),
-             const SizedBox(height: 4),
-             Text(id, style: TextStyle(fontSize: 9, color: isSelected ? activeColor : Colors.grey[600], fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-           ],
-         ),
-       ),
-     );
+    final isSelected = _deliveryLocationType == id;
+    const activeColor = Color(0xFF00E676);
+
+    return GestureDetector(
+      onTap: () => setState(() => _deliveryLocationType = id),
+      child: Container(
+        width: 65,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? activeColor.withValues(alpha: 0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+              color: isSelected
+                  ? activeColor
+                  : Colors.grey.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon,
+                size: 20, color: isSelected ? activeColor : Colors.blueGrey),
+            const SizedBox(height: 4),
+            Text(id,
+                style: TextStyle(
+                    fontSize: 9,
+                    color: isSelected ? activeColor : Colors.grey[600],
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal)),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildInputLabel(String text, {bool baseLabel = false}) {
@@ -1060,7 +1229,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     );
   }
 
-  Widget _buildDropdown(String label, List<String> items, String? value, ValueChanged<String?> onChanged, {String hint = ''}) {
+  Widget _buildDropdown(String label, List<String> items, String? value,
+      ValueChanged<String?> onChanged,
+      {String hint = ''}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1072,7 +1243,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
@@ -1088,7 +1260,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           ),
           icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
           onChanged: onChanged,
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
+          items: items
+              .map((e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, style: const TextStyle(fontSize: 13))))
+              .toList(),
         ),
       ],
     );
@@ -1097,13 +1273,14 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   Widget _buildOrderTotals() {
     double subtotal = 0;
     if (_mainProductQty > 0) {
-      subtotal += 700.0 * _mainProductQty; 
+      subtotal += 700.0 * _mainProductQty;
     }
     for (var p in _additionalProducts) {
       subtotal += (p['price'] as double) * (p['quantity'] as int);
     }
 
-    double effectiveShippingCost = _deliveryMethod == 'Recoger en tienda' ? 0.0 : _shippingCost;
+    double effectiveShippingCost =
+        _deliveryMethod == 'Recoger en tienda' ? 0.0 : _shippingCost;
     double total = subtotal + effectiveShippingCost;
 
     return Container(
@@ -1118,16 +1295,26 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Subtotal:', style: TextStyle(color: Colors.grey, fontSize: 14)),
-              Text('\$${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              const Text('Subtotal:',
+                  style: TextStyle(color: Colors.grey, fontSize: 14)),
+              Text('\$${subtotal.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_selectedCity != null && _deliveryMethod != 'Recoger en tienda' ? 'Costo de envío $_selectedCity:' : 'Costo de envío:', style: const TextStyle(color: Colors.grey, fontSize: 14)),
-              Text('\$${effectiveShippingCost.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(
+                  _selectedCity != null &&
+                          _deliveryMethod != 'Recoger en tienda'
+                      ? 'Costo de envío $_selectedCity:'
+                      : 'Costo de envío:',
+                  style: const TextStyle(color: Colors.grey, fontSize: 14)),
+              Text('\$${effectiveShippingCost.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14)),
             ],
           ),
           const Padding(
@@ -1137,8 +1324,13 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 18)),
+              const Text('Total:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('\$${total.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                      color: Color(0xFF00E676),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18)),
             ],
           ),
         ],
@@ -1167,7 +1359,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),

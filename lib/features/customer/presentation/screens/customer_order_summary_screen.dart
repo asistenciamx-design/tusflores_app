@@ -51,7 +51,9 @@ class _CustomerOrderSummaryScreenState
       String name = 'Tu Florería';
       String pAddress = '';
       if (profile != null) {
-        name = profile['shop_name'] ?? profile['full_name'] ?? 'Tu Florería';
+        // full_name contains the actual commercial name from the form
+        // shop_name contains the URL slug
+        name = profile['full_name'] ?? profile['shop_name'] ?? 'Tu Florería';
         pAddress = profile['address'] ?? '';
       }
 
