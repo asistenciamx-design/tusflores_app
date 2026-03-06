@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../orders/domain/models/order_model.dart';
 import '../../../orders/domain/repositories/order_repository.dart';
+import '../../../profile/domain/models/shop_settings_model.dart';
 
 class CustomerOrderSummaryScreen extends StatefulWidget {
   final OrderModel order;
@@ -33,6 +34,7 @@ class _CustomerOrderSummaryScreenState
   String _shopAddress = '';
   String _shopPhone = '';
   bool _isLoadingProfile = true;
+  ShopSettingsModel? _shopSettings;
 
   @override
   void initState() {
@@ -71,6 +73,7 @@ class _CustomerOrderSummaryScreenState
       String address = '';
       if (settingsRow != null && settingsRow['settings'] != null) {
         final settings = settingsRow['settings'] as Map<String, dynamic>;
+        _shopSettings = ShopSettingsModel.fromJson(settings);
 
         // Use the specifically configured catalog name if it exists (e.g., "Mercado Jamaica" instead of "mercado-jamaica")
         final catalogName =
@@ -157,6 +160,29 @@ class _CustomerOrderSummaryScreenState
       buffer.writeln('"${widget.order.dedicationMessage}"');
       if (widget.order.isAnonymous) {
         buffer.writeln('_(Enviar de forma anónima)_');
+      }
+    }
+
+    if (_shopSettings != null) {
+      final banks = _shopSettings!.bankMethods;
+      final links = _shopSettings!.linkMethods;
+      if (banks.isNotEmpty || links.isNotEmpty) {
+        buffer.writeln('\n💳 *MÉTODOS DE PAGO DISPONIBLES*');
+        if (banks.isNotEmpty) {
+          buffer.writeln('\n🏦 *Transferencia bancaria*');
+          for (final b in banks) {
+            buffer.writeln('• ${b.bankName} (${b.accountType})');
+            buffer.writeln('  Titular: ${b.holderName}');
+            buffer.writeln('  Cuenta: ${b.accountNumber}');
+            buffer.writeln('  CLABE: ${b.clabe}');
+          }
+        }
+        if (links.isNotEmpty) {
+          buffer.writeln('\n🔗 *Links de pago*');
+          for (final l in links) {
+            buffer.writeln('• ${l.serviceName}: https://${l.url}');
+          }
+        }
       }
     }
 

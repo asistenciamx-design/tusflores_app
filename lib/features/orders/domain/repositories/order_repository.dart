@@ -33,7 +33,7 @@ class OrderRepository {
   }
 
   // Create a new order
-  Future<OrderModel?> createOrder(OrderModel order) async {
+  Future<OrderModel> createOrder(OrderModel order) async {
     try {
       // Auto-generate folio if not exists
       final orderData = order.toJson();
@@ -47,7 +47,7 @@ class OrderRepository {
       return OrderModel.fromJson(response);
     } catch (e) {
       debugPrint('Error creating order: $e');
-      return null;
+      throw e;
     }
   }
 
