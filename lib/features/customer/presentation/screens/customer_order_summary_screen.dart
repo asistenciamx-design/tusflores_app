@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../orders/domain/models/order_model.dart';
@@ -169,11 +171,24 @@ class _CustomerOrderSummaryScreenState
       final imageBytes = await _screenshotController.capture(
           delay: const Duration(milliseconds: 100));
       if (imageBytes != null) {
-        await ImageGallerySaver.saveImage(
-          imageBytes,
-          quality: 100,
-          name: "pedido_tusflores_${DateTime.now().millisecondsSinceEpoch}",
-        );
+        final fileName = "pedido_tusflores_${DateTime.now().millisecondsSinceEpoch}.png";
+        
+        if (kIsWeb) {
+          // Web download implementation
+          final blob = html.Blob([imageBytes]);
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          final anchor = html.AnchorElement(href: url)
+            ..setAttribute("download", fileName)
+            ..click();
+          html.Url.revokeObjectUrl(url);
+        } else {
+          // Mobile download implementation
+          await ImageGallerySaver.saveImage(
+            imageBytes,
+            quality: 100,
+            name: fileName.replaceAll('.png', ''), // It appends extension automatically
+          );
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
