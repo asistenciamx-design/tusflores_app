@@ -264,25 +264,43 @@ class _CustomerOrderSummaryScreenState
         if (_shopPhone.isNotEmpty) {
           final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
           final text = Uri.encodeComponent(_buildWhatsAppMessage());
-          final whatsappUrl =
-              Uri.parse('whatsapp://send?phone=$cleanPhone&text=$text');
-          final webWhatsAppUrl =
-              Uri.parse('https://wa.me/$cleanPhone?text=$text');
+          final webWhatsAppUrl = Uri.parse('https://wa.me/$cleanPhone?text=$text');
 
-          if (await canLaunchUrl(whatsappUrl)) {
-            await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-          } else if (await canLaunchUrl(webWhatsAppUrl)) {
-            await launchUrl(webWhatsAppUrl,
-                mode: LaunchMode.externalApplication);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No se pudo abrir WhatsApp.')),
-            );
+          try {
+            await launchUrl(webWhatsAppUrl, mode: LaunchMode.externalApplication);
+          } catch (e) {
+            debugPrint('Error launching WhatsApp: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No se pudo abrir WhatsApp.')),
+              );
+            }
           }
         }
 
-        // Return to home
-        context.go('/');
+        if (mounted) {
+          // Return to the public catalog of the shop
+          // We don't have the slug directly, but the routing is `/mx/:slug`.
+          // To safely redirect the customer to the shop they were browsing, we can pop until the first route or push a clean state.
+          // In GoRouter, a simple approach to go back to the top-level catalog is to pop.
+          // However, since we might be a few screens deep (product -> form -> summary), 
+          // a better way is to pop back to the catalog branch route.
+          // For the public variant `/mx/:slug`, calling pop might just work if they came from there.
+          if (context.canPop()) {
+              // Pop back to order form
+              context.pop();
+              if (context.canPop()) {
+                // Pop back to product details
+                context.pop();
+                if (context.canPop()) {
+                    // Pop back to catalog
+                    context.pop();
+                }
+              }
+          } else {
+             context.go('/'); 
+          }
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
