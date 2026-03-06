@@ -48,7 +48,7 @@ class _CustomerOrderSummaryScreenState
       final futures = await Future.wait([
         client
             .from('profiles')
-            .select('shop_name, address, whatsapp')
+            .select('shop_name, whatsapp_number')
             .eq('id', widget.order.shopId)
             .maybeSingle(),
         client
@@ -62,12 +62,10 @@ class _CustomerOrderSummaryScreenState
       final settingsRow = futures[1];
 
       String name = 'Tu Florería';
-      String pAddress = '';
       String pPhone = '';
       if (profile != null) {
         name = profile['shop_name'] ?? 'Tu Florería';
-        pAddress = profile['address'] ?? '';
-        pPhone = profile['whatsapp'] ?? '';
+        pPhone = profile['whatsapp_number'] ?? '';
       }
 
       String address = '';
@@ -91,8 +89,12 @@ class _CustomerOrderSummaryScreenState
         if (city.isNotEmpty) parts.add(city);
         if (state.isNotEmpty) parts.add(state);
         address = parts.join(', ');
+
+        // Use whatsapp from shop_settings if profile doesn't have one
+        if (pPhone.isEmpty) {
+          pPhone = (settings['whatsapp'] as String?) ?? '';
+        }
       }
-      if (address.isEmpty) address = pAddress;
 
       if (mounted) {
         setState(() {
