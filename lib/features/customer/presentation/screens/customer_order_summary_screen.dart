@@ -119,49 +119,49 @@ class _CustomerOrderSummaryScreenState
 
   String _buildWhatsAppMessage() {
     final buffer = StringBuffer();
-    buffer.writeln('*¡Hola $_shopName!* 💐');
+    buffer.writeln('*Hola $_shopName!*');
     buffer.writeln(
-        'Acabo de generar un nuevo pedido desde tu catálogo web. Aquí tienes los detalles:');
+        'Acabo de generar un nuevo pedido desde tu catalogo web. Aqui tienes los detalles:');
     buffer.writeln('\n*Folio:* ${widget.order.folio}');
 
-    buffer.writeln('\n🛒 *PRODUCTOS:*');
+    buffer.writeln('\n\u2605 *PRODUCTOS:*');
     try {
       final List<dynamic> productsData = jsonDecode(widget.order.productName);
       for (var p in productsData) {
         final name = p['name'] as String? ?? 'Producto';
         final qty = p['qty'] as int? ?? 1;
-        buffer.writeln('• $qty x $name');
+        buffer.writeln('- $qty x $name');
       }
     } catch (e) {
       buffer
-          .writeln('• ${widget.order.quantity} x ${widget.order.productName}');
+          .writeln('- ${widget.order.quantity} x ${widget.order.productName}');
     }
 
     final total = widget.order.price + widget.order.shippingCost;
-    buffer.writeln('\n💰 *Total:* \$${total.toStringAsFixed(2)} MXN');
+    buffer.writeln('\n\u2605 *Total:* \$${total.toStringAsFixed(2)} MXN');
     buffer.writeln(
-        '🚚 *Envío:* ${widget.order.shippingCost == 0.0 ? 'GRATIS' : '\$${widget.order.shippingCost.toStringAsFixed(2)}'}');
+        '\u2605 *Envio:* ${widget.order.shippingCost == 0.0 ? 'GRATIS' : '\$${widget.order.shippingCost.toStringAsFixed(2)}'}');
 
-    buffer.writeln('\n👤 *DATOS DEL COMPRADOR*');
+    buffer.writeln('\n\u2605 *DATOS DEL COMPRADOR*');
     buffer.writeln('Nombre: ${widget.order.customerName}');
-    buffer.writeln('Teléfono: ${widget.order.customerPhone}');
+    buffer.writeln('Telefono: ${widget.order.customerPhone}');
 
-    buffer.writeln('\n📦 *DETALLES DE ENTREGA*');
-    buffer.writeln('Método: ${widget.order.deliveryMethod}');
+    buffer.writeln('\n\u2605 *DETALLES DE ENTREGA*');
+    buffer.writeln('Metodo: ${widget.order.deliveryMethod}');
     buffer.writeln('Fecha/Hora: ${widget.order.deliveryInfo}');
     if (widget.order.deliveryMethod != 'Recoger en tienda') {
       buffer.writeln(
-          'Dirección: ${widget.order.deliveryAddress ?? 'No especificado'}');
+          'Direccion: ${widget.order.deliveryAddress ?? 'No especificado'}');
       if (widget.order.deliveryReferences?.isNotEmpty == true) {
         buffer.writeln('Referencias: ${widget.order.deliveryReferences}');
       }
     }
 
     if (widget.order.dedicationMessage?.isNotEmpty == true) {
-      buffer.writeln('\n💌 *DEDICATORIA:*');
+      buffer.writeln('\n\u2605 *DEDICATORIA:*');
       buffer.writeln('"${widget.order.dedicationMessage}"');
       if (widget.order.isAnonymous) {
-        buffer.writeln('_(Enviar de forma anónima)_');
+        buffer.writeln('_(Enviar de forma anonima)_');
       }
     }
 
@@ -169,27 +169,27 @@ class _CustomerOrderSummaryScreenState
       final banks = _shopSettings!.bankMethods;
       final links = _shopSettings!.linkMethods;
       if (banks.isNotEmpty || links.isNotEmpty) {
-        buffer.writeln('\n💳 *MÉTODOS DE PAGO DISPONIBLES*');
+        buffer.writeln('\n\u2605 *METODOS DE PAGO DISPONIBLES*');
         if (banks.isNotEmpty) {
-          buffer.writeln('\n🏦 *Transferencia bancaria*');
+          buffer.writeln('\n\u2605 *Transferencia bancaria*');
           for (final b in banks) {
-            buffer.writeln('• ${b.bankName} (${b.accountType})');
+            buffer.writeln('- ${b.bankName} (${b.accountType})');
             buffer.writeln('  Titular: ${b.holderName}');
             buffer.writeln('  Cuenta: ${b.accountNumber}');
             buffer.writeln('  CLABE: ${b.clabe}');
           }
         }
         if (links.isNotEmpty) {
-          buffer.writeln('\n🔗 *Links de pago*');
+          buffer.writeln('\n\u2605 *Links de pago*');
           for (final l in links) {
-            buffer.writeln('• ${l.serviceName}: https://${l.url}');
+            buffer.writeln('- ${l.serviceName}: https://${l.url}');
           }
         }
       }
     }
 
     buffer.writeln(
-        '\n💡 Adjunto a este mensaje la imagen con el Resumen de mi Pedido.');
+        '\n\u2605 Adjunto a este mensaje la imagen con el Resumen de mi Pedido.');
     return buffer.toString();
   }
 
@@ -262,14 +262,14 @@ class _CustomerOrderSummaryScreenState
           ),
         );
 
-        // 3. Launch WhatsApp
+        // 3. Launch WhatsApp natively on mobile
         if (_shopPhone.isNotEmpty) {
           final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
           final text = Uri.encodeComponent(_buildWhatsAppMessage());
-          final webWhatsAppUrl = Uri.parse('https://wa.me/$cleanPhone?text=$text');
+          final whatsappUrl = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$text');
 
           try {
-            await launchUrl(webWhatsAppUrl, mode: LaunchMode.externalApplication);
+            await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
           } catch (e) {
             debugPrint('Error launching WhatsApp: $e');
             if (mounted) {
