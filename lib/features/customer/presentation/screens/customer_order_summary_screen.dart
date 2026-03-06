@@ -44,7 +44,7 @@ class _CustomerOrderSummaryScreenState
       final futures = await Future.wait([
         client
             .from('profiles')
-            .select('shop_name, full_name, address, whatsapp')
+            .select('shop_name, address, whatsapp')
             .eq('id', widget.order.shopId)
             .maybeSingle(),
         client
@@ -61,9 +61,7 @@ class _CustomerOrderSummaryScreenState
       String pAddress = '';
       String pPhone = '';
       if (profile != null) {
-        // full_name contains the actual commercial name from the form
-        // shop_name contains the URL slug
-        name = profile['full_name'] ?? profile['shop_name'] ?? 'Tu Florería';
+        name = profile['shop_name'] ?? 'Tu Florería';
         pAddress = profile['address'] ?? '';
         pPhone = profile['whatsapp'] ?? '';
       }
@@ -165,26 +163,46 @@ class _CustomerOrderSummaryScreenState
     return buffer.toString();
   }
 
+  Future<void> _downloadImage() async {
+    setState(() => _isSaving = true);
+    try {
+      final imageBytes = await _screenshotController.capture(
+          delay: const Duration(milliseconds: 100));
+      if (imageBytes != null) {
+        await ImageGallerySaver.saveImage(
+          imageBytes,
+          quality: 100,
+          name: "pedido_tusflores_${DateTime.now().millisecondsSinceEpoch}",
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Imagen guardada en tu galería'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error capturing screenshot: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar la imagen: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   Future<void> _saveAndShare() async {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Capture the ticket image
-      Uint8List? imageBytes;
-      try {
-        imageBytes = await _screenshotController.capture(
-            delay: const Duration(milliseconds: 100));
-        if (imageBytes != null) {
-          // Save to device gallery
-          await ImageGallerySaver.saveImage(
-            imageBytes,
-            quality: 100,
-            name: "pedido_tusflores_${DateTime.now().millisecondsSinceEpoch}",
-          );
-        }
-      } catch (e) {
-        debugPrint('Error capturing screenshot: $e');
-      }
 
       // 2. Save order to Supabase
       final newOrder = await _orderRepo.createOrder(widget.order);
@@ -195,7 +213,7 @@ class _CustomerOrderSummaryScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Pedido registrado y resumen guardado en fotos. Abriendo WhatsApp...'),
+                'Pedido registrado. Abriendo WhatsApp...'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
@@ -287,30 +305,51 @@ class _CustomerOrderSummaryScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ElevatedButton(
-                onPressed:
-                    _isSaving || _isLoadingProfile ? null : _saveAndShare,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E676), // WhatsApp Greenish
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  minimumSize: const Size(double.infinity, 54),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text(
-                        'Guardar y confirmar pedido',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed:
+                          _isSaving || _isLoadingProfile ? null : _saveAndShare,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00E676), // WhatsApp Greenish
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        minimumSize: const Size(double.infinity, 54),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text(
+                              'Guardar y confirmar pedido',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    height: 54, // Match button height
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: IconButton(
+                      onPressed:
+                          _isSaving || _isLoadingProfile ? null : _downloadImage,
+                      icon: const Icon(Icons.download_rounded, color: Colors.black87),
+                      tooltip: 'Descargar imagen',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
