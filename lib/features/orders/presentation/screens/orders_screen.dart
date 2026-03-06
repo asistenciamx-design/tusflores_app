@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -341,15 +342,45 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${order.quantity}× ${order.productName}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textLight,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
+                      ...() {
+                        try {
+                          final List<dynamic> productsData = jsonDecode(order.productName);
+                          // We build a single elegant string to display the products in the card e.g. "2x Rosas, 1x Peluche"
+                          final parts = <String>[];
+                          for (var p in productsData) {
+                             final name = p['name'] as String? ?? 'Producto';
+                             final qty = p['qty'] as int? ?? 1;
+                             parts.add('${qty}x $name');
+                          }
+                          return [
+                            Text(
+                              parts.join(', '),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textLight,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ];
+                        } catch (e) {
+                          // Fallback for old orders where productName is just a plain string
+                          return [
+                            Text(
+                              '${order.quantity}× ${order.productName}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textLight,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ];
+                        }
+                      }(),
+                      const SizedBox(height: 4),
                       Text(
                         '\$${order.price.toStringAsFixed(0)} MXN',
                         style: const TextStyle(
@@ -617,7 +648,18 @@ extension OrderShareExtension on OrderModel {
       buf.writeln('📦 *Folio:* $folio');
     }
     
-    buf.writeln('🌷 *Producto:* ${quantity}× $productName');
+    
+    try {
+      final List<dynamic> productsData = jsonDecode(productName);
+      for (var p in productsData) {
+        final name = p['name'] as String? ?? 'Producto';
+        final qty = p['qty'] as int? ?? 1;
+        buf.writeln('🌷 *Producto:* ${qty}× $name');
+      }
+    } catch (e) {
+      buf.writeln('🌷 *Producto:* ${quantity}× $productName');
+    }
+    
     buf.writeln('💰 *Precio u.:* \$${price.toStringAsFixed(2)} MXN');
     buf.writeln('💵 *Subtotal:* \$${subtotal.toStringAsFixed(2)} MXN');
     if (shippingCost > 0) {
