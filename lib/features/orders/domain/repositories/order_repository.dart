@@ -35,12 +35,16 @@ class OrderRepository {
   // Create a new order
   Future<OrderModel> createOrder(OrderModel order) async {
     try {
-      // Auto-generate folio if not exists
       final orderData = order.toJson();
+      
+      // Auto-generate sequential folio based on shop's order count
       if (orderData['folio'] == null || orderData['folio'] == '#0000') {
-         // Create a simple random 4 digit folio
-         final random = Random().nextInt(9000) + 1000;
-         orderData['folio'] = '#$random';
+        final countResponse = await _supabase
+            .from('orders')
+            .select('id')
+            .eq('shop_id', order.shopId);
+        final nextNumber = (countResponse as List).length + 1;
+        orderData['folio'] = '#${nextNumber.toString().padLeft(4, '0')}';
       }
       
       final response = await _supabase.from('orders').insert(orderData).select().single();

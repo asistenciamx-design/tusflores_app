@@ -189,7 +189,7 @@ class _CustomerOrderSummaryScreenState
     }
 
     buffer.writeln(
-        '\n\u2605 Adjunto a este mensaje la imagen con el Resumen de mi Pedido.');
+        '\n\u2605 Ya tengo las formas de pago, en un momento envio el comprobante por este medio.');
     return buffer.toString();
   }
 
