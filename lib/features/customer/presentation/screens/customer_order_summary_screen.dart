@@ -262,40 +262,27 @@ class _CustomerOrderSummaryScreenState
           ),
         );
 
-        // 3. Launch WhatsApp natively on mobile
+        // 3. Launch WhatsApp via direct JS for mobile web compatibility
         if (_shopPhone.isNotEmpty) {
           final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
           final text = Uri.encodeComponent(_buildWhatsAppMessage());
-          final whatsappUrl = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$text');
-
-          try {
-            await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-          } catch (e) {
-            debugPrint('Error launching WhatsApp: $e');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No se pudo abrir WhatsApp.')),
-              );
-            }
-          }
+          final whatsappApiUrl = 'https://api.whatsapp.com/send?phone=$cleanPhone&text=$text';
+          
+          // Use direct JavaScript window.open — url_launcher silently fails 
+          // on iOS mobile web with custom schemes
+          html.window.open(whatsappApiUrl, '_blank');
         }
 
+        // Give the browser a moment to process the redirect before navigating back
+        await Future.delayed(const Duration(milliseconds: 500));
+
         if (mounted) {
-          // Return to the public catalog of the shop
-          // We don't have the slug directly, but the routing is `/mx/:slug`.
-          // To safely redirect the customer to the shop they were browsing, we can pop until the first route or push a clean state.
-          // In GoRouter, a simple approach to go back to the top-level catalog is to pop.
-          // However, since we might be a few screens deep (product -> form -> summary), 
-          // a better way is to pop back to the catalog branch route.
-          // For the public variant `/mx/:slug`, calling pop might just work if they came from there.
+          // Pop back through checkout flow to the catalog
           if (context.canPop()) {
-              // Pop back to order form
               context.pop();
               if (context.canPop()) {
-                // Pop back to product details
                 context.pop();
                 if (context.canPop()) {
-                    // Pop back to catalog
                     context.pop();
                 }
               }
