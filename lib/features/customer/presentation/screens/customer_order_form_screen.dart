@@ -6,7 +6,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/models/shop_settings_model.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../catalog/domain/repositories/product_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../orders/domain/models/order_model.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart'
     show ProductItem;

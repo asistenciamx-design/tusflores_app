@@ -1,15 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../orders/domain/models/order_model.dart';
 import '../../../orders/domain/repositories/order_repository.dart';
@@ -252,56 +248,56 @@ class _CustomerOrderSummaryScreenState
 
       if (!mounted) return;
 
-      if (newOrder != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Pedido registrado. Abriendo WhatsApp...'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
+      // Update the local widget order folio so both the WhatsApp message 
+      // and the on-screen ticket display the newly assigned DB folio.
+      setState(() {
+        widget.order.folio = newOrder.folio;
+      });
 
-        // 3. Launch WhatsApp via direct JS for mobile web compatibility
-        if (_shopPhone.isNotEmpty) {
-          final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
-          final text = Uri.encodeComponent(_buildWhatsAppMessage());
-          final whatsappApiUrl = 'https://api.whatsapp.com/send?phone=$cleanPhone&text=$text';
-          
-          // Use direct JavaScript window.open — url_launcher silently fails 
-          // on iOS mobile web with custom schemes
-          html.window.open(whatsappApiUrl, '_blank');
-        }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Pedido registrado. Abriendo WhatsApp...'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
 
-        // Give the browser a moment to process the redirect before navigating back
-        await Future.delayed(const Duration(milliseconds: 500));
+      // 3. Launch WhatsApp via direct JS for mobile web compatibility
+      if (_shopPhone.isNotEmpty) {
+        final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
+        final text = Uri.encodeComponent(_buildWhatsAppMessage());
+        final whatsappApiUrl = 'https://api.whatsapp.com/send?phone=$cleanPhone&text=$text';
+        
+        // Use direct JavaScript window.open — url_launcher silently fails 
+        // on iOS mobile web with custom schemes
+        html.window.open(whatsappApiUrl, '_blank');
+      }
 
-        if (mounted) {
-          // Pop back through checkout flow to the catalog
-          if (context.canPop()) {
+      // Give the browser a moment to process the redirect before navigating back
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted) {
+        // Pop back through checkout flow to the catalog
+        if (context.canPop()) {
+            context.pop();
+            if (context.canPop()) {
               context.pop();
               if (context.canPop()) {
-                context.pop();
-                if (context.canPop()) {
-                    context.pop();
-                }
+                  context.pop();
               }
-          } else {
-             context.go('/'); 
-          }
+            }
+        } else {
+           context.go('/'); 
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Error al procesar el pedido'),
-              backgroundColor: Colors.red),
-        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Error inesperado: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error inesperado: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

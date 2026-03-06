@@ -109,7 +109,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
 
   Future<void> _loadSettings() async {
     final repo = ShopSettingsRepository();
-    final settings = await repo.getSettings(widget.order.shopId ?? '');
+    final settings = await repo.getSettings(widget.order.shopId);
     if (mounted) {
       setState(() {
          _settings = settings;
