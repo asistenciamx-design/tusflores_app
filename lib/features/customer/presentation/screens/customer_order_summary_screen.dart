@@ -120,7 +120,7 @@ class _CustomerOrderSummaryScreenState
     buffer.writeln('*Hola $_shopName!*');
     buffer.writeln(
         'Acabo de generar un nuevo pedido desde tu catalogo web. Aqui tienes los detalles:');
-    buffer.writeln('\n*Folio:* $_assignedFolio');
+    buffer.writeln('\n*Folio:* ${_assignedFolio == '#0000' ? 'PENDIENTE' : _assignedFolio}');
 
     buffer.writeln('\n\u2605 *PRODUCTOS:*');
     try {
@@ -464,7 +464,7 @@ class _CustomerOrderSummaryScreenState
                           Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('FOLIO $_assignedFolio',
+                    child: Text('FOLIO ${_assignedFolio == '#0000' ? 'PENDIENTE' : _assignedFolio}',
                         style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
