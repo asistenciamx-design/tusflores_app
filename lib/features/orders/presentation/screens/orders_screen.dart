@@ -36,10 +36,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
   /// false = filtrar por fecha de venta (createdAt), true = filtrar por fecha de entrega (saleDate)
   bool _filterByDelivery = false;
 
+  // ── Search
+  String _searchQuery = '';
+  final TextEditingController _searchCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _loadOrders();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {
@@ -95,7 +105,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
   List<OrderModel> get _allOrdersInPeriod => _applyDateFilter(_orders);
 
   /// Orders filtered by both date period AND the active status tab.
+  /// When [_searchQuery] is non-empty, bypasses date/status filters and
+  /// searches ALL orders by folio, customer name, or product name.
   List<OrderModel> get _filteredOrders {
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      return _orders.where((o) {
+        return o.folio.toLowerCase().contains(q) ||
+            o.customerName.toLowerCase().contains(q) ||
+            o.productName.toLowerCase().contains(q);
+      }).toList();
+    }
     final byStatus = _orders
         .where((o) => o.status ==
             (_selectedTab == 0 ? OrderStatus.pending : OrderStatus.delivered))
@@ -570,6 +590,43 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
+  // ─── Search Bar ─────────────────────────────────────────────────────────────
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: TextField(
+        controller: _searchCtrl,
+        textInputAction: TextInputAction.search,
+        onChanged: (val) => setState(() => _searchQuery = val.trim()),
+        decoration: InputDecoration(
+          hintText: 'Buscar folio, cliente o producto…',
+          hintStyle:
+              TextStyle(color: Colors.grey[400], fontSize: 13),
+          prefixIcon:
+              Icon(Icons.search, color: Colors.grey[400], size: 20),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.close,
+                      size: 18, color: Colors.grey[500]),
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12, vertical: 12),
+        ),
+      ),
+    );
+  }
+
   // ─── Filter Mode Toggle ──────────────────────────────────────────────────────
 
   Widget _buildFilterModeToggle() {
@@ -642,6 +699,38 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Widget _buildSummaryBanner() {
     final all = _allOrdersInPeriod;
+
+    // When the user is searching, show a search-specific badge
+    if (_searchQuery.isNotEmpty) {
+      final count = _filteredOrders.length;
+      if (count == 0) return const SizedBox.shrink();
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF9C27B0).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: const Color(0xFF9C27B0).withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.search, color: Color(0xFF9C27B0), size: 15),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$count resultado${count == 1 ? '' : 's'} para «$_searchQuery»',
+                style: const TextStyle(
+                  color: Color(0xFF9C27B0),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (all.isEmpty) return const SizedBox.shrink();
 
     final Color color;
