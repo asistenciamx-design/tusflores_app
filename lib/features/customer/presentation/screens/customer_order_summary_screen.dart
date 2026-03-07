@@ -244,64 +244,182 @@ class _CustomerOrderSummaryScreenState
     setState(() => _isSaving = true);
 
     try {
-
-      // 2. Save order to Supabase
+      // Save order to Supabase
       final newOrder = await _orderRepo.createOrder(widget.order);
 
       if (!mounted) return;
 
-      // Update the local assigned folio so both the WhatsApp message 
-      // and the on-screen ticket display the newly assigned DB folio.
+      // Update the folio with the DB-assigned one
       setState(() {
         _assignedFolio = newOrder.folio;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Pedido registrado. Abriendo WhatsApp...'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
-
-      // 3. Launch WhatsApp via direct JS for mobile web compatibility
+      // Build WhatsApp URL now so it's ready when user taps the button
+      String? whatsappUrl;
       if (_shopPhone.isNotEmpty) {
         final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
         final text = Uri.encodeComponent(_buildWhatsAppMessage());
-        final whatsappApiUrl = 'https://api.whatsapp.com/send?phone=$cleanPhone&text=$text';
-        
-        // Use direct JavaScript window.open — url_launcher silently fails 
-        // on iOS mobile web with custom schemes
-        html.window.open(whatsappApiUrl, '_blank');
+        whatsappUrl = 'https://api.whatsapp.com/send?phone=$cleanPhone&text=$text';
       }
 
-      // Give the browser a moment to process the redirect before navigating back
-      await Future.delayed(const Duration(milliseconds: 500));
-
+      // Show persistent success dialog — user decides when to continue
       if (mounted) {
-        // Pop back through checkout flow to the catalog
-        if (context.canPop()) {
-            context.pop();
-            if (context.canPop()) {
-              context.pop();
-              if (context.canPop()) {
-                  context.pop();
-              }
-            }
-        } else {
-           context.go('/'); 
-        }
+        await _showOrderConfirmedDialog(
+          folio: _assignedFolio,
+          whatsappUrl: whatsappUrl,
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error inesperado: $e'), backgroundColor: Colors.red),
+            content: Text('Error inesperado: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _showOrderConfirmedDialog({
+    required String folio,
+    String? whatsappUrl,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap a button
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Success icon
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F5E9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle,
+                    color: Color(0xFF00C853), size: 40),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              const Text(
+                '¡Pedido confirmado!',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+
+              // Folio
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'FOLIO ${folio == '#0000' ? 'PENDIENTE' : folio}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Subtitle
+              Text(
+                'Tu pedido fue registrado exitosamente.\n'
+                'Ahora puedes enviarlo por WhatsApp a la florería para coordinar el pago y la entrega.',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                    height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+
+              // WhatsApp button (primary)
+              if (whatsappUrl != null)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      html.window.open(whatsappUrl!, '_blank');
+                      Navigator.of(ctx).pop();
+                      _navigateToCatalog();
+                    },
+                    icon: const Icon(Icons.chat, color: Colors.white, size: 20),
+                    label: const Text(
+                      'Enviar por WhatsApp',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 10),
+
+              // Back to catalog button (secondary)
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    _navigateToCatalog();
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'Volver al catálogo',
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToCatalog() {
+    if (!mounted) return;
+    if (context.canPop()) {
+      context.pop();
+      if (context.canPop()) {
+        context.pop();
+        if (context.canPop()) {
+          context.pop();
+        }
+      }
+    } else {
+      context.go('/');
     }
   }
 
