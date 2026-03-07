@@ -695,12 +695,19 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
   }
 
   Widget _buildDropdown(String label, List<String> items, String? value, ValueChanged<String?> onChanged, {String hint = ''}) {
+    // If we have a saved value but it hasn't loaded in the items list yet, simply auto-append it temporarily
+    // so the dropdown widget doesn't crash or go blank visually
+    final displayItems = List<String>.from(items);
+    if (value != null && value.isNotEmpty && !displayItems.contains(value)) {
+      displayItems.insert(0, value);
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInputLabel(label, uppercase: true),
         DropdownButtonFormField<String>(
-          initialValue: value != null && items.contains(value) ? value : null,
+          value: displayItems.contains(value) ? value : null,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
@@ -722,7 +729,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
           ),
           icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
           onChanged: onChanged,
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
+          items: displayItems.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
         ),
       ],
     );
