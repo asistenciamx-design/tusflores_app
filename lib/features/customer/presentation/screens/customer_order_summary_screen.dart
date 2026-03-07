@@ -31,10 +31,12 @@ class _CustomerOrderSummaryScreenState
   String _shopPhone = '';
   bool _isLoadingProfile = true;
   ShopSettingsModel? _shopSettings;
+  late String _assignedFolio;
 
   @override
   void initState() {
     super.initState();
+    _assignedFolio = widget.order.folio;
     _loadShopDetails();
   }
 
@@ -118,7 +120,7 @@ class _CustomerOrderSummaryScreenState
     buffer.writeln('*Hola $_shopName!*');
     buffer.writeln(
         'Acabo de generar un nuevo pedido desde tu catalogo web. Aqui tienes los detalles:');
-    buffer.writeln('\n*Folio:* ${widget.order.folio}');
+    buffer.writeln('\n*Folio:* $_assignedFolio');
 
     buffer.writeln('\n\u2605 *PRODUCTOS:*');
     try {
@@ -248,10 +250,10 @@ class _CustomerOrderSummaryScreenState
 
       if (!mounted) return;
 
-      // Update the local widget order folio so both the WhatsApp message 
+      // Update the local assigned folio so both the WhatsApp message 
       // and the on-screen ticket display the newly assigned DB folio.
       setState(() {
-        widget.order.folio = newOrder.folio;
+        _assignedFolio = newOrder.folio;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -462,7 +464,7 @@ class _CustomerOrderSummaryScreenState
                           Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('FOLIO ${widget.order.folio}',
+                    child: Text('FOLIO $_assignedFolio',
                         style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
