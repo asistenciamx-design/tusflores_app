@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -18,16 +19,31 @@ class EditOrderScreen extends StatefulWidget {
   State<EditOrderScreen> createState() => _EditOrderScreenState();
 }
 
+class _ProductItem {
+  final TextEditingController qtyCtrl;
+  final TextEditingController nameCtrl;
+  final TextEditingController priceCtrl;
+
+  _ProductItem({required String qty, required String name, required String price})
+      : qtyCtrl = TextEditingController(text: qty),
+        nameCtrl = TextEditingController(text: name),
+        priceCtrl = TextEditingController(text: price);
+
+  void dispose() {
+    qtyCtrl.dispose();
+    nameCtrl.dispose();
+    priceCtrl.dispose();
+  }
+}
+
 class _EditOrderScreenState extends State<EditOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final _orderRepo = OrderRepository();
   bool _isSaving = false;
 
-  // Product & Price
-  late TextEditingController _qtyCtrl;
-  late TextEditingController _productCtrl;
-  late TextEditingController _priceCtrl;
-  
+  // Products
+  final List<_ProductItem> _productItems = [];
+
   // Delivery
   DateTime? _selectedDate;
   String? _selectedRange;
@@ -79,10 +95,29 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
   @override
   void initState() {
     super.initState();
-    _qtyCtrl = TextEditingController(text: widget.order.quantity.toString());
-    _productCtrl = TextEditingController(text: widget.order.productName);
-    // Remove formatting to keep just the number
-    _priceCtrl = TextEditingController(text: widget.order.price.toStringAsFixed(0));
+    
+    // Parse products json
+    try {
+      final List<dynamic> productsData = jsonDecode(widget.order.productName);
+      for (var p in productsData) {
+        final name = p['name'] as String? ?? 'Producto';
+        final qty = p['qty']?.toString() ?? '1';
+        final price = p['price']?.toString() ?? '0.0';
+        _productItems.add(_ProductItem(qty: qty, name: name, price: price));
+      }
+    } catch (_) {
+      // Fallback string parser
+      _productItems.add(_ProductItem(
+        qty: widget.order.quantity.toString(),
+        name: widget.order.productName,
+        price: widget.order.price.toStringAsFixed(0),
+      ));
+    }
+
+    for (var item in _productItems) {
+      item.qtyCtrl.addListener(() => setState(() {}));
+      item.priceCtrl.addListener(() => setState(() {}));
+    }
     
     _selectedDate = widget.order.saleDate;
     _selectedRange = widget.order.deliveryInfo.split(', ').last;
@@ -101,10 +136,6 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     _zipCtrl = TextEditingController(text: '06600');
     _referenceCtrl = TextEditingController(text: 'Ej. Edificio blanco, dejar en recepción');
     _mapsUrlCtrl = TextEditingController(text: '');
-    
-    // Listeners to recalculate totals if price/qty changes
-    _qtyCtrl.addListener(() => setState(() {}));
-    _priceCtrl.addListener(() => setState(() {}));
   }
 
   Future<void> _loadSettings() async {
@@ -123,9 +154,9 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
 
   @override
   void dispose() {
-    _qtyCtrl.dispose();
-    _productCtrl.dispose();
-    _priceCtrl.dispose();
+    for (var item in _productItems) {
+      item.dispose();
+    }
     _cardToCtrl.dispose();
     _cardPhoneCtrl.dispose();
     _cardMessageCtrl.dispose();
@@ -153,10 +184,40 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
       
+      String finalProductName;
+      double finalPrice = 0.0;
+      int finalQty = 1;
+
+      bool wasJson = false;
+      try {
+        if (widget.order.productName.startsWith('[')) {
+          jsonDecode(widget.order.productName);
+          wasJson = true;
+        }
+      } catch (_) {}
+
+      if (_productItems.length == 1 && !wasJson) {
+        finalProductName = _productItems.first.nameCtrl.text;
+        finalQty = int.tryParse(_productItems.first.qtyCtrl.text) ?? 1;
+        finalPrice = double.tryParse(_productItems.first.priceCtrl.text) ?? 0.0;
+      } else {
+        final List<Map<String, dynamic>> productsJson = _productItems.map((item) {
+          final q = int.tryParse(item.qtyCtrl.text) ?? 1;
+          final p = double.tryParse(item.priceCtrl.text) ?? 0.0;
+          finalPrice += (q * p);
+          return {
+            'name': item.nameCtrl.text,
+            'qty': q,
+            'price': p,
+          };
+        }).toList();
+        finalProductName = jsonEncode(productsJson);
+      }
+      
       final updatedOrder = widget.order.copyWith(
-        quantity: int.tryParse(_qtyCtrl.text) ?? widget.order.quantity,
-        productName: _productCtrl.text,
-        price: double.tryParse(_priceCtrl.text) ?? widget.order.price,
+        quantity: finalQty,
+        productName: finalProductName,
+        price: finalPrice,
         saleDate: _selectedDate,
         deliveryInfo: _selectedRange,
         deliveryMethod: _deliveryMethod,
@@ -225,11 +286,18 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 const SizedBox(height: 24),
                 _buildSectionTitle('PRODUCTO Y PRECIO'),
                 const SizedBox(height: 12),
-                _buildProductRow(),
+                ..._buildProductRows(),
                 const SizedBox(height: 12),
                 Center(
                   child: TextButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      setState(() {
+                         final newItem = _ProductItem(qty: '1', name: '', price: '0');
+                         newItem.qtyCtrl.addListener(() => setState(() {}));
+                         newItem.priceCtrl.addListener(() => setState(() {}));
+                         _productItems.add(newItem);
+                      });
+                    },
                     icon: const Icon(Icons.add, color: AppTheme.primary, size: 20),
                     label: const Text('Agregar otro producto', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
                   ),
@@ -524,43 +592,64 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
 
   // ─── Products & Gifts ────────────────────────────────────────────────────────
 
-  Widget _buildProductRow() {
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildInputLabel('Cantidad', uppercase: false),
-              _buildTextField(_qtyCtrl, '1', centerAlign: true),
-            ],
-          ),
+  List<Widget> _buildProductRows() {
+    return _productItems.asMap().entries.map((entry) {
+      final index = entry.key;
+      final item = entry.value;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInputLabel('Cantidad', uppercase: false),
+                  _buildTextField(item.qtyCtrl, '1', centerAlign: true, keyboardType: TextInputType.number),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInputLabel('Nombre', uppercase: false),
+                  _buildTextField(item.nameCtrl, 'Ramo...'),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInputLabel('Precio', uppercase: false),
+                  _buildTextField(item.priceCtrl, '0.00', keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                ],
+              ),
+            ),
+            if (_productItems.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, bottom: 4.0),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                  onPressed: () {
+                    setState(() {
+                      item.dispose();
+                      _productItems.removeAt(index);
+                    });
+                  },
+                ),
+              ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 4,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildInputLabel('Nombre', uppercase: false),
-              _buildTextField(_productCtrl, 'Ramo...'),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildInputLabel('Precio', uppercase: false),
-              _buildTextField(_priceCtrl, '0.00'),
-            ],
-          ),
-        ),
-      ],
-    );
+      );
+    }).toList();
   }
 
   // ─── Form Elements ────────────────────────────────────────────────────────────
@@ -638,10 +727,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
   Widget _buildOrderTotals() {
     double subtotal = 0;
     
-    // Basic calculation using qty and price textfields
-    int qty = int.tryParse(_qtyCtrl.text) ?? 1;
-    double price = double.tryParse(_priceCtrl.text) ?? 0;
-    subtotal += (qty * price); 
+    // Basic calculation using dynamic product rows
+    for (var item in _productItems) {
+      int qty = int.tryParse(item.qtyCtrl.text) ?? 1;
+      double price = double.tryParse(item.priceCtrl.text) ?? 0;
+      subtotal += (qty * price);
+    }
 
     double effectiveShippingCost = _deliveryMethod == 'Recoger en tienda' ? 0.0 : _shippingCost;
     double total = subtotal + effectiveShippingCost;
