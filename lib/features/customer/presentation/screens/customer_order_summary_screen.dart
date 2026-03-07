@@ -115,12 +115,16 @@ class _CustomerOrderSummaryScreenState
     }
   }
 
-  String _buildWhatsAppMessage() {
+  /// Builds the WhatsApp message text.
+  /// Pass [folioOverride] to force a specific folio (e.g. the freshly assigned
+  /// DB folio) instead of relying on the [_assignedFolio] instance variable.
+  String _buildWhatsAppMessage({String? folioOverride}) {
+    final effectiveFolio = folioOverride ?? _assignedFolio;
     final buffer = StringBuffer();
     buffer.writeln('*Hola $_shopName!*');
     buffer.writeln(
         'Acabo de generar un nuevo pedido desde tu catalogo web. Aqui tienes los detalles:');
-    buffer.writeln('\n*Folio:* ${_assignedFolio == '#0000' ? 'PENDIENTE' : _assignedFolio}');
+    buffer.writeln('\n*Folio:* ${effectiveFolio == '#0000' ? 'PENDIENTE' : effectiveFolio}');
 
     buffer.writeln('\n\u2605 *PRODUCTOS:*');
     try {
@@ -254,11 +258,13 @@ class _CustomerOrderSummaryScreenState
         _assignedFolio = newOrder.folio;
       });
 
-      // Build WhatsApp URL now so it's ready when user taps the button
+      // Build WhatsApp URL using the freshly assigned folio from the DB.
+      // Pass newOrder.folio explicitly so it doesn't depend on setState timing.
       String? whatsappUrl;
       if (_shopPhone.isNotEmpty) {
         final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
-        final text = Uri.encodeComponent(_buildWhatsAppMessage());
+        final text = Uri.encodeComponent(
+            _buildWhatsAppMessage(folioOverride: newOrder.folio));
         whatsappUrl = 'https://api.whatsapp.com/send?phone=$cleanPhone&text=$text';
       }
 
