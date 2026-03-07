@@ -126,16 +126,20 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     _shippingCost = widget.order.shippingCost;
     _loadSettings();
 
-    // Dummy data for remaining fields since OrderModel doesn't have them all yet
-    _cardToCtrl = TextEditingController(text: 'Ana María');
-    _cardPhoneCtrl = TextEditingController(text: '5543633544');
-    _cardMessageCtrl = TextEditingController(text: '¡Feliz cumpleaños! Espero que te encanten estas flores.');
+    _cardToCtrl = TextEditingController(text: widget.order.recipientName ?? '');
+    _cardPhoneCtrl = TextEditingController(text: widget.order.recipientPhone ?? '');
+    _cardMessageCtrl = TextEditingController(text: widget.order.dedicationMessage ?? '');
     
-    _streetCtrl = TextEditingController(text: 'Av. Reforma 222');
-    _neighborhoodCtrl = TextEditingController(text: 'Col. Juárez');
-    _zipCtrl = TextEditingController(text: '06600');
-    _referenceCtrl = TextEditingController(text: 'Ej. Edificio blanco, dejar en recepción');
+    final addressParts = (widget.order.deliveryAddress ?? '').split(', ');
+    _streetCtrl = TextEditingController(text: addressParts.isNotEmpty ? addressParts[0] : '');
+    _neighborhoodCtrl = TextEditingController(text: addressParts.length > 1 ? addressParts[1] : '');
+    _zipCtrl = TextEditingController(text: addressParts.length > 2 ? addressParts[2] : '');
+    
+    _referenceCtrl = TextEditingController(text: widget.order.deliveryReferences ?? '');
     _mapsUrlCtrl = TextEditingController(text: '');
+    _locationType = widget.order.deliveryLocationType ?? 'Casa';
+    _deliveryMethod = widget.order.deliveryMethod;
+    _isAnonymous = widget.order.isAnonymous;
   }
 
   Future<void> _loadSettings() async {
