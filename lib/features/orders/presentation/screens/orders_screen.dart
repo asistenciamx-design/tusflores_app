@@ -33,6 +33,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   List<OrderModel> _orders = [];
   final _orderRepo = OrderRepository();
   bool _isLoading = true;
+  /// false = filtrar por fecha de venta (createdAt), true = filtrar por fecha de entrega (saleDate)
+  bool _filterByDelivery = false;
 
   @override
   void initState() {
@@ -50,36 +52,55 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  List<OrderModel> get _filteredOrders {
-    var filtered = _orders.where((o) => o.status == (_selectedTab == 0 ? OrderStatus.pending : OrderStatus.delivered)).toList();
-    
-    // Apply date filtering
+  /// Picks the date to use for filtering depending on the active mode:
+  /// - Por venta  → createdAt (when the order was placed)
+  /// - Por entrega → saleDate  (the chosen delivery date)
+  DateTime _filterDateOf(OrderModel o) =>
+      _filterByDelivery ? o.saleDate : o.createdAt;
+
+  /// Applies the date-range or chip filter to any list of orders.
+  List<OrderModel> _applyDateFilter(List<OrderModel> orders) {
     if (_customDateRange != null) {
-      filtered = filtered.where((o) {
-        final d = o.saleDate;
+      return orders.where((o) {
+        final d = _filterDateOf(o);
         final start = _customDateRange!.start;
-        // end time should be the end of the day
-        final end = _customDateRange!.end.add(const Duration(hours: 23, minutes: 59));
-        return d.isAfter(start.subtract(const Duration(minutes: 1))) && d.isBefore(end.add(const Duration(minutes: 1)));
+        final end =
+            _customDateRange!.end.add(const Duration(hours: 23, minutes: 59));
+        return d.isAfter(start.subtract(const Duration(minutes: 1))) &&
+            d.isBefore(end.add(const Duration(minutes: 1)));
       }).toList();
     } else {
-      // Logic for the predefined chips (Ayer, Hoy, Mañana, 7 días, 15 días)
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      filtered = filtered.where((o) {
-        final d = o.saleDate;
+      return orders.where((o) {
+        final d = _filterDateOf(o);
         final oDate = DateTime(d.year, d.month, d.day);
-        
-        if (_selectedDateIndex == 0) return oDate == today.subtract(const Duration(days: 1)); // Ayer
+        if (_selectedDateIndex == 0)
+          return oDate == today.subtract(const Duration(days: 1)); // Ayer
         if (_selectedDateIndex == 1) return oDate == today; // Hoy
-        if (_selectedDateIndex == 2) return oDate == today.add(const Duration(days: 1)); // Mañana
-        if (_selectedDateIndex == 3) return oDate.isAfter(today.subtract(const Duration(days: 7))); // 7 días
-        if (_selectedDateIndex == 4) return oDate.isAfter(today.subtract(const Duration(days: 15))); // 15 días
+        if (_selectedDateIndex == 2)
+          return oDate == today.add(const Duration(days: 1)); // Mañana
+        if (_selectedDateIndex == 3)
+          return oDate
+              .isAfter(today.subtract(const Duration(days: 7))); // 7 días
+        if (_selectedDateIndex == 4)
+          return oDate
+              .isAfter(today.subtract(const Duration(days: 15))); // 15 días
         return true;
       }).toList();
     }
-    
-    return filtered;
+  }
+
+  /// All orders in current period (both tabs) — used for the summary banner.
+  List<OrderModel> get _allOrdersInPeriod => _applyDateFilter(_orders);
+
+  /// Orders filtered by both date period AND the active status tab.
+  List<OrderModel> get _filteredOrders {
+    final byStatus = _orders
+        .where((o) => o.status ==
+            (_selectedTab == 0 ? OrderStatus.pending : OrderStatus.delivered))
+        .toList();
+    return _applyDateFilter(byStatus);
   }
 
   Future<void> _selectDateRange() async {
@@ -156,6 +177,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ),
           ),
           const SizedBox(height: 14),
+
+          // ── Filtro: Por Venta / Por Entrega ──
+          _buildFilterModeToggle(),
+          const SizedBox(height: 12),
 
           // Date filter chips
           SingleChildScrollView(
@@ -238,7 +263,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // ── Resumen contextual ──
+          _buildSummaryBanner(),
+          const SizedBox(height: 12),
 
           // Status tabs
           Row(
@@ -301,7 +330,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row: time + folio
+            // Top row: time + urgency badge + folio
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -309,14 +338,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   _timeAgo(order.createdAt),
                   style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
                 ),
-                Text(
-                  'FOLIO ${order.folio}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFBDBDBD),
-                    letterSpacing: 0.5,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ..._buildUrgencyBadge(order),
+                    Text(
+                      'FOLIO ${order.folio}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFBDBDBD),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -531,6 +566,173 @@ class _OrdersScreenState extends State<OrdersScreen> {
           Text(label,
               style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
         ],
+      ),
+    );
+  }
+
+  // ─── Filter Mode Toggle ──────────────────────────────────────────────────────
+
+  Widget _buildFilterModeToggle() {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEEEEE),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          _buildToggleOption(
+            label: '🛒  Por venta',
+            isSelected: !_filterByDelivery,
+            onTap: () => setState(() => _filterByDelivery = false),
+          ),
+          _buildToggleOption(
+            label: '🚚  Por entrega',
+            isSelected: _filterByDelivery,
+            onTap: () => setState(() => _filterByDelivery = true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleOption({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(19),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    )
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? AppTheme.textLight
+                    : const Color(0xFF9E9E9E),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Summary Banner ──────────────────────────────────────────────────────────
+
+  Widget _buildSummaryBanner() {
+    final all = _allOrdersInPeriod;
+    if (all.isEmpty) return const SizedBox.shrink();
+
+    final Color color;
+    final IconData icon;
+    final String text;
+
+    if (_filterByDelivery) {
+      final pending =
+          all.where((o) => o.status == OrderStatus.pending).length;
+      final delivered =
+          all.where((o) => o.status == OrderStatus.delivered).length;
+      text = '$pending por entregar  ·  ✅ $delivered entregados';
+      color = const Color(0xFF2196F3);
+      icon = Icons.local_shipping_outlined;
+    } else {
+      final total = all.fold(0.0, (sum, o) => sum + o.price);
+      text = '${all.length} registrados  ·  \$${total.toStringAsFixed(0)} MXN';
+      color = AppTheme.primary;
+      icon = Icons.receipt_long_outlined;
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: Container(
+        key: ValueKey(_filterByDelivery),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 15),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Urgency Badge ───────────────────────────────────────────────────────────
+
+  /// Returns [badge, SizedBox] if the order has urgent/expired delivery, else [].
+  List<Widget> _buildUrgencyBadge(OrderModel order) {
+    if (order.status == OrderStatus.delivered) return [];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final deliveryDay = DateTime(
+        order.saleDate.year, order.saleDate.month, order.saleDate.day);
+
+    if (deliveryDay.isBefore(today)) {
+      return [_urgencyPill('Vencido', Colors.red), const SizedBox(width: 6)];
+    } else if (deliveryDay == today) {
+      return [
+        _urgencyPill('Hoy 🔴', Colors.orange),
+        const SizedBox(width: 6)
+      ];
+    } else if (deliveryDay ==
+        today.add(const Duration(days: 1))) {
+      return [
+        _urgencyPill('Mañana 🟡', const Color(0xFFF59E0B)),
+        const SizedBox(width: 6)
+      ];
+    }
+    return [];
+  }
+
+  Widget _urgencyPill(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            color: color, fontSize: 9, fontWeight: FontWeight.bold),
       ),
     );
   }
