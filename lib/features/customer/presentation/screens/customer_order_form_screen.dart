@@ -276,7 +276,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           price: subtotal,
                           status: OrderStatus.pending,
                           createdAt: DateTime.now(),
-                          saleDate: DateTime.now(), // Real parsing if needed
+                          saleDate: _parseDeliveryDate(_selectedDate),
                           deliveryInfo: '$_selectedDate, $_selectedTime',
                           isPaid: false,
                           shippingCost: _deliveryMethod == 'Recoger en tienda'
@@ -1351,6 +1351,26 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         ],
       ),
     );
+  }
+
+  DateTime _parseDeliveryDate(String dateString) {
+    final now = DateTime.now();
+    if (dateString == 'Hoy') {
+      return now;
+    } else if (dateString == 'Mañana') {
+      return now.add(const Duration(days: 1));
+    } else {
+      try {
+        final parts = dateString.split('/');
+        if (parts.length == 3) {
+          int day = int.parse(parts[0]);
+          int month = int.parse(parts[1]);
+          int year = int.parse(parts[2]);
+          return DateTime(year, month, day);
+        }
+      } catch (_) {}
+    }
+    return now;
   }
 
   Widget _buildTextField({

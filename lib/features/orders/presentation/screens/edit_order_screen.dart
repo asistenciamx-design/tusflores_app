@@ -69,6 +69,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
 
   bool _isLoadingSettings = true;
   ShopSettingsModel? _settings;
+  bool _locationLocked = true;
 
   List<String> get _availableStates {
     if (_settings == null) return [];
@@ -408,20 +409,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _buildDropdown('ESTADO / PROVINCIA / DEPARTAMENTO', _availableStates, _selectedState, (val) {
-                        setState(() {
-                          _selectedState = val;
-                          _selectedCity = null;
-                          _updateShippingCost();
-                        });
-                      }, hint: 'Seleccionar estado...'),
-                      const SizedBox(height: 16),
-                      _buildDropdown('CIUDAD / MUNICIPIO', _availableCities, _selectedCity, (val) {
-                        setState(() {
-                          _selectedCity = val;
-                          _updateShippingCost();
-                        });
-                      }, hint: 'Seleccionar ciudad...'),
+                      _buildLocationField(),
                       const SizedBox(height: 16),
                       _buildInputLabel('REFERENCIAS ADICIONALES', uppercase: true),
                       _buildTextField(_referenceCtrl, 'Ej. Edificio blanco...', maxLines: 2),
@@ -814,13 +802,102 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
               children: [
                 const Icon(Icons.calendar_today, color: AppTheme.mutedLight, size: 20),
                 const SizedBox(width: 12),
-                Text(_selectedDate == null ? 'Seleccionar fecha' : '${_selectedDate!.month}/${_selectedDate!.day}/${_selectedDate!.year}', style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
+                Text(
+                  _selectedDate == null
+                      ? 'Seleccionar fecha'
+                      : '${_selectedDate!.day.toString().padLeft(2,'0')}/${_selectedDate!.month.toString().padLeft(2,'0')}/${_selectedDate!.year}',
+                  style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
+                ),
               ],
             ),
             const Icon(Icons.calendar_month, color: AppTheme.textLight, size: 18),
           ],
         ),
       ),
+    );
+  }
+
+  /// Locked location chips with optional Edit button
+  Widget _buildLocationField() {
+    final stateVal = _selectedState ?? '';
+    final cityVal  = _selectedCity  ?? '';
+
+    if (_locationLocked) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.map_outlined, color: Colors.grey.shade400, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    stateVal.isNotEmpty ? stateVal : 'Estado no definido',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: stateVal.isNotEmpty ? AppTheme.textLight : Colors.grey,
+                    ),
+                  ),
+                  if (cityVal.isNotEmpty) ...[  
+                    const SizedBox(height: 2),
+                    Text(cityVal, style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
+                  ],
+                ],
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => setState(() => _locationLocked = false),
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Editar', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildDropdown('ESTADO / PROVINCIA / DEPARTAMENTO', _availableStates, _selectedState, (val) {
+          setState(() {
+            _selectedState = val;
+            _selectedCity = null;
+            _updateShippingCost();
+          });
+        }, hint: 'Seleccionar estado...'),
+        const SizedBox(height: 16),
+        _buildDropdown('CIUDAD / MUNICIPIO', _availableCities, _selectedCity, (val) {
+          setState(() {
+            _selectedCity = val;
+            _updateShippingCost();
+          });
+        }, hint: 'Seleccionar ciudad...'),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => setState(() => _locationLocked = true),
+            icon: const Icon(Icons.lock_outline, size: 16),
+            label: const Text('Bloquear', style: TextStyle(fontSize: 12)),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
