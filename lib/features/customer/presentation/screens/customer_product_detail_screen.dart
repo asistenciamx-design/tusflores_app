@@ -56,109 +56,130 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-               // Main Image
-               ClipRRect(
-                 borderRadius: BorderRadius.circular(16),
-                 child: currentImage.isNotEmpty
-                  ? Image.network(
-                     currentImage,
-                     height: 350,
-                     width: double.infinity,
-                     fit: BoxFit.cover,
-                     errorBuilder: (ctx, err, stack) => _buildPlaceholderImage(),
-                   )
-                  : _buildPlaceholderImage(),
-               ),
-               const SizedBox(height: 12),
-               // Gallery
-               if (_images.length > 1)
-                 Row(
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: List.generate(_images.length, (index) {
-                     return _buildGalleryThumbnail(index);
-                   }),
+      // ── Use Stack so the CTA button is always visible on Flutter web mobile.
+      // bottomNavigationBar + SafeArea miscalculates insets on Safari iOS on first
+      // render, causing the button to be hidden behind browser chrome.
+      body: Stack(
+        children: [
+          // Scrollable product content — with generous bottom padding for the button
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                 // Main Image
+                 ClipRRect(
+                   borderRadius: BorderRadius.circular(16),
+                   child: currentImage.isNotEmpty
+                    ? Image.network(
+                       currentImage,
+                       height: 350,
+                       width: double.infinity,
+                       fit: BoxFit.cover,
+                       errorBuilder: (ctx, err, stack) => _buildPlaceholderImage(),
+                     )
+                    : _buildPlaceholderImage(),
                  ),
-               const SizedBox(height: 24),
-               
-               // Title
-               Text(
-                 product.name,
-                 style: const TextStyle(
-                   fontSize: 26,
-                   fontWeight: FontWeight.bold,
-                   color: Colors.black87,
-                 ),
-                 textAlign: TextAlign.center,
-               ),
-               const SizedBox(height: 8),
-
-               // Price
-               Text(
-                 '\$${product.price.toStringAsFixed(2)} MXN',
-                 style: const TextStyle(
-                   fontSize: 20,
-                   fontWeight: FontWeight.bold,
-                   color: Color(0xFF00C853), // Green typical of price/whatsapp
-                 ),
-                 textAlign: TextAlign.center,
-               ),
-               const SizedBox(height: 16),
-
-               // Tags
-               if (product.tags.isNotEmpty)
-                 Wrap(
-                   spacing: 8,
-                   runSpacing: 8,
-                   alignment: WrapAlignment.center,
-                   children: product.tags.map((t) => _buildTagChip(t.startsWith('#') ? t : '#$t')).toList(),
-                 ),
-               if (product.tags.isNotEmpty)
+                 const SizedBox(height: 12),
+                 // Gallery thumbnails
+                 if (_images.length > 1)
+                   Row(
+                     mainAxisAlignment: MainAxisAlignment.center,
+                     children: List.generate(_images.length, (index) {
+                       return _buildGalleryThumbnail(index);
+                     }),
+                   ),
                  const SizedBox(height: 24),
 
-               // Description
-               Text(
-                 product.description?.isNotEmpty == true ? product.description! : 'Sin descripción detallada.',
-                 style: TextStyle(
-                   fontSize: 15,
-                   color: Colors.grey[700],
-                   height: 1.5,
+                 // Title
+                 Text(
+                   product.name,
+                   style: const TextStyle(
+                     fontSize: 26,
+                     fontWeight: FontWeight.bold,
+                     color: Colors.black87,
+                   ),
+                   textAlign: TextAlign.center,
                  ),
-                 textAlign: TextAlign.center,
-               ),
-               const SizedBox(height: 32),
-            ],
+                 const SizedBox(height: 8),
+
+                 // Price
+                 Text(
+                   '\$${product.price.toStringAsFixed(2)} MXN',
+                   style: const TextStyle(
+                     fontSize: 20,
+                     fontWeight: FontWeight.bold,
+                     color: Color(0xFF00C853),
+                   ),
+                   textAlign: TextAlign.center,
+                 ),
+                 const SizedBox(height: 16),
+
+                 // Tags
+                 if (product.tags.isNotEmpty)
+                   Wrap(
+                     spacing: 8,
+                     runSpacing: 8,
+                     alignment: WrapAlignment.center,
+                     children: product.tags.map((t) => _buildTagChip(t.startsWith('#') ? t : '#$t')).toList(),
+                   ),
+                 if (product.tags.isNotEmpty)
+                   const SizedBox(height: 24),
+
+                 // Description
+                 Text(
+                   product.description?.isNotEmpty == true ? product.description! : 'Sin descripción detallada.',
+                   style: TextStyle(
+                     fontSize: 15,
+                     color: Colors.grey[700],
+                     height: 1.5,
+                   ),
+                   textAlign: TextAlign.center,
+                 ),
+                 const SizedBox(height: 32),
+              ],
+            ),
           ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton.icon(
-             onPressed: () {
-                context.push('/shop/checkout', extra: {'product': product, 'shopId': widget.shopId});
-             },
-             icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 24),
-             label: const Text(
-               'Realiza tu Compra',
-               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-             ),
-             style: ElevatedButton.styleFrom(
-               backgroundColor: const Color(0xFF00E676), // WhatsApp Greenish
-               foregroundColor: Colors.white,
-               padding: const EdgeInsets.symmetric(vertical: 16),
-               elevation: 0,
-               shape: RoundedRectangleBorder(
-                 borderRadius: BorderRadius.circular(12),
-               ),
-             ),
+
+          // ── Sticky CTA button (always visible, not affected by SafeArea issues) ──
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.push('/shop/checkout', extra: {'product': product, 'shopId': widget.shopId});
+                },
+                icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 22),
+                label: const Text(
+                  'Realiza tu Compra',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E676),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 54),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
