@@ -866,10 +866,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   String _formatDate(DateTime dt) {
+    const meses = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+    ];
     final now = DateTime.now();
-    if (dt.day == now.day) return 'Hoy';
-    if (dt.day == now.day + 1) return 'Mañana';
-    return '${dt.day}/${dt.month}/${dt.year}';
+    if (dt.day == now.day && dt.month == now.month && dt.year == now.year) return 'Hoy';
+    if (dt.day == now.day + 1 && dt.month == now.month && dt.year == now.year) return 'Mañana';
+    return '${dt.day} de ${meses[dt.month - 1]} de ${dt.year}';
   }
 
   String _formatTime(DateTime dt) {
@@ -905,10 +909,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
 }
 
 String _formatDateGlobal(DateTime dt) {
+  const meses = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  ];
   final now = DateTime.now();
   if (dt.day == now.day && dt.month == now.month && dt.year == now.year) return 'Hoy';
   if (dt.day == now.day + 1 && dt.month == now.month && dt.year == now.year) return 'Mañana';
-  return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  return '${dt.day} de ${meses[dt.month - 1]} de ${dt.year}';
 }
 
 String _formatTimeGlobal(DateTime dt) {
