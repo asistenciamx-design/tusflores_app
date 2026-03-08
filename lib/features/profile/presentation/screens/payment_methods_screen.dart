@@ -22,13 +22,23 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
   ShopSettingsModel? _settings;
   String _shopId = '';
 
+  // Pre-defined simple payment options
+  static const _kDirectOptions = [
+    ('Efectivo', Icons.payments_outlined),
+    ('Tarjeta / Terminal', Icons.credit_card),
+    ('Depósito bancario', Icons.account_balance),
+    ('Clábes / SPEI', Icons.swap_horiz),
+    ('Cheque', Icons.receipt_long),
+  ];
+
   List<BankMethod> get bankMethods => _settings?.bankMethods ?? [];
   List<LinkMethod> get linkMethods => _settings?.linkMethods ?? [];
+  List<String> get simplePayments => _settings?.simplePayments ?? ['Efectivo'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() => setState(() {}));
     _loadSettings();
   }
@@ -89,6 +99,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
               children: [
                 _buildTransferenciaTab(),
                 _buildLinkTab(),
+                _buildDirectPaymentTab(),
               ],
             ),
           ),
@@ -115,11 +126,125 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
         dividerColor: Colors.transparent,
         labelColor: AppTheme.primary,
         unselectedLabelColor: AppTheme.mutedLight,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-        tabs: const [Tab(text: 'Transferencia'), Tab(text: 'Link de Pago')],
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        tabs: const [
+          Tab(text: 'Transferencia'),
+          Tab(text: 'Link de Pago'),
+          Tab(text: 'Efectivo/Otros'),
+        ],
       ),
     );
+  }
+
+  Widget _buildDirectPaymentTab() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      children: [
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F0FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.2)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Color(0xFF7C3AED), size: 16),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Activa los métodos de pago directo que aceptas. Estos aparecerán en "Pend. Pago" al confirmar un pedido.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF5B21B6)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        ..._kDirectOptions.map((opt) {
+          final (label, icon) = opt;
+          final isOn = simplePayments.contains(label);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isOn
+                    ? AppTheme.primary.withValues(alpha: 0.6)
+                    : Colors.grey.shade200,
+                width: isOn ? 1.5 : 1,
+              ),
+            ),
+            child: SwitchListTile(
+              value: isOn,
+              onChanged: (val) => _toggleSimplePayment(label, val),
+              secondary: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isOn
+                      ? AppTheme.primary.withValues(alpha: 0.1)
+                      : Colors.grey.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon,
+                    color: isOn ? AppTheme.primary : Colors.grey.shade400,
+                    size: 20),
+              ),
+              title: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: isOn ? AppTheme.textLight : Colors.grey.shade500,
+                ),
+              ),
+              activeColor: AppTheme.primary,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            ),
+          );
+        }),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Future<void> _toggleSimplePayment(String label, bool add) async {
+    if (_settings == null) return;
+    final current = List<String>.from(simplePayments);
+    if (add) {
+      if (!current.contains(label)) current.add(label);
+    } else {
+      current.remove(label);
+    }
+    setState(() {
+      _settings = ShopSettingsModel(
+        storeHours: _settings!.storeHours,
+        deliveryRanges: _settings!.deliveryRanges,
+        shippingRates: _settings!.shippingRates,
+        bankMethods: _settings!.bankMethods,
+        linkMethods: _settings!.linkMethods,
+        faqs: _settings!.faqs,
+        simplePayments: current,
+        branchImagePath: _settings!.branchImagePath,
+        country: _settings!.country,
+        state: _settings!.state,
+        city: _settings!.city,
+        address: _settings!.address,
+        mapsUrl: _settings!.mapsUrl,
+        references: _settings!.references,
+        phone: _settings!.phone,
+        whatsapp: _settings!.whatsapp,
+        showMapOnProfile: _settings!.showMapOnProfile,
+      );
+    });
+    await _saveSettings();
   }
 
   Widget _buildTransferenciaTab() {

@@ -167,6 +167,9 @@ class ShopSettingsModel {
   final List<BankMethod> bankMethods;
   final List<LinkMethod> linkMethods;
   final List<FaqItem> faqs;
+  /// Simple direct-payment options configured by the florist
+  /// (e.g. ["Efectivo", "Tarjeta / Terminal", "Depósito"])
+  final List<String> simplePayments;
 
   // Catalog message
   final String? catalogMessage;
@@ -179,6 +182,7 @@ class ShopSettingsModel {
     this.bankMethods = const [],
     this.linkMethods = const [],
     this.faqs = const [],
+    this.simplePayments = const ['Efectivo'],
     this.branchImagePath,
     this.country,
     this.state,
@@ -225,6 +229,11 @@ class ShopSettingsModel {
       loadedFaqs = (json['faqs'] as List).map((e) => FaqItem.fromJson(e)).toList();
     }
 
+    List<String> simplePayments = ['Efectivo'];
+    if (json['simple_payments'] != null) {
+      simplePayments = List<String>.from(json['simple_payments']);
+    }
+
     return ShopSettingsModel(
       storeHours: hours,
       deliveryRanges: ranges,
@@ -232,6 +241,7 @@ class ShopSettingsModel {
       bankMethods: banks,
       linkMethods: links,
       faqs: loadedFaqs,
+      simplePayments: simplePayments,
       branchImagePath: json['branch_image_path'],
       country: json['country'],
       state: json['state'],
@@ -255,6 +265,7 @@ class ShopSettingsModel {
     'bank_methods': bankMethods.map((e) => e.toJson()).toList(),
     'link_methods': linkMethods.map((e) => e.toJson()).toList(),
     'faqs': faqs.map((e) => e.toJson()).toList(),
+    'simple_payments': simplePayments,
     'branch_image_path': branchImagePath,
     'country': country,
     'state': state,

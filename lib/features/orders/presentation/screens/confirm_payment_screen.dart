@@ -36,18 +36,20 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
   }
 
   Future<void> _loadMethods() async {
-    final list = <_PaymentMethod>[
-      const _PaymentMethod(
-        label: 'Efectivo',
-        icon: Icons.payments_outlined,
-        color: AppTheme.primary,
-      ),
-    ];
+    final list = <_PaymentMethod>[];
     
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
       final settings = await ShopSettingsRepository().getSettings(user.id);
-      
+
+      // ── Direct / simple payment types (configured in Profile → Métodos de Pago)
+      final simplePayments = settings?.simplePayments ?? ['Efectivo'];
+      for (final label in simplePayments) {
+        final (icon, color) = _simplePaymentIcon(label);
+        list.add(_PaymentMethod(label: label, icon: icon, color: color));
+      }
+
+      // ── Bank transfer accounts
       final bankMethods = settings?.bankMethods ?? [];
       for (final b in bankMethods) {
         final isBBVA = b.bankName.toUpperCase().contains('BBVA');
@@ -59,6 +61,7 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
         ));
       }
 
+      // ── Payment links (PayPal, Mercado Pago, etc.)
       final linkMethods = settings?.linkMethods ?? [];
       for (final l in linkMethods) {
         final info = _getLinkInfo(l.serviceName);
@@ -71,6 +74,15 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
         ));
       }
     }
+
+    // Fallback: if nothing configured show Efectivo
+    if (list.isEmpty) {
+      list.add(const _PaymentMethod(
+        label: 'Efectivo',
+        icon: Icons.payments_outlined,
+        color: AppTheme.primary,
+      ));
+    }
     
     if (mounted) {
       setState(() {
@@ -79,6 +91,26 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
       });
     }
   }
+
+  /// Returns icon + color for common simple payment labels.
+  (IconData, Color) _simplePaymentIcon(String label) {
+    final l = label.toLowerCase();
+    if (l.contains('tarjeta') || l.contains('terminal')) {
+      return (Icons.credit_card, const Color(0xFF0369A1));
+    }
+    if (l.contains('dep') || l.contains('banco')) {
+      return (Icons.account_balance, const Color(0xFF065F46));
+    }
+    if (l.contains('clabe') || l.contains('spei')) {
+      return (Icons.swap_horiz, const Color(0xFF7C3AED));
+    }
+    if (l.contains('cheque')) {
+      return (Icons.receipt_long, const Color(0xFF92400E));
+    }
+    // Default = Efectivo / cash
+    return (Icons.payments_outlined, AppTheme.primary);
+  }
+
 
   Map<String, dynamic> _getLinkInfo(String name) {
     switch (name.toLowerCase()) {
