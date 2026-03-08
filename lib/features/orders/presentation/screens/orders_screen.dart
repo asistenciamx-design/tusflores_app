@@ -876,22 +876,60 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Entregado button
+                // Entregado button — gated behind payment confirmation
                 Expanded(
                   child: GestureDetector(
-                    onTap: order.status == OrderStatus.pending
-                        ? () async {
-                            if (order.id == null) return;
-                            final success = await _orderRepo.updateOrderStatus(order.id!, OrderStatus.delivered);
-                            if (success && mounted) {
-                              setState(() => order.status = OrderStatus.delivered);
-                            }
-                          }
-                        : null,
+                    onTap: () async {
+                      // Already delivered → do nothing
+                      if (order.status == OrderStatus.delivered) return;
+
+                      // 🔒 Payment gate
+                      if (!order.isPaid) {
+                        ScaffoldMessenger.of(context)
+                          ..hideCurrentSnackBar()
+                          ..showSnackBar(SnackBar(
+                            content: const Row(
+                              children: [
+                                Icon(Icons.lock_outline,
+                                    color: Colors.white, size: 18),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Confirma el pago primero en "Pend. Pago" antes de marcar como Entregado.',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFFD97706),
+                            behavior: SnackBarBehavior.floating,
+                            margin: const EdgeInsets.all(16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                            duration: const Duration(seconds: 3),
+                          ));
+                        return;
+                      }
+
+                      if (order.id == null) return;
+                      final success = await _orderRepo.updateOrderStatus(
+                          order.id!, OrderStatus.delivered);
+                      if (success && mounted) {
+                        setState(() => order.status = OrderStatus.delivered);
+                      }
+                    },
                     child: _actionButton(
-                      order.status == OrderStatus.delivered ? Icons.check_circle : Icons.local_shipping_outlined,
+                      order.status == OrderStatus.delivered
+                          ? Icons.check_circle
+                          : (order.isPaid
+                              ? Icons.local_shipping_outlined
+                              : Icons.lock_outline),
                       'Entregado',
-                      AppTheme.primary,
+                      order.status == OrderStatus.delivered
+                          ? AppTheme.primary
+                          : (order.isPaid
+                              ? AppTheme.primary
+                              : Colors.grey.shade400),
                     ),
                   ),
                 ),
