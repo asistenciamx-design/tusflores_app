@@ -83,10 +83,20 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
         color: AppTheme.primary,
       ));
     }
-    
+
+    // Pre-select the method that was previously saved on this order
+    int preselected = 0;
+    final saved = widget.order.paymentMethod;
+    if (saved != null && saved.isNotEmpty) {
+      final idx = list.indexWhere(
+          (m) => saved.toLowerCase().contains(m.label.toLowerCase()));
+      if (idx >= 0) preselected = idx;
+    }
+
     if (mounted) {
       setState(() {
         _methods = list;
+        _selectedMethod = preselected;
         _isLoading = false;
       });
     }
