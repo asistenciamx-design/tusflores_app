@@ -40,6 +40,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
   String _searchQuery = '';
   final TextEditingController _searchCtrl = TextEditingController();
 
+  // ── Realtime
+  RealtimeChannel? _ordersChannel;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +52,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    if (_ordersChannel != null) {
+      Supabase.instance.client.removeChannel(_ordersChannel!);
+    }
     super.dispose();
   }
 
@@ -58,8 +64,73 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (user != null) {
       final fetched = await _orderRepo.getOrders(user.id);
       _orders = fetched;
+      // Start realtime subscription (restart if already active)
+      _subscribeToOrders(user.id);
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  /// Opens a Supabase Realtime channel filtered by [shopId].
+  /// INSERT → prepends the new order to the list.
+  /// UPDATE → replaces the existing order in-place.
+  void _subscribeToOrders(String shopId) {
+    // Remove previous channel to avoid duplicates
+    if (_ordersChannel != null) {
+      Supabase.instance.client.removeChannel(_ordersChannel!);
+    }
+    _ordersChannel = Supabase.instance.client
+        .channel('orders_realtime_$shopId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'shop_id',
+            value: shopId,
+          ),
+          callback: (payload) {
+            try {
+              final newOrder = OrderModel.fromJson(
+                  payload.newRecord as Map<String, dynamic>);
+              if (!mounted) return;
+              final alreadyExists =
+                  _orders.any((o) => o.id == newOrder.id);
+              if (!alreadyExists) {
+                setState(() => _orders.insert(0, newOrder));
+              }
+            } catch (e) {
+              debugPrint('[Realtime] INSERT parse error: $e');
+              // Fallback: full reload
+              _loadOrders();
+            }
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'shop_id',
+            value: shopId,
+          ),
+          callback: (payload) {
+            try {
+              final updated = OrderModel.fromJson(
+                  payload.newRecord as Map<String, dynamic>);
+              if (!mounted) return;
+              final idx = _orders.indexWhere((o) => o.id == updated.id);
+              if (idx >= 0) {
+                setState(() => _orders[idx] = updated);
+              }
+            } catch (e) {
+              debugPrint('[Realtime] UPDATE parse error: $e');
+              _loadOrders();
+            }
+          },
+        )
+        .subscribe();
   }
 
   /// Picks the date to use for filtering depending on the active mode:
