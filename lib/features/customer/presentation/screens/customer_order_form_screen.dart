@@ -288,9 +288,13 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           recipientPhone: _phoneCtrl.text,
                           dedicationMessage: _messageCtrl.text,
                           deliveryAddress:
-                              '${_streetCtrl.text}, ${_suburbCtrl.text}, ${_zipCtrl.text}, ${_selectedCity ?? ''}, ${_selectedState ?? ''}',
+                              '${_streetCtrl.text}, ${_suburbCtrl.text}, ${_zipCtrl.text}',
                           deliveryReferences: finalReferences,
                           deliveryLocationType: _deliveryLocationType,
+                          // Save state & city as dedicated fields so the florist
+                          // editor can display and protect them correctly.
+                          deliveryState: _selectedState,
+                          deliveryCity: _selectedCity,
                         );
 
                         context.push('/shop/summary', extra: order);

@@ -823,43 +823,79 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     final cityVal  = _selectedCity  ?? '';
 
     if (_locationLocked) {
+      final hasBoth = stateVal.isNotEmpty || cityVal.isNotEmpty;
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: hasBoth ? const Color(0xFFF3F0FF) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(
+            color: hasBoth
+                ? const Color(0xFF7C3AED).withValues(alpha: 0.25)
+                : Colors.grey.shade200,
+          ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.map_outlined, color: Colors.grey.shade400, size: 18),
+            Icon(Icons.map_outlined,
+                color: hasBoth
+                    ? const Color(0xFF7C3AED)
+                    : Colors.grey.shade400,
+                size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // "Seleccionado por el cliente" badge
+                  if (hasBoth)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        '📍 Seleccionado por el cliente',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF7C3AED),
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
                   Text(
                     stateVal.isNotEmpty ? stateVal : 'Estado no definido',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: stateVal.isNotEmpty ? AppTheme.textLight : Colors.grey,
+                      color: stateVal.isNotEmpty
+                          ? AppTheme.textLight
+                          : Colors.grey,
                     ),
                   ),
-                  if (cityVal.isNotEmpty) ...[  
+                  if (cityVal.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    Text(cityVal, style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
+                    Text(cityVal,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppTheme.mutedLight)),
                   ],
                 ],
               ),
             ),
+            // Amber "Edit" button — visible warning color
             TextButton.icon(
               onPressed: () => setState(() => _locationLocked = false),
               icon: const Icon(Icons.edit_outlined, size: 16),
               label: const Text('Editar', style: TextStyle(fontSize: 12)),
               style: TextButton.styleFrom(
-                foregroundColor: AppTheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                foregroundColor: const Color(0xFFD97706), // amber-600
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               ),
             ),
           ],
@@ -867,10 +903,40 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
       );
     }
 
+    // Unlocked — show dropdowns with a warning banner
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDropdown('ESTADO / PROVINCIA / DEPARTAMENTO', _availableStates, _selectedState, (val) {
+        // Warning notice
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFFCD34D)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  color: Color(0xFFD97706), size: 16),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Estos datos fueron seleccionados por el cliente. Cámbielos solo si es necesario.',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF92400E),
+                      fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildDropdown(
+            'ESTADO / PROVINCIA / DEPARTAMENTO',
+            _availableStates,
+            _selectedState, (val) {
           setState(() {
             _selectedState = val;
             _selectedCity = null;
@@ -878,7 +944,8 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
           });
         }, hint: 'Seleccionar estado...'),
         const SizedBox(height: 16),
-        _buildDropdown('CIUDAD / MUNICIPIO', _availableCities, _selectedCity, (val) {
+        _buildDropdown('CIUDAD / MUNICIPIO', _availableCities, _selectedCity,
+            (val) {
           setState(() {
             _selectedCity = val;
             _updateShippingCost();
@@ -890,10 +957,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
           child: TextButton.icon(
             onPressed: () => setState(() => _locationLocked = true),
             icon: const Icon(Icons.lock_outline, size: 16),
-            label: const Text('Bloquear', style: TextStyle(fontSize: 12)),
+            label:
+                const Text('Bloquear', style: TextStyle(fontSize: 12)),
             style: TextButton.styleFrom(
               foregroundColor: Colors.grey,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             ),
           ),
         ),
