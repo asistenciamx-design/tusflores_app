@@ -458,21 +458,29 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-                  : _filteredOrders.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                          itemCount: _filteredOrders.length,
-                          itemBuilder: (_, i) => _buildOrderCard(_filteredOrders[i]),
-                        ),
-            ),
+        child: CustomScrollView(
+          slivers: [
+            // ── Header scrolls WITH the list ──────────────────────────────
+            SliverToBoxAdapter(child: _buildHeader()),
+
+            // ── Order list ────────────────────────────────────────────────
+            if (_isLoading)
+              const SliverFillRemaining(
+                child: Center(
+                    child: CircularProgressIndicator(color: AppTheme.primary)),
+              )
+            else if (_filteredOrders.isEmpty)
+              SliverFillRemaining(child: _buildEmptyState())
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => _buildOrderCard(_filteredOrders[i]),
+                    childCount: _filteredOrders.length,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
