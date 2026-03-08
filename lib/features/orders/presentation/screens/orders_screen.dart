@@ -10,6 +10,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/order_model.dart';
 import '../../domain/repositories/order_repository.dart';
 
+// ─── Notification model ───────────────────────────────────────────────────────
+
+enum _NotifType { newOrder, statusChange, comment }
+
+class _NotificationItem {
+  final String id;
+  final _NotifType type;
+  final String title;
+  final String subtitle;
+  final DateTime createdAt;
+  bool read;
+
+  _NotificationItem({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.subtitle,
+    required this.createdAt,
+    this.read = false,
+  });
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 class OrdersScreen extends StatefulWidget {
@@ -42,6 +64,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   // ── Realtime
   RealtimeChannel? _ordersChannel;
+
+  // ── Notifications
+  final List<_NotificationItem> _notifications = [];
+  int _unreadCount = 0;
 
   @override
   void initState() {
@@ -97,11 +123,23 @@ class _OrdersScreenState extends State<OrdersScreen> {
               final alreadyExists =
                   _orders.any((o) => o.id == newOrder.id);
               if (!alreadyExists) {
-                setState(() => _orders.insert(0, newOrder));
+                // Build notification
+                final notif = _NotificationItem(
+                  id: newOrder.id ?? DateTime.now().toString(),
+                  type: _NotifType.newOrder,
+                  title: '🛍️ Nuevo pedido ${newOrder.folio}',
+                  subtitle:
+                      '${newOrder.customerName} — \$${newOrder.price.toStringAsFixed(0)}',
+                  createdAt: DateTime.now(),
+                );
+                setState(() {
+                  _orders.insert(0, newOrder);
+                  _notifications.insert(0, notif);
+                  _unreadCount++;
+                });
               }
             } catch (e) {
               debugPrint('[Realtime] INSERT parse error: $e');
-              // Fallback: full reload
               _loadOrders();
             }
           },
@@ -131,6 +169,198 @@ class _OrdersScreenState extends State<OrdersScreen> {
           },
         )
         .subscribe();
+  }
+
+  // ── Notifications panel ──────────────────────────────────────────────────
+
+  void _showNotificationsPanel() {
+    // Mark all as read when the panel opens
+    setState(() {
+      for (final n in _notifications) {
+        n.read = true;
+      }
+      _unreadCount = 0;
+    });
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.30,
+          maxChildSize: 0.90,
+          expand: false,
+          builder: (_, controller) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Handle
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 4),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Notificaciones',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textLight,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (_notifications.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              setState(() => _notifications.clear());
+                              Navigator.pop(ctx);
+                            },
+                            child: const Text(
+                              'Limpiar',
+                              style: TextStyle(
+                                  color: Color(0xFF7C3AED), fontSize: 13),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 20),
+                  // List
+                  Expanded(
+                    child: _notifications.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.notifications_none_rounded,
+                                    size: 64,
+                                    color: Colors.grey.shade300),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Sin notificaciones',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.grey.shade400,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Aquí verás nuevos pedidos\ny actualizaciones.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            controller: controller,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
+                            itemCount: _notifications.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (_, i) {
+                              final n = _notifications[i];
+                              final (iconData, iconColor, bgColor) =
+                                  switch (n.type) {
+                                _NotifType.newOrder => (
+                                    Icons.shopping_bag_rounded,
+                                    const Color(0xFF7C3AED),
+                                    const Color(0xFFF3F0FF),
+                                  ),
+                                _NotifType.statusChange => (
+                                    Icons.swap_horiz_rounded,
+                                    const Color(0xFF059669),
+                                    const Color(0xFFECFDF5),
+                                  ),
+                                _NotifType.comment => (
+                                    Icons.chat_bubble_rounded,
+                                    const Color(0xFFF59E0B),
+                                    const Color(0xFFFFFBEB),
+                                  ),
+                              };
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 6),
+                                leading: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: bgColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(iconData,
+                                      color: iconColor, size: 22),
+                                ),
+                                title: Text(
+                                  n.title,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textLight,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 2),
+                                    Text(n.subtitle,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        )),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _timeAgo(n.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Hace un momento';
+    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Hace ${diff.inHours} h';
+    return 'Hace ${diff.inDays} días';
   }
 
   /// Picks the date to use for filtering depending on the active mode:
@@ -258,14 +488,73 @@ class _OrdersScreenState extends State<OrdersScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title
-          const Text(
-            'Mis Pedidos',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textLight,
-            ),
+          // Title row with notification bell
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'Mis Pedidos',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textLight,
+                ),
+              ),
+              const Spacer(),
+              // Bell button
+              GestureDetector(
+                onTap: _showNotificationsPanel,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: _unreadCount > 0
+                            ? const Color(0xFF7C3AED).withValues(alpha: 0.1)
+                            : Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _unreadCount > 0
+                            ? Icons.notifications_active_rounded
+                            : Icons.notifications_none_rounded,
+                        color: _unreadCount > 0
+                            ? const Color(0xFF7C3AED)
+                            : Colors.grey.shade500,
+                        size: 22,
+                      ),
+                    ),
+                    if (_unreadCount > 0)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                              minWidth: 18, minHeight: 18),
+                          child: Text(
+                            _unreadCount > 99
+                                ? '99+'
+                                : '$_unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
 
@@ -929,12 +1218,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
-  String _timeAgo(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Hace ${diff.inHours}h';
-    return 'Hace ${diff.inDays} día(s)';
-  }
+
+
 
   String _formatDate(DateTime dt) {
     const meses = [
