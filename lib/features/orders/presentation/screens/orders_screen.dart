@@ -870,7 +870,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     icon: Icons.account_balance_wallet,
                     label: order.isPaid
                         ? (order.paymentMethod != null ? '\u2713 ${order.paymentMethod}' : 'Pagado')
-                        : 'Pend. pago',
+                        : '¿Pagado?',
                     color: order.isPaid ? AppTheme.primary : Colors.orange,
                     outlined: true,
                   ),
