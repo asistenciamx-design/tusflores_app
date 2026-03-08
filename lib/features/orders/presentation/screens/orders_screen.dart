@@ -198,6 +198,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           const SizedBox(height: 14),
 
+          // ── Barra de búsqueda ──
+          _buildSearchBar(),
+          const SizedBox(height: 12),
+
           // ── Filtro: Por Venta / Por Entrega ──
           _buildFilterModeToggle(),
           const SizedBox(height: 12),
