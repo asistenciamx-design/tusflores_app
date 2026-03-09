@@ -141,8 +141,11 @@ class _CustomerOrderSummaryScreenState
 
     final total = widget.order.price + widget.order.shippingCost;
     buffer.writeln('\n\u2605 *Total:* \$${total.toStringAsFixed(2)} MXN');
+    final cityLabel = widget.order.deliveryCity?.isNotEmpty == true
+        ? ' (${widget.order.deliveryCity})'
+        : '';
     buffer.writeln(
-        '\u2605 *Envio:* ${widget.order.shippingCost == 0.0 ? 'GRATIS' : '\$${widget.order.shippingCost.toStringAsFixed(2)}'}');
+        '\u2605 *Envio$cityLabel:* ${widget.order.shippingCost == 0.0 ? 'GRATIS' : '\$${widget.order.shippingCost.toStringAsFixed(2)}'}');
 
     buffer.writeln('\n\u2605 *DATOS DEL COMPRADOR*');
     buffer.writeln('Nombre: ${widget.order.customerName}');
@@ -678,7 +681,9 @@ class _CustomerOrderSummaryScreenState
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Envío (${widget.order.deliveryMethod})',
+                      Text(
+                          'Envío (${widget.order.deliveryMethod})'
+                          '${widget.order.deliveryCity?.isNotEmpty == true ? ' · ${widget.order.deliveryCity}' : ''}',
                           style: const TextStyle(
                               fontSize: 13, color: Colors.blueGrey)),
                       Text(
