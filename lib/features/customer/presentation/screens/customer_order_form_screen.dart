@@ -50,7 +50,6 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   String? _selectedCity;
   double _shippingCost = 0.0;
   final _refCtrl = TextEditingController();
-  final _mapsUrlCtrl = TextEditingController();
   String _deliveryLocationType = 'Casa';
 
   bool _isLoadingSettings = true;
@@ -153,7 +152,6 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     _suburbCtrl.dispose();
     _zipCtrl.dispose();
     _refCtrl.dispose();
-    _mapsUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -257,11 +255,6 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                         String encodedProducts = jsonEncode(allProducts);
 
                         String finalReferences = _refCtrl.text;
-                        if (_mapsUrlCtrl.text.isNotEmpty) {
-                          finalReferences += finalReferences.isEmpty
-                              ? 'Maps: ${_mapsUrlCtrl.text}'
-                              : '\nMaps: ${_mapsUrlCtrl.text}';
-                        }
 
                         final order = OrderModel(
                           folio: '#0000',
@@ -1145,39 +1138,6 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               controller: _refCtrl,
               hint: 'Ej. Edificio blanco, dejar en recepción',
               maxLines: 2),
-          const SizedBox(height: 16),
-          _buildInputLabel('URL GOOGLE MAPS'),
-          _buildTextField(
-            controller: _mapsUrlCtrl,
-            hint: 'Ej. https://maps.app.goo.gl/...',
-            keyboardType: TextInputType.url,
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 20, color: Colors.grey),
-                  onPressed: () {
-                    if (_mapsUrlCtrl.text.isNotEmpty) {
-                      Clipboard.setData(ClipboardData(text: _mapsUrlCtrl.text));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('URL copiada al portapapeles',
-                              style: TextStyle(color: Colors.white)),
-                          backgroundColor: Colors.black87,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.clear, size: 20, color: Colors.grey),
-                  onPressed: () => _mapsUrlCtrl.clear(),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-          ),
           const SizedBox(height: 24),
           _buildInputLabel('Lugar de entrega:', baseLabel: true),
           const SizedBox(height: 12),
