@@ -136,8 +136,17 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     _neighborhoodCtrl = TextEditingController(text: addressParts.length > 1 ? addressParts[1] : '');
     _zipCtrl = TextEditingController(text: addressParts.length > 2 ? addressParts[2] : '');
     
-    _referenceCtrl = TextEditingController(text: widget.order.deliveryReferences ?? '');
-    _mapsUrlCtrl = TextEditingController(text: '');
+    // Split stored deliveryReferences into plain refs + maps URL
+    final rawRefs = widget.order.deliveryReferences ?? '';
+    final mapsMatch = RegExp(r'(?:^|\n)Maps: (.+)$').firstMatch(rawRefs);
+    String refsOnly = rawRefs;
+    String mapsUrl = '';
+    if (mapsMatch != null) {
+      mapsUrl = mapsMatch.group(1) ?? '';
+      refsOnly = rawRefs.substring(0, mapsMatch.start).trimRight();
+    }
+    _referenceCtrl = TextEditingController(text: refsOnly);
+    _mapsUrlCtrl = TextEditingController(text: mapsUrl);
     _locationType = widget.order.deliveryLocationType ?? 'Casa';
     _deliveryMethod = widget.order.deliveryMethod;
     _isAnonymous = widget.order.isAnonymous;
@@ -231,7 +240,11 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
         recipientPhone: _cardPhoneCtrl.text,
         dedicationMessage: _cardMessageCtrl.text,
         deliveryAddress: '${_streetCtrl.text}, ${_neighborhoodCtrl.text}, ${_zipCtrl.text}',
-        deliveryReferences: _referenceCtrl.text,
+        deliveryReferences: _mapsUrlCtrl.text.isNotEmpty
+            ? (_referenceCtrl.text.isNotEmpty
+                ? '${_referenceCtrl.text}\nMaps: ${_mapsUrlCtrl.text}'
+                : 'Maps: ${_mapsUrlCtrl.text}')
+            : _referenceCtrl.text,
         deliveryLocationType: _locationType,
         shippingCost: _shippingCost,
         deliveryState: _selectedState,
