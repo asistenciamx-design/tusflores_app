@@ -50,7 +50,18 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   String? _selectedCity;
   double _shippingCost = 0.0;
   final _refCtrl = TextEditingController();
+  final _locationDetailsCtrl = TextEditingController();
   String _deliveryLocationType = 'Casa';
+
+  static const _locationHints = {
+    'Casa':      'Las entre calles facilitan la entrega',
+    'Edificio':  'Número o letra de edificio, piso, departamento',
+    'Fracc.':    'Nombre del fraccionamiento, número de casa o edificio, piso',
+    'Empresa':   'Área, piso, oficina, extensión',
+    'Funeraria': 'Número de sala de velación, piso, nombre del finado, '
+                 'hora de inicio del servicio, nombre de familiar o amigo que puede recibir',
+    'Hospital':  'Piso, habitación, nombre de familiar',
+  };
 
   bool _isLoadingSettings = true;
   ShopSettingsModel? _settings;
@@ -152,6 +163,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     _suburbCtrl.dispose();
     _zipCtrl.dispose();
     _refCtrl.dispose();
+    _locationDetailsCtrl.dispose();
     super.dispose();
   }
 
@@ -255,6 +267,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                         String encodedProducts = jsonEncode(allProducts);
 
                         String finalReferences = _refCtrl.text;
+                        if (_locationDetailsCtrl.text.isNotEmpty) {
+                          finalReferences = finalReferences.isNotEmpty
+                              ? '${_locationDetailsCtrl.text}\n$finalReferences'
+                              : _locationDetailsCtrl.text;
+                        }
 
                         final order = OrderModel(
                           folio: '#0000',
@@ -1149,9 +1166,15 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               _buildLocationTypeBtn('Edificio', Icons.business),
               _buildLocationTypeBtn('Fracc.', Icons.holiday_village),
               _buildLocationTypeBtn('Empresa', Icons.domain),
-              _buildLocationTypeBtn('Funeraria', Icons.church), // Placeholders
+              _buildLocationTypeBtn('Funeraria', Icons.church),
               _buildLocationTypeBtn('Hospital', Icons.local_hospital),
             ],
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _locationDetailsCtrl,
+            hint: _locationHints[_deliveryLocationType] ?? '',
+            maxLines: 3,
           ),
         ],
       ),
@@ -1163,7 +1186,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     const activeColor = Color(0xFF00E676);
 
     return GestureDetector(
-      onTap: () => setState(() => _deliveryLocationType = id),
+      onTap: () => setState(() {
+        _deliveryLocationType = id;
+        _locationDetailsCtrl.clear();
+      }),
       child: Container(
         width: 65,
         padding: const EdgeInsets.symmetric(vertical: 8),
