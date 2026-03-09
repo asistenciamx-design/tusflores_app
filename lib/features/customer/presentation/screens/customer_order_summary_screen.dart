@@ -152,6 +152,12 @@ class _CustomerOrderSummaryScreenState
     buffer.writeln('Metodo: ${widget.order.deliveryMethod}');
     buffer.writeln('Fecha/Hora: ${widget.order.deliveryInfo}');
     if (widget.order.deliveryMethod != 'Recoger en tienda') {
+      if (widget.order.deliveryState?.isNotEmpty == true) {
+        buffer.writeln('Estado/Provincia: ${widget.order.deliveryState}');
+      }
+      if (widget.order.deliveryCity?.isNotEmpty == true) {
+        buffer.writeln('Ciudad/Municipio: ${widget.order.deliveryCity}');
+      }
       buffer.writeln(
           'Direccion: ${widget.order.deliveryAddress ?? 'No especificado'}');
       if (widget.order.deliveryReferences?.isNotEmpty == true) {
@@ -770,6 +776,18 @@ class _CustomerOrderSummaryScreenState
                   _buildDataRow(Icons.calendar_today, 'Fecha/Hora:',
                       widget.order.deliveryInfo),
                   const SizedBox(height: 8),
+                  if (widget.order.deliveryState?.isNotEmpty == true &&
+                      widget.order.deliveryMethod != 'Recoger en tienda') ...[
+                    _buildDataRow(Icons.map, 'Estado / Provincia:',
+                        widget.order.deliveryState!),
+                    const SizedBox(height: 8),
+                  ],
+                  if (widget.order.deliveryCity?.isNotEmpty == true &&
+                      widget.order.deliveryMethod != 'Recoger en tienda') ...[
+                    _buildDataRow(Icons.location_city, 'Ciudad / Municipio:',
+                        widget.order.deliveryCity!),
+                    const SizedBox(height: 8),
+                  ],
                   if (widget.order.deliveryAddress?.isNotEmpty == true &&
                       widget.order.deliveryMethod != 'Recoger en tienda') ...[
                     _buildDataRow(Icons.location_on, 'Dirección:',
