@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'edit_order_screen.dart';
 import 'confirm_payment_screen.dart';
+import 'order_calendar_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/order_model.dart';
@@ -509,6 +510,28 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ),
               ),
               const Spacer(),
+              // Calendar button
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const OrderCalendarScreen()),
+                ),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: AppTheme.primary,
+                    size: 22,
+                  ),
+                ),
+              ),
               // Bell button
               GestureDetector(
                 onTap: _showNotificationsPanel,
