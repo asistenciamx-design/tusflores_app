@@ -3,6 +3,7 @@ import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart';
 import '../../../orders/presentation/screens/orders_screen.dart';
 import '../../../profile/presentation/screens/main_profile_settings_screen.dart';
+import '../../../crm/presentation/screens/crm_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -18,6 +19,7 @@ class _MainLayoutState extends State<MainLayout> {
     DashboardScreen(onNavigateToOrders: () => setState(() => _currentIndex = 2)),
     const CatalogScreen(),
     const OrdersScreen(),
+    const CrmScreen(),
     const MainProfileSettingsScreen(),
   ];
 
@@ -61,6 +63,11 @@ class _MainLayoutState extends State<MainLayout> {
                 icon: Icon(Icons.shopping_bag_outlined),
                 activeIcon: Icon(Icons.shopping_bag),
                 label: 'Pedidos',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.group_outlined),
+                activeIcon: Icon(Icons.group),
+                label: 'CRM',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),

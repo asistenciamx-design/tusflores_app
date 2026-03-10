@@ -12,6 +12,7 @@ import '../../../../features/orders/domain/repositories/order_repository.dart';
 import '../../../../features/orders/domain/models/order_model.dart';
 import 'weekly_stats_screen.dart';
 import 'package:intl/intl.dart';
+import '../../../crm/presentation/screens/crm_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
@@ -450,6 +451,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
                ),
              ),
           ],
+        ),
+        const SizedBox(height: 12),
+        // CRM Card
+        InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CrmScreen()),
+          ),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primary.withValues(alpha: 0.12),
+                  AppTheme.primary.withValues(alpha: 0.05),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.group,
+                      color: AppTheme.primaryDark, size: 24),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('CRM',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppTheme.primaryDark)),
+                      SizedBox(height: 2),
+                      Text('Gestiona tus clientes y pedidos',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.mutedLight)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios,
+                    color: AppTheme.primaryDark.withValues(alpha: 0.6),
+                    size: 14),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         ElevatedButton(
