@@ -170,7 +170,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Mi Catálogo', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          if (widget.showPausedOnly)
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 38,
+                height: 38,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_back,
+                    color: Colors.black87, size: 20),
+              ),
+            ),
+          Text(
+            widget.showPausedOnly ? 'Productos en Pausa' : 'Mi Catálogo',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           // Search bar
           Container(

@@ -16,7 +16,10 @@ class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
 
   List<Widget> get _screens => [
-    DashboardScreen(onNavigateToOrders: () => setState(() => _currentIndex = 2)),
+    DashboardScreen(
+      onNavigateToOrders: () => setState(() => _currentIndex = 2),
+      onNavigateToCatalog: () => setState(() => _currentIndex = 1),
+    ),
     const CatalogScreen(),
     const OrdersScreen(),
     const CrmScreen(),

@@ -493,6 +493,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   // ─── Header ─────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
+    final canPop = Navigator.canPop(context);
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
@@ -503,6 +504,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (canPop) ...[
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_back,
+                        color: Colors.black87, size: 20),
+                  ),
+                ),
+              ],
               const Text(
                 'Mis Pedidos',
                 style: TextStyle(

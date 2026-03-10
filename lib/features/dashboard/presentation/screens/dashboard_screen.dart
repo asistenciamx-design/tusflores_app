@@ -19,7 +19,8 @@ import '../../../orders/presentation/screens/orders_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
-  const DashboardScreen({super.key, this.onNavigateToOrders});
+  final VoidCallback? onNavigateToCatalog;
+  const DashboardScreen({super.key, this.onNavigateToOrders, this.onNavigateToCatalog});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -351,8 +352,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const CatalogScreen())),
+                onTap: () => widget.onNavigateToCatalog?.call(),
                 child: _StatCard(
                   icon: Icons.inventory_2,
                   iconColor: Colors.purple,
