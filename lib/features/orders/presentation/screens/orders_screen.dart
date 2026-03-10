@@ -36,7 +36,8 @@ class _NotificationItem {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key});
+  final int initialTab;
+  const OrdersScreen({super.key, this.initialTab = 0});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -47,7 +48,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   final List<String> _dateFilters = ['Ayer', 'Hoy', 'Mañana', '7 días', '15 días'];
   int _selectedDateIndex = 1; // "Hoy" selected by default
 
-  int _selectedTab = 0; // 0 = Pendientes, 1 = Entregados
+  late int _selectedTab;
 
   // Custom date range
   DateTimeRange? _customDateRange;
@@ -73,6 +74,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.initialTab;
     _loadOrders();
   }
 

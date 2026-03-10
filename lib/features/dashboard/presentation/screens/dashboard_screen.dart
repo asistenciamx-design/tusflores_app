@@ -13,6 +13,9 @@ import '../../../../features/orders/domain/models/order_model.dart';
 import 'weekly_stats_screen.dart';
 import 'package:intl/intl.dart';
 import '../../../crm/presentation/screens/crm_screen.dart';
+import '../../../orders/presentation/screens/edit_order_screen.dart';
+import '../../../catalog/presentation/screens/catalog_screen.dart';
+import '../../../orders/presentation/screens/orders_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
@@ -314,22 +317,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           children: [
             Expanded(
-              child: _StatCard(
-                icon: Icons.pending_actions,
-                iconColor: Colors.orange,
-                iconBg: Colors.orange.withValues(alpha: 0.1),
-                value: _pendingCount.toString(),
-                label: 'Pendientes',
+              child: GestureDetector(
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const OrdersScreen(initialTab: 0))),
+                child: _StatCard(
+                  icon: Icons.pending_actions,
+                  iconColor: Colors.orange,
+                  iconBg: Colors.orange.withValues(alpha: 0.1),
+                  value: _pendingCount.toString(),
+                  label: 'Pendientes',
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _StatCard(
-                icon: Icons.local_shipping,
-                iconColor: Colors.blue,
-                iconBg: Colors.blue.withValues(alpha: 0.1),
-                value: _deliveredCount.toString(),
-                label: 'Entregados',
+              child: GestureDetector(
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const OrdersScreen(initialTab: 1))),
+                child: _StatCard(
+                  icon: Icons.local_shipping,
+                  iconColor: Colors.blue,
+                  iconBg: Colors.blue.withValues(alpha: 0.1),
+                  value: _deliveredCount.toString(),
+                  label: 'Entregados',
+                ),
               ),
             ),
           ],
@@ -339,18 +350,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           children: [
             Expanded(
-              child: _StatCard(
-                icon: Icons.inventory_2,
-                iconColor: Colors.purple,
-                iconBg: Colors.purple.withValues(alpha: 0.1),
-                value: _catalogCount.toString(),
-                label: 'Catálogo',
+              child: GestureDetector(
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const CatalogScreen())),
+                child: _StatCard(
+                  icon: Icons.inventory_2,
+                  iconColor: Colors.purple,
+                  iconBg: Colors.purple.withValues(alpha: 0.1),
+                  value: _catalogCount.toString(),
+                  label: 'Catálogo',
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: GestureDetector(
-                onTap: () => context.go('/catalog'),
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const CatalogScreen(showPausedOnly: true))),
                 child: _StatCard(
                   icon: Icons.pause_circle_outline,
                   iconColor: Colors.grey.shade600,
@@ -655,7 +671,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        Container(
+        InkWell(
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => EditOrderScreen(order: order))),
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
@@ -736,6 +756,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
+        ),
         ),
       ],
     );

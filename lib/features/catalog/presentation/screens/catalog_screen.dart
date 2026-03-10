@@ -62,7 +62,8 @@ class ProductItem {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 class CatalogScreen extends StatefulWidget {
-  const CatalogScreen({super.key});
+  final bool showPausedOnly;
+  const CatalogScreen({super.key, this.showPausedOnly = false});
 
   @override
   State<CatalogScreen> createState() => _CatalogScreenState();
@@ -89,6 +90,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   List<ProductItem> get _filteredProducts {
     return _products.where((p) {
+      if (widget.showPausedOnly && p.isVisible) return false;
       // "Todos" shows everything; otherwise filter by whether the product has that tag
       final matchesCategory = _selectedCategory == 'Todos' || p.tags.contains(_selectedCategory);
       final matchesSearch = _searchQuery.isEmpty || p.name.toLowerCase().contains(_searchQuery.toLowerCase());
