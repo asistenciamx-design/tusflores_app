@@ -395,14 +395,14 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               children: [
                 Text(name,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13)),
+                        fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(
                   '\$${total.toStringAsFixed(0)}',
                   style: const TextStyle(
                       color: Color(0xFF00C853),
                       fontWeight: FontWeight.bold,
-                      fontSize: 14),
+                      fontSize: 16),
                 ),
               ],
             ),
@@ -439,7 +439,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                 ),
                 Text('$_mainProductQty',
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13)),
+                        fontWeight: FontWeight.bold, fontSize: 15)),
                 GestureDetector(
                   onTap: () {
                     setState(() {
@@ -496,14 +496,14 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               children: [
                 Text(product['name'],
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13)),
+                        fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(
                   '\$${total.toStringAsFixed(0)}',
                   style: const TextStyle(
                       color: Color(0xFF00C853),
                       fontWeight: FontWeight.bold,
-                      fontSize: 14),
+                      fontSize: 16),
                 ),
               ],
             ),
@@ -537,7 +537,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                 ),
                 Text('$qty',
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13)),
+                        fontWeight: FontWeight.bold, fontSize: 15)),
                 GestureDetector(
                   onTap: () {
                     setState(() {
@@ -639,12 +639,13 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           ),
                           title: Text(productItem.name,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14)),
+                                  fontWeight: FontWeight.bold, fontSize: 15)),
                           subtitle: Text(
                               '\$${productItem.price.toStringAsFixed(0)}',
                               style: const TextStyle(
                                   color: Color(0xFF00C853),
-                                  fontWeight: FontWeight.bold)),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
                           trailing: ElevatedButton(
                             onPressed: () {
                               setState(() {
@@ -776,7 +777,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.black87,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 12,
+                fontSize: 14,
               ),
             ),
           ],
@@ -911,11 +912,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                     const SizedBox(height: 8),
                     Text(title,
                         style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
+                            fontSize: 14, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
                     Text(subtitle,
                         style:
-                            const TextStyle(fontSize: 10, color: Colors.grey)),
+                            const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ],
@@ -992,7 +993,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                 title,
                 style: const TextStyle(
                     fontWeight: FontWeight.w500,
-                    fontSize: 13,
+                    fontSize: 15,
                     color: Colors.black87),
               ),
             ),
@@ -1068,12 +1069,12 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   children: [
                     const Text('¿Enviar como anónimo?',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 12)),
+                            fontWeight: FontWeight.bold, fontSize: 14)),
                     const SizedBox(height: 2),
                     Text(
                         'No incluiremos tu nombre en la tarjeta del destinatario.',
                         style:
-                            TextStyle(color: Colors.grey[500], fontSize: 10)),
+                            TextStyle(color: Colors.grey[500], fontSize: 12)),
                   ],
                 ),
               ),
@@ -1102,7 +1103,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               Expanded(
                 child: Text(
                   'Necesitamos tus datos para mantenerte informado sobre tu pedido.',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ),
             ],
@@ -1153,7 +1154,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               Expanded(
                 child: Text(
                   'Ingresa los detalles de la ubicación de entrega.',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ),
             ],
@@ -1272,7 +1273,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             const SizedBox(height: 4),
             Text(id,
                 style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 11,
                     color: isSelected ? activeColor : Colors.grey[600],
                     fontWeight:
                         isSelected ? FontWeight.bold : FontWeight.normal)),
@@ -1288,7 +1289,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
       child: Text(
         text.toUpperCase(),
         style: TextStyle(
-          fontSize: baseLabel ? 12 : 9,
+          fontSize: baseLabel ? 14 : 11,
           fontWeight: FontWeight.bold,
           color: baseLabel ? Colors.black87 : Colors.grey[500],
           letterSpacing: 0.5,
@@ -1308,7 +1309,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           initialValue: value != null && items.contains(value) ? value : null,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
             filled: true,
             fillColor: Colors.white,
             contentPadding:
@@ -1331,7 +1332,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           items: items
               .map((e) => DropdownMenuItem(
                   value: e,
-                  child: Text(e, style: const TextStyle(fontSize: 13))))
+                  child: Text(e, style: const TextStyle(fontSize: 15))))
               .toList(),
         ),
       ],
@@ -1364,10 +1365,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Subtotal:',
-                  style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  style: TextStyle(color: Colors.grey, fontSize: 16)),
               Text('\$${subtotal.toStringAsFixed(2)}',
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14)),
+                      fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1379,10 +1380,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           _deliveryMethod != 'Recoger en tienda'
                       ? 'Costo de envío $_selectedCity:'
                       : 'Costo de envío:',
-                  style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  style: const TextStyle(color: Colors.grey, fontSize: 16)),
               Text('\$${effectiveShippingCost.toStringAsFixed(2)}',
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14)),
+                      fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const Padding(
@@ -1393,12 +1394,12 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Total:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               Text('\$${total.toStringAsFixed(2)}',
                   style: const TextStyle(
                       color: Color(0xFF00E676),
                       fontWeight: FontWeight.bold,
-                      fontSize: 18)),
+                      fontSize: 20)),
             ],
           ),
         ],
@@ -1441,10 +1442,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
       keyboardType: keyboardType,
       textInputAction: textInputAction ?? TextInputAction.next,
       autofillHints: autofillHints,
-      style: const TextStyle(fontSize: 13),
+      style: const TextStyle(fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
         filled: true,
         fillColor: Colors.white,
         contentPadding:
