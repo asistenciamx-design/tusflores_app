@@ -43,6 +43,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   final _messageCtrl = TextEditingController();
   bool _isAnonymous = false;
 
+  // Buyer data (CRM)
+  final _buyerNameCtrl = TextEditingController();
+  final _buyerWhatsappCtrl = TextEditingController();
+  final _buyerEmailCtrl = TextEditingController();
+
   final _streetCtrl = TextEditingController();
   final _suburbCtrl = TextEditingController();
   final _zipCtrl = TextEditingController();
@@ -159,6 +164,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _messageCtrl.dispose();
+    _buyerNameCtrl.dispose();
+    _buyerWhatsappCtrl.dispose();
+    _buyerEmailCtrl.dispose();
     _streetCtrl.dispose();
     _suburbCtrl.dispose();
     _zipCtrl.dispose();
@@ -236,6 +244,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                     _buildDeliveryAddress(),
                     const SizedBox(height: 24),
                   ],
+                  _buildSectionTitle('Tus Datos'),
+                  const SizedBox(height: 12),
+                  _buildBuyerData(),
+                  const SizedBox(height: 24),
                   _buildOrderTotals(),
                   const SizedBox(height: 32),
                   SafeArea(
@@ -1069,6 +1081,57 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBuyerData() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.person_outline, color: Colors.blueGrey, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Necesitamos tus datos para mantenerte informado sobre tu pedido.',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildInputLabel('TU NOMBRE'),
+          _buildTextField(
+            controller: _buyerNameCtrl,
+            hint: 'Ej. Ana García',
+            autofillHints: const [AutofillHints.name],
+          ),
+          const SizedBox(height: 16),
+          _buildInputLabel('WHATSAPP'),
+          _buildTextField(
+            controller: _buyerWhatsappCtrl,
+            hint: 'Ej. 5512345678',
+            keyboardType: TextInputType.phone,
+            autofillHints: const [AutofillHints.telephoneNumber],
+          ),
+          const SizedBox(height: 16),
+          _buildInputLabel('CORREO ELECTRÓNICO'),
+          _buildTextField(
+            controller: _buyerEmailCtrl,
+            hint: 'Ej. ana@correo.com',
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+          ),
+        ],
+      ),
     );
   }
 
