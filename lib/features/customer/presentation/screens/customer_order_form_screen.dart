@@ -234,7 +234,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   const SizedBox(height: 12),
                   _buildDeliveryMethods(),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Datos para la tarjeta'),
+                  _buildSectionTitle('Datos de Envío'),
                   const SizedBox(height: 12),
                   _buildRecipientData(),
                   const SizedBox(height: 24),
@@ -290,10 +290,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           shopId: widget.shopId ??
                               '', // Using currently loaded shopId
                           productName: encodedProducts,
-                          customerName: _nameCtrl.text.isEmpty
+                          customerName: _buyerNameCtrl.text.isEmpty
                               ? 'Cliente'
-                              : _nameCtrl.text,
-                          customerPhone: _phoneCtrl.text,
+                              : _buyerNameCtrl.text,
+                          customerPhone: _buyerWhatsappCtrl.text,
                           quantity: 1, // Store as 1 bundle
                           price: subtotal,
                           status: OrderStatus.pending,
@@ -317,6 +317,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           // editor can display and protect them correctly.
                           deliveryState: _selectedState,
                           deliveryCity: _selectedCity,
+                          buyerName: _buyerNameCtrl.text,
+                          buyerWhatsapp: _buyerWhatsappCtrl.text,
+                          buyerEmail: _buyerEmailCtrl.text,
                         );
 
                         context.push('/shop/summary', extra: order);

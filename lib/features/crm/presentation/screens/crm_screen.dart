@@ -38,7 +38,8 @@ class _CrmScreenState extends State<CrmScreen> {
           : _interactions
               .where((c) =>
                   c.name.toLowerCase().contains(q) ||
-                  c.phone.toLowerCase().contains(q))
+                  c.phone.toLowerCase().contains(q) ||
+                  c.email.toLowerCase().contains(q))
               .toList();
     });
   }
@@ -50,12 +51,12 @@ class _CrmScreenState extends State<CrmScreen> {
     try {
       final orders = await OrderRepository().getOrders(user.id);
 
-      // Group orders by buyer phone (customerPhone) to build client list
+      // Group orders by buyer whatsapp to build client list (CRM buyers)
       final Map<String, _ClientInteraction> map = {};
       for (final order in orders) {
-        final phone = order.customerPhone ?? '';
-        final name = (order.customerName?.isNotEmpty == true)
-            ? order.customerName!
+        final phone = order.buyerWhatsapp ?? '';
+        final name = (order.buyerName?.isNotEmpty == true)
+            ? order.buyerName!
             : 'Sin nombre';
         final key = phone.isNotEmpty ? phone : name;
 
@@ -73,6 +74,7 @@ class _CrmScreenState extends State<CrmScreen> {
           map[key] = _ClientInteraction(
             name: name,
             phone: phone,
+            email: order.buyerEmail ?? '',
             orderCount: 1,
             lastInteraction: order.createdAt,
           );
@@ -337,12 +339,14 @@ class _CrmScreenState extends State<CrmScreen> {
 class _ClientInteraction {
   final String name;
   final String phone;
+  final String email;
   final int orderCount;
   final DateTime? lastInteraction;
 
   const _ClientInteraction({
     required this.name,
     required this.phone,
+    this.email = '',
     required this.orderCount,
     this.lastInteraction,
   });
@@ -354,6 +358,7 @@ class _ClientInteraction {
       _ClientInteraction(
         name: name,
         phone: phone,
+        email: email,
         orderCount: orderCount ?? this.orderCount,
         lastInteraction: lastInteraction ?? this.lastInteraction,
       );
@@ -490,7 +495,12 @@ class _InteractionTile extends StatelessWidget {
                         fontSize: 14,
                         color: Colors.black87)),
                 const SizedBox(height: 2),
-                Text(_formatDate(client.lastInteraction),
+                Text(
+                    client.phone.isNotEmpty
+                        ? client.phone
+                        : client.email.isNotEmpty
+                            ? client.email
+                            : _formatDate(client.lastInteraction),
                     style: const TextStyle(
                         fontSize: 12, color: AppTheme.mutedLight)),
               ],

@@ -35,6 +35,9 @@ class OrderModel {
   final String? deliveryLocationType;
   final String? deliveryState;
   final String? deliveryCity;
+  final String? buyerName;
+  final String? buyerWhatsapp;
+  final String? buyerEmail;
 
   OrderModel({
     this.id,
@@ -65,6 +68,9 @@ class OrderModel {
     this.deliveryLocationType,
     this.deliveryState,
     this.deliveryCity,
+    this.buyerName,
+    this.buyerWhatsapp,
+    this.buyerEmail,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -94,6 +100,9 @@ class OrderModel {
       deliveryLocationType: json['delivery_location_type'] as String?,
       deliveryState: json['delivery_state'] as String?,
       deliveryCity: json['delivery_city'] as String?,
+      buyerName: json['buyer_name'] as String?,
+      buyerWhatsapp: json['buyer_whatsapp'] as String?,
+      buyerEmail: json['buyer_email'] as String?,
       // Map UI colors for displaying correctly in the app
       iconBgColor: const Color(0xFFF5F5F5),
       iconColor: Colors.black87,
@@ -130,6 +139,9 @@ class OrderModel {
       'delivery_location_type': deliveryLocationType,
       'delivery_state': deliveryState,
       'delivery_city': deliveryCity,
+      'buyer_name': buyerName,
+      'buyer_whatsapp': buyerWhatsapp,
+      'buyer_email': buyerEmail,
     };
   }
 
@@ -175,6 +187,9 @@ class OrderModel {
     String? deliveryLocationType,
     String? deliveryState,
     String? deliveryCity,
+    String? buyerName,
+    String? buyerWhatsapp,
+    String? buyerEmail,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -205,6 +220,9 @@ class OrderModel {
       deliveryLocationType: deliveryLocationType ?? this.deliveryLocationType,
       deliveryState: deliveryState ?? this.deliveryState,
       deliveryCity: deliveryCity ?? this.deliveryCity,
+      buyerName: buyerName ?? this.buyerName,
+      buyerWhatsapp: buyerWhatsapp ?? this.buyerWhatsapp,
+      buyerEmail: buyerEmail ?? this.buyerEmail,
     );
   }
 
