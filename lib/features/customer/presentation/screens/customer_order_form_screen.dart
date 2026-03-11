@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/models/shop_settings_model.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
@@ -71,10 +73,36 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   bool _isLoadingSettings = true;
   ShopSettingsModel? _settings;
 
+  // ── Draft persistence ─────────────────────────────────────────────────────
+  Timer? _draftTimer;
+  SharedPreferences? _prefs;
+
+  String get _draftKey =>
+      'order_draft_${widget.shopId ?? 'unknown'}_${widget.product?.id ?? 'generic'}';
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    // Auto-save on every state change once prefs are ready
+    if (_prefs != null) _scheduleSave();
+  }
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Init prefs first, then load data (which will restore the draft at the end)
+    SharedPreferences.getInstance().then((prefs) {
+      _prefs = prefs;
+      _loadData();
+    });
+    // Save whenever the user types in any text field
+    for (final ctrl in [
+      _nameCtrl, _phoneCtrl, _messageCtrl,
+      _buyerNameCtrl, _buyerWhatsappCtrl, _buyerEmailCtrl,
+      _streetCtrl, _suburbCtrl, _zipCtrl, _refCtrl, _locationDetailsCtrl,
+    ]) {
+      ctrl.addListener(_scheduleSave);
+    }
   }
 
   Future<void> _loadData() async {
@@ -113,6 +141,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             _selectedTime = settings.deliveryRanges.first.label;
           }
         });
+        // Restore saved draft AFTER settings are loaded so state/city dropdowns
+        // have their available values and shipping cost can be re-calculated.
+        _restoreDraft();
       }
     } catch (e) {
       debugPrint('Error loading order form data: $e');
@@ -161,6 +192,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _messageCtrl.dispose();
@@ -173,6 +205,115 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     _refCtrl.dispose();
     _locationDetailsCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Draft helpers ─────────────────────────────────────────────────────────
+
+  void _scheduleSave() {
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(milliseconds: 500), _saveDraft);
+  }
+
+  void _saveDraft() {
+    if (_prefs == null || !mounted) return;
+    _prefs!.setString(
+      _draftKey,
+      jsonEncode({
+        'name': _nameCtrl.text,
+        'phone': _phoneCtrl.text,
+        'message': _messageCtrl.text,
+        'buyerName': _buyerNameCtrl.text,
+        'buyerWhatsapp': _buyerWhatsappCtrl.text,
+        'buyerEmail': _buyerEmailCtrl.text,
+        'street': _streetCtrl.text,
+        'suburb': _suburbCtrl.text,
+        'zip': _zipCtrl.text,
+        'ref': _refCtrl.text,
+        'locationDetails': _locationDetailsCtrl.text,
+        'isAnonymous': _isAnonymous,
+        'selectedDate': _selectedDate,
+        'selectedTime': _selectedTime,
+        'deliveryMethod': _deliveryMethod,
+        'selectedState': _selectedState,
+        'selectedCity': _selectedCity,
+        'deliveryLocationType': _deliveryLocationType,
+        'mainProductQty': _mainProductQty,
+        'additionalProducts': _additionalProducts,
+      }),
+    );
+  }
+
+  void _restoreDraft() {
+    if (_prefs == null) return;
+    final raw = _prefs!.getString(_draftKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final Map<String, dynamic> d = jsonDecode(raw);
+      // Temporarily null prefs so the setState override doesn't schedule a
+      // redundant save while we are restoring.
+      final savedPrefs = _prefs;
+      _prefs = null;
+      setState(() {
+        if ((d['name'] as String?)?.isNotEmpty == true) {
+          _nameCtrl.text = d['name'];
+        }
+        if ((d['phone'] as String?)?.isNotEmpty == true) {
+          _phoneCtrl.text = d['phone'];
+        }
+        if ((d['message'] as String?)?.isNotEmpty == true) {
+          _messageCtrl.text = d['message'];
+        }
+        if ((d['buyerName'] as String?)?.isNotEmpty == true) {
+          _buyerNameCtrl.text = d['buyerName'];
+        }
+        if ((d['buyerWhatsapp'] as String?)?.isNotEmpty == true) {
+          _buyerWhatsappCtrl.text = d['buyerWhatsapp'];
+        }
+        if ((d['buyerEmail'] as String?)?.isNotEmpty == true) {
+          _buyerEmailCtrl.text = d['buyerEmail'];
+        }
+        if ((d['street'] as String?)?.isNotEmpty == true) {
+          _streetCtrl.text = d['street'];
+        }
+        if ((d['suburb'] as String?)?.isNotEmpty == true) {
+          _suburbCtrl.text = d['suburb'];
+        }
+        if ((d['zip'] as String?)?.isNotEmpty == true) {
+          _zipCtrl.text = d['zip'];
+        }
+        if ((d['ref'] as String?)?.isNotEmpty == true) {
+          _refCtrl.text = d['ref'];
+        }
+        if ((d['locationDetails'] as String?)?.isNotEmpty == true) {
+          _locationDetailsCtrl.text = d['locationDetails'];
+        }
+        _isAnonymous = d['isAnonymous'] ?? false;
+        _selectedDate = d['selectedDate'] ?? _selectedDate;
+        if (d['selectedTime'] != null) _selectedTime = d['selectedTime'];
+        _deliveryMethod = d['deliveryMethod'] ?? _deliveryMethod;
+        _selectedState = d['selectedState'];
+        _selectedCity = d['selectedCity'];
+        _deliveryLocationType =
+            d['deliveryLocationType'] ?? _deliveryLocationType;
+        _mainProductQty = d['mainProductQty'] ?? _mainProductQty;
+        if (d['additionalProducts'] is List) {
+          _additionalProducts
+            ..clear()
+            ..addAll((d['additionalProducts'] as List)
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList());
+        }
+      });
+      _prefs = savedPrefs;
+      _updateShippingCost();
+    } catch (e) {
+      debugPrint('[Draft] Restore error: $e');
+    }
+  }
+
+  void _clearDraft() {
+    _draftTimer?.cancel();
+    _prefs?.remove(_draftKey);
   }
 
   @override
@@ -322,6 +463,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           buyerEmail: _buyerEmailCtrl.text,
                         );
 
+                        _clearDraft();
                         context.push('/shop/summary', extra: order);
                       },
                       icon: const Icon(Icons.chat_bubble_outline,

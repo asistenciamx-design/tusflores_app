@@ -41,6 +41,7 @@ dependencies:
   path_provider: ^2.1.5
   image_gallery_saver: ^2.0.3
   universal_html: ^2.3.0
+  shared_preferences: ^2.3.5
 
 dev_dependencies:
   flutter_test:
