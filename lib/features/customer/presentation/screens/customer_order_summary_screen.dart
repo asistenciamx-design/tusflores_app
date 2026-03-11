@@ -748,10 +748,15 @@ class _CustomerOrderSummaryScreenState
                           letterSpacing: 0.5)),
                   const SizedBox(height: 12),
                   _buildDataRow(Icons.person_pin, 'Quien recibe:',
-                      widget.order.customerName),
+                      widget.order.recipientName?.isNotEmpty == true
+                          ? widget.order.recipientName!
+                          : widget.order.customerName),
                   const SizedBox(height: 8),
                   _buildDataRow(Icons.phone_iphone,
-                      'Teléfono del destinatario:', widget.order.customerPhone),
+                      'Teléfono del destinatario:',
+                      widget.order.recipientPhone?.isNotEmpty == true
+                          ? widget.order.recipientPhone!
+                          : widget.order.customerPhone),
                 ],
               ),
             ),
