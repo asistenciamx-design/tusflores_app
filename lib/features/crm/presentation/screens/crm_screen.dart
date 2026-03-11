@@ -5,6 +5,8 @@ import '../../../orders/domain/models/order_model.dart';
 import '../../../orders/domain/repositories/order_repository.dart';
 import 'crm_client_profile_screen.dart';
 
+enum _SortMode { az, mostOrders, recent }
+
 class CrmScreen extends StatefulWidget {
   const CrmScreen({super.key});
 
@@ -18,6 +20,7 @@ class _CrmScreenState extends State<CrmScreen> {
   int _totalClients = 0;
   final _searchCtrl = TextEditingController();
   List<_ClientInteraction> _filtered = [];
+  _SortMode _sortMode = _SortMode.recent;
 
   @override
   void initState() {
@@ -32,18 +35,40 @@ class _CrmScreenState extends State<CrmScreen> {
     super.dispose();
   }
 
-  void _onSearch() {
+  void _onSearch() => _refresh();
+
+  void _onSortChanged(_SortMode mode) {
+    _sortMode = mode;
+    _refresh();
+  }
+
+  void _refresh() {
     final q = _searchCtrl.text.toLowerCase();
+    final base = q.isEmpty
+        ? List<_ClientInteraction>.from(_interactions)
+        : _interactions
+            .where((c) =>
+                c.name.toLowerCase().contains(q) ||
+                c.phone.toLowerCase().contains(q) ||
+                c.email.toLowerCase().contains(q))
+            .toList();
     setState(() {
-      _filtered = q.isEmpty
-          ? _interactions
-          : _interactions
-              .where((c) =>
-                  c.name.toLowerCase().contains(q) ||
-                  c.phone.toLowerCase().contains(q) ||
-                  c.email.toLowerCase().contains(q))
-              .toList();
+      _filtered = _sortedList(base);
     });
+  }
+
+  List<_ClientInteraction> _sortedList(List<_ClientInteraction> list) {
+    final copy = List<_ClientInteraction>.from(list);
+    switch (_sortMode) {
+      case _SortMode.az:
+        copy.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      case _SortMode.mostOrders:
+        copy.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+      case _SortMode.recent:
+        copy.sort((a, b) => (b.lastInteraction ?? DateTime(0))
+            .compareTo(a.lastInteraction ?? DateTime(0)));
+    }
+    return copy;
   }
 
   Future<void> _loadData() async {
@@ -84,15 +109,13 @@ class _CrmScreenState extends State<CrmScreen> {
         );
       }
 
-      final sorted = map.values.toList()
-        ..sort((a, b) => (b.lastInteraction ?? DateTime(0))
-            .compareTo(a.lastInteraction ?? DateTime(0)));
+      final all = map.values.toList();
 
       if (mounted) {
         setState(() {
-          _interactions = sorted;
-          _filtered = sorted;
-          _totalClients = sorted.length;
+          _interactions = all;
+          _filtered = _sortedList(all);
+          _totalClients = all.length;
           _isLoading = false;
         });
       }
@@ -302,22 +325,30 @@ class _CrmScreenState extends State<CrmScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Interacciones Recientes',
-                style:
-                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            TextButton(
-              onPressed: () {},
-              child: const Text('Ver todos',
-                  style: TextStyle(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14)),
+            _SortChip(
+              label: 'A-Z',
+              icon: Icons.sort_by_alpha,
+              selected: _sortMode == _SortMode.az,
+              onTap: () => _onSortChanged(_SortMode.az),
+            ),
+            const SizedBox(width: 8),
+            _SortChip(
+              label: 'Más pedidos',
+              icon: Icons.trending_up,
+              selected: _sortMode == _SortMode.mostOrders,
+              onTap: () => _onSortChanged(_SortMode.mostOrders),
+            ),
+            const SizedBox(width: 8),
+            _SortChip(
+              label: 'Recientes',
+              icon: Icons.calendar_today_outlined,
+              selected: _sortMode == _SortMode.recent,
+              onTap: () => _onSortChanged(_SortMode.recent),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         if (_filtered.isEmpty)
           Container(
             padding: const EdgeInsets.all(24),
@@ -423,6 +454,58 @@ class _MetricCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SortChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SortChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.primary.withValues(alpha: 0.15)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? AppTheme.primary.withValues(alpha: 0.5)
+                : Colors.grey.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 13,
+                color: selected ? AppTheme.primary : AppTheme.mutedLight),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight:
+                        selected ? FontWeight.bold : FontWeight.normal,
+                    color:
+                        selected ? AppTheme.primary : AppTheme.mutedLight)),
+          ],
+        ),
       ),
     );
   }
