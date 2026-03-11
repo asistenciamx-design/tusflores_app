@@ -142,26 +142,6 @@ class _CrmScreenState extends State<CrmScreen> {
         children: [
           Row(
             children: [
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.arrow_back,
-                      color: Colors.black87, size: 20),
-                ),
-              ),
-              const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
