@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../orders/domain/models/order_model.dart';
 import '../../../orders/domain/repositories/order_repository.dart';
+import 'crm_client_profile_screen.dart';
 
 class CrmScreen extends StatefulWidget {
   const CrmScreen({super.key});
@@ -52,33 +54,34 @@ class _CrmScreenState extends State<CrmScreen> {
       final orders = await OrderRepository().getOrders(user.id);
 
       // Group orders by buyer whatsapp to build client list (CRM buyers)
-      final Map<String, _ClientInteraction> map = {};
+      final Map<String, List<OrderModel>> byClient = {};
       for (final order in orders) {
-        final phone = order.buyerWhatsapp ?? '';
-        final name = (order.buyerName?.isNotEmpty == true)
-            ? order.buyerName!
-            : 'Sin nombre';
-        final key = phone.isNotEmpty ? phone : name;
+        final key = (order.buyerWhatsapp?.isNotEmpty == true)
+            ? order.buyerWhatsapp!
+            : (order.buyerName?.isNotEmpty == true ? order.buyerName! : 'sin-nombre');
+        byClient.putIfAbsent(key, () => []).add(order);
+      }
 
-        if (map.containsKey(key)) {
-          map[key] = map[key]!.copyWith(
-            orderCount: map[key]!.orderCount + 1,
-            lastInteraction: order.createdAt != null &&
-                    (map[key]!.lastInteraction == null ||
-                        order.createdAt!
-                            .isAfter(map[key]!.lastInteraction!))
-                ? order.createdAt
-                : map[key]!.lastInteraction,
-          );
-        } else {
-          map[key] = _ClientInteraction(
-            name: name,
-            phone: phone,
-            email: order.buyerEmail ?? '',
-            orderCount: 1,
-            lastInteraction: order.createdAt,
-          );
-        }
+      final Map<String, _ClientInteraction> map = {};
+      for (final entry in byClient.entries) {
+        final clientOrders = entry.value;
+        final first = clientOrders.first;
+        final name = (first.buyerName?.isNotEmpty == true)
+            ? first.buyerName!
+            : 'Sin nombre';
+        final phone = first.buyerWhatsapp ?? '';
+        final email = first.buyerEmail ?? '';
+        final lastInteraction = clientOrders
+            .map((o) => o.createdAt)
+            .reduce((a, b) => a.isAfter(b) ? a : b);
+        map[entry.key] = _ClientInteraction(
+          name: name,
+          phone: phone,
+          email: email,
+          orderCount: clientOrders.length,
+          lastInteraction: lastInteraction,
+          orders: clientOrders,
+        );
       }
 
       final sorted = map.values.toList()
@@ -201,15 +204,15 @@ class _CrmScreenState extends State<CrmScreen> {
             child: TextField(
               controller: _searchCtrl,
               style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Buscar clientes o pedidos...',
                 hintStyle:
-                    const TextStyle(color: AppTheme.mutedLight, fontSize: 14),
-                prefixIcon: const Icon(Icons.search,
+                    TextStyle(color: AppTheme.mutedLight, fontSize: 14),
+                prefixIcon: Icon(Icons.search,
                     color: AppTheme.mutedLight, size: 20),
                 border: InputBorder.none,
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
             ),
           ),
@@ -362,6 +365,7 @@ class _ClientInteraction {
   final String email;
   final int orderCount;
   final DateTime? lastInteraction;
+  final List<OrderModel> orders;
 
   const _ClientInteraction({
     required this.name,
@@ -369,19 +373,8 @@ class _ClientInteraction {
     this.email = '',
     required this.orderCount,
     this.lastInteraction,
+    this.orders = const [],
   });
-
-  _ClientInteraction copyWith({
-    int? orderCount,
-    DateTime? lastInteraction,
-  }) =>
-      _ClientInteraction(
-        name: name,
-        phone: phone,
-        email: email,
-        orderCount: orderCount ?? this.orderCount,
-        lastInteraction: lastInteraction ?? this.lastInteraction,
-      );
 }
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────
@@ -483,7 +476,16 @@ class _InteractionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => CrmClientProfileScreen(
+          name: client.name,
+          phone: client.phone,
+          email: client.email,
+          orders: client.orders,
+        ),
+      )),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -555,6 +557,7 @@ class _InteractionTile extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
