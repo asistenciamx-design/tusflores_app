@@ -29,13 +29,13 @@ class _PublicCustomerMainLayoutState extends State<PublicCustomerMainLayout> {
         child = CustomerCatalogScreen(shopId: widget.shopId, shopName: widget.shopName);
         break;
       case 1:
-        child = const CustomerBranchScreen();
+        child = CustomerBranchScreen(shopId: widget.shopId);
         break;
       case 2:
-        child = const CustomerAboutUsScreen();
+        child = CustomerAboutUsScreen(shopId: widget.shopId);
         break;
       case 3:
-        child = const CustomerFaqScreen();
+        child = CustomerFaqScreen(shopId: widget.shopId);
         break;
       default:
         child = CustomerCatalogScreen(shopId: widget.shopId, shopName: widget.shopName);
