@@ -599,7 +599,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
                 borderRadius: BorderRadius.circular(14)),
             elevation: 0,
           ),
-          child: const Text('Cerrar Perfil',
+          child: const Text('Guardar Información',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
