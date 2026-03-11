@@ -67,6 +67,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
   // ── Realtime
   RealtimeChannel? _ordersChannel;
 
+  // ── Shop name (for share messages)
+  String _shopName = 'Mi Florería';
+
   // ── Notifications
   final List<_NotificationItem> _notifications = [];
   int _unreadCount = 0;
@@ -93,8 +96,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (user != null) {
       final fetched = await _orderRepo.getOrders(user.id);
       _orders = fetched;
-      // Start realtime subscription (restart if already active)
       _subscribeToOrders(user.id);
+      try {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('shop_name')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (mounted && profile != null) {
+          setState(() => _shopName = profile['shop_name'] ?? 'Mi Florería');
+        }
+      } catch (_) {}
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -1469,8 +1481,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   void _shareOrder(OrderModel order) {
     Share.share(
-      order.toShareMessage(isReceipt: false),
-      subject: 'Pedido ${order.folio} — Florería Las Rosas',
+      order.toShareMessage(isReceipt: false, shopName: _shopName),
+      subject: 'Pedido ${order.folio} — $_shopName',
     );
   }
 }
@@ -1494,7 +1506,7 @@ String _formatTimeGlobal(DateTime dt) {
 }
 
 extension OrderShareExtension on OrderModel {
-  String toShareMessage({bool isReceipt = false}) {
+  String toShareMessage({bool isReceipt = false, String shopName = 'Mi Florería'}) {
     final statusLabel = switch (status) {
       OrderStatus.waiting    => '⏳ En espera',
       OrderStatus.processing => '🔨 Elaborando',
@@ -1508,10 +1520,10 @@ extension OrderShareExtension on OrderModel {
     
     final buf = StringBuffer();
     if (isReceipt) {
-      buf.writeln('🌸 *Recibo de Pago — Florería Las Rosas*');
+      buf.writeln('🌸 *Recibo de Pago — $shopName*');
       buf.writeln('━━━━━━━━━━━━━━━━━━━━');
     } else {
-      buf.writeln('🌸 *Florería Las Rosas*');
+      buf.writeln('🌸 *$shopName*');
       buf.writeln('📦 *Detalle de Pedido $folio*');
       buf.writeln('─────────────────');
     }

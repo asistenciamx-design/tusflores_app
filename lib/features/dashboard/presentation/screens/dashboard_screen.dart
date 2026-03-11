@@ -69,10 +69,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (order.status == OrderStatus.delivered) delivered++;
         
         // Sales today
-        if (order.createdAt != null &&
-            order.createdAt!.year == today.year &&
-            order.createdAt!.month == today.month &&
-            order.createdAt!.day == today.day) {
+        if (order.createdAt.year == today.year &&
+            order.createdAt.month == today.month &&
+            order.createdAt.day == today.day) {
           sales += order.total;
         }
       }

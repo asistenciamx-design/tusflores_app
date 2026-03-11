@@ -28,6 +28,7 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
   bool _saved = false;
   bool _isLoading = true;
   List<_PaymentMethod> _methods = [];
+  String _shopName = 'Mi Florería';
 
   @override
   void initState() {
@@ -93,10 +94,23 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
       if (idx >= 0) preselected = idx;
     }
 
+    String shopName = 'Mi Florería';
+    try {
+      if (user != null) {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('shop_name')
+            .eq('id', user.id)
+            .maybeSingle();
+        shopName = profile?['shop_name'] ?? 'Mi Florería';
+      }
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _methods = list;
         _selectedMethod = preselected;
+        _shopName = shopName;
         _isLoading = false;
       });
     }
@@ -149,7 +163,7 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
     widget.order.paymentMethod = '$method$detail';
     widget.order.isPaid = true;
     
-    final receipt = widget.order.toShareMessage(isReceipt: true);
+    final receipt = widget.order.toShareMessage(isReceipt: true, shopName: _shopName);
     
     // Revert state
     widget.order.paymentMethod = oldMethod;
@@ -257,7 +271,7 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => Share.share(_buildReceipt(), subject: 'Recibo ${widget.order.folio} — Florería Las Rosas'),
+              onPressed: () => Share.share(_buildReceipt(), subject: 'Recibo ${widget.order.folio} — $_shopName'),
               icon: const Padding(
                 padding: EdgeInsets.only(bottom: 2.0),
                 child: Icon(Icons.receipt_long, size: 18, color: AppTheme.primary),

@@ -47,14 +47,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
            onPressed: () => context.pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.favorite_outline, color: Colors.black, size: 24),
-            onPressed: () {
-               // TODO: Toggle favorite
-            },
-          ),
-        ],
+        actions: const [],
       ),
       // ── Use Stack so the CTA button is always visible on Flutter web mobile.
       // bottomNavigationBar + SafeArea miscalculates insets on Safari iOS on first

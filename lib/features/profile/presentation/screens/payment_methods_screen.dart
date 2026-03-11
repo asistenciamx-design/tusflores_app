@@ -21,6 +21,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
   bool _isLoading = true;
   ShopSettingsModel? _settings;
   String _shopId = '';
+  String _shopName = 'Mi Florería';
 
   // Pre-defined simple payment options
   static const _kDirectOptions = [
@@ -48,9 +49,19 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
     if (user != null) {
       _shopId = user.id;
       final settings = await _repo.getSettings(_shopId);
+      String shopName = 'Mi Florería';
+      try {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('shop_name')
+            .eq('id', _shopId)
+            .maybeSingle();
+        shopName = profile?['shop_name'] ?? 'Mi Florería';
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _settings = settings;
+          _shopName = shopName;
           _isLoading = false;
         });
       }
@@ -281,7 +292,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
           final String message;
           if (isTransfer) {
             final buffer = StringBuffer();
-            buffer.writeln('💳 *Formas de pago — Florería Las Rosas*\n');
+            buffer.writeln('💳 *Formas de pago — $_shopName*\n');
             buffer.writeln('🏦 *Transferencia bancaria*');
             for (final b in bankMethods) {
               buffer.writeln('• ${b.bankName} (${b.accountType})');
@@ -293,7 +304,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
             message = buffer.toString().trim();
           } else {
             final buffer = StringBuffer();
-            buffer.writeln('💳 *Formas de pago — Florería Las Rosas*\n');
+            buffer.writeln('💳 *Formas de pago — $_shopName*\n');
             buffer.writeln('🔗 *Links de pago*');
             for (final l in linkMethods) {
               buffer.writeln('• ${l.serviceName}: https://${l.url}');
@@ -301,7 +312,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
             buffer.writeln('\n¡Gracias por tu compra! 🌸');
             message = buffer.toString().trim();
           }
-          Share.share(message, subject: 'Formas de pago — Florería Las Rosas');
+          Share.share(message, subject: 'Formas de pago — $_shopName');
         },
         icon: const Icon(Icons.share, size: 20),
         label: Text(isTransfer ? 'Compartir como texto' : 'Compartir todo', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
@@ -344,7 +355,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
                 )),
                 _buildIconAction(Icons.copy, () => Clipboard.setData(ClipboardData(text: '${method.bankName}\n${method.holderName}\nCuenta: ${method.accountNumber}\nCLABE: ${method.clabe}'))),
                 const SizedBox(width: 4),
-                _buildIconAction(Icons.ios_share, () => Share.share('${method.bankName} (${method.accountType})\nTitular: ${method.holderName}\nCuenta: ${method.accountNumber}\nCLABE: ${method.clabe}', subject: 'Datos bancarios — Florería Las Rosas')),
+                _buildIconAction(Icons.ios_share, () => Share.share('${method.bankName} (${method.accountType})\nTitular: ${method.holderName}\nCuenta: ${method.accountNumber}\nCLABE: ${method.clabe}', subject: 'Datos bancarios — $_shopName')),
               ],
             ),
           ),
@@ -390,7 +401,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
           )),
           _buildIconAction(Icons.copy, () => Clipboard.setData(ClipboardData(text: 'https://${method.url}'))),
           const SizedBox(width: 4),
-          _buildIconAction(Icons.ios_share, () => Share.share('${method.serviceName}: https://${method.url}', subject: 'Link de pago — Florería Las Rosas')),
+          _buildIconAction(Icons.ios_share, () => Share.share('${method.serviceName}: https://${method.url}', subject: 'Link de pago — $_shopName')),
         ],
       ),
     );

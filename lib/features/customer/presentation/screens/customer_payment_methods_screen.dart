@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/models/shop_settings_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 
 class CustomerPaymentMethodsScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _CustomerPaymentMethodsScreenState extends State<CustomerPaymentMethodsScr
   final _repo = ShopSettingsRepository();
   bool _isLoading = true;
   ShopSettingsModel? _settings;
+  String _shopName = 'Mi Florería';
 
   @override
   void initState() {
@@ -28,9 +30,19 @@ class _CustomerPaymentMethodsScreenState extends State<CustomerPaymentMethodsScr
 
   Future<void> _loadSettings() async {
     final settings = await _repo.getSettings(widget.shopId);
+    String shopName = 'Mi Florería';
+    try {
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('shop_name')
+          .eq('id', widget.shopId)
+          .maybeSingle();
+      shopName = profile?['shop_name'] ?? 'Mi Florería';
+    } catch (_) {}
     if (mounted) {
       setState(() {
         _settings = settings;
+        _shopName = shopName;
         _isLoading = false;
       });
     }
@@ -55,7 +67,7 @@ class _CustomerPaymentMethodsScreenState extends State<CustomerPaymentMethodsScr
     if (_settings == null) return;
     
     final buffer = StringBuffer();
-    buffer.writeln('Formas de Pago - Florería Las Rosas\n');
+    buffer.writeln('Formas de Pago - $_shopName\n');
 
     if (_settings!.bankMethods.isNotEmpty) {
       buffer.writeln('TRANSFERENCIA BANCARIA');
