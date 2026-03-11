@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../orders/domain/models/order_model.dart';
+import '../../../orders/presentation/screens/edit_order_screen.dart';
 
 class CrmClientProfileScreen extends StatefulWidget {
   final String name;
@@ -747,7 +748,11 @@ class _OrderTile extends StatelessWidget {
             ? Colors.redAccent
             : Colors.orange;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => EditOrderScreen(order: order)),
+      ),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -808,6 +813,7 @@ class _OrderTile extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 
