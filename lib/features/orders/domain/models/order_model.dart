@@ -1,6 +1,49 @@
 import 'package:flutter/material.dart';
 
-enum OrderStatus { pending, delivered, cancelled }
+enum OrderStatus { waiting, processing, inTransit, delivered, cancelled }
+
+extension OrderStatusX on OrderStatus {
+  /// Valor que se guarda en la BD.
+  String get dbValue {
+    switch (this) {
+      case OrderStatus.waiting:    return 'waiting';
+      case OrderStatus.processing: return 'processing';
+      case OrderStatus.inTransit:  return 'in_transit';
+      case OrderStatus.delivered:  return 'delivered';
+      case OrderStatus.cancelled:  return 'cancelled';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case OrderStatus.waiting:    return 'En espera';
+      case OrderStatus.processing: return 'Elaborando';
+      case OrderStatus.inTransit:  return 'En tránsito';
+      case OrderStatus.delivered:  return 'Entregado';
+      case OrderStatus.cancelled:  return 'Cancelado';
+    }
+  }
+
+  Color get chipColor {
+    switch (this) {
+      case OrderStatus.waiting:    return const Color(0xFFF59E0B);
+      case OrderStatus.processing: return const Color(0xFF3B82F6);
+      case OrderStatus.inTransit:  return const Color(0xFF8B5CF6);
+      case OrderStatus.delivered:  return const Color(0xFF10B981);
+      case OrderStatus.cancelled:  return const Color(0xFFEF4444);
+    }
+  }
+
+  IconData get chipIcon {
+    switch (this) {
+      case OrderStatus.waiting:    return Icons.schedule_rounded;
+      case OrderStatus.processing: return Icons.spa_outlined;
+      case OrderStatus.inTransit:  return Icons.local_shipping_outlined;
+      case OrderStatus.delivered:  return Icons.check_circle_rounded;
+      case OrderStatus.cancelled:  return Icons.cancel_outlined;
+    }
+  }
+}
 
 class OrderModel {
   final String? id;
@@ -122,7 +165,7 @@ class OrderModel {
       'quantity': quantity,
       'price': price,
       'total_price': total,
-      'status': status.name,
+      'status': status.dbValue,
       'created_at': createdAt.toIso8601String(),
       'sale_date': saleDate.toIso8601String(),
       'delivery_info': deliveryInfo,
@@ -146,15 +189,15 @@ class OrderModel {
   }
 
   static OrderStatus _parseStatus(String? statusStr) {
-    if (statusStr == null) return OrderStatus.pending;
-    switch (statusStr.toLowerCase()) {
-      case 'delivered':
-        return OrderStatus.delivered;
-      case 'cancelled':
-        return OrderStatus.cancelled;
-      case 'pending':
-      default:
-        return OrderStatus.pending;
+    switch (statusStr?.toLowerCase()) {
+      case 'waiting':
+      case 'pending': // backward compat: pedidos viejos
+        return OrderStatus.waiting;
+      case 'processing': return OrderStatus.processing;
+      case 'in_transit': return OrderStatus.inTransit;
+      case 'delivered':  return OrderStatus.delivered;
+      case 'cancelled':  return OrderStatus.cancelled;
+      default:           return OrderStatus.waiting;
     }
   }
 

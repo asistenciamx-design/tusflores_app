@@ -60,7 +60,7 @@ class OrderRepository {
     try {
       await _supabase
           .from('orders')
-          .update({'status': newStatus.name})
+          .update({'status': newStatus.dbValue})
           .eq('id', orderId);
       return true;
     } catch (e) {

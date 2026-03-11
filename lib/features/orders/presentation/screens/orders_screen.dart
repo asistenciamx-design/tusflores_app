@@ -420,10 +420,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
             o.productName.toLowerCase().contains(q);
       }).toList();
     }
-    final byStatus = _orders
-        .where((o) => o.status ==
-            (_selectedTab == 0 ? OrderStatus.pending : OrderStatus.delivered))
-        .toList();
+    final byStatus = _selectedTab == 1
+        ? _orders.where((o) => o.status == OrderStatus.delivered).toList()
+        : _orders
+            .where((o) =>
+                o.status == OrderStatus.waiting ||
+                o.status == OrderStatus.processing ||
+                o.status == OrderStatus.inTransit)
+            .toList();
     return _applyDateFilter(byStatus);
   }
 
@@ -478,10 +482,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => _buildOrderCard(_filteredOrders[i]),
-                    childCount: _filteredOrders.length,
-                  ),
+                  delegate: SliverChildListDelegate(_buildOrderItems()),
                 ),
               ),
           ],
@@ -706,7 +707,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           // Status tabs
           Row(
             children: [
-              _buildStatusTab(0, 'Pendientes'),
+              _buildStatusTab(0, 'En operación'),
               const SizedBox(width: 4),
               _buildStatusTab(1, 'Entregados'),
             ],
@@ -926,60 +927,68 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Entregado button — gated behind payment confirmation
+                // Status popup button
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      // Already delivered → do nothing
-                      if (order.status == OrderStatus.delivered) return;
-
-                      // 🔒 Payment gate
-                      if (!order.isPaid) {
-                        ScaffoldMessenger.of(context)
-                          ..hideCurrentSnackBar()
-                          ..showSnackBar(SnackBar(
-                            content: const Row(
-                              children: [
-                                Icon(Icons.lock_outline,
-                                    color: Colors.white, size: 18),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Confirma el pago primero en "Pend. Pago" antes de marcar como Entregado.',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            backgroundColor: const Color(0xFFD97706),
-                            behavior: SnackBarBehavior.floating,
-                            margin: const EdgeInsets.all(16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            duration: const Duration(seconds: 3),
-                          ));
-                        return;
-                      }
-
-                      if (order.id == null) return;
-                      final success = await _orderRepo.updateOrderStatus(
-                          order.id!, OrderStatus.delivered);
-                      if (success && mounted) {
-                        setState(() => order.status = OrderStatus.delivered);
-                      }
-                    },
-                    child: _actionButton(
-                      order.status == OrderStatus.delivered
-                          ? Icons.check_circle
-                          : (order.isPaid
-                              ? Icons.local_shipping_outlined
-                              : Icons.lock_outline),
-                      'Entregado',
-                      order.status == OrderStatus.delivered
-                          ? AppTheme.primary
-                          : (order.isPaid
-                              ? AppTheme.primary
-                              : Colors.grey.shade400),
+                  child: PopupMenuButton<OrderStatus>(
+                    onSelected: (s) => _changeOrderStatus(order, s),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    itemBuilder: (ctx) => [
+                      for (final s in [
+                        OrderStatus.waiting,
+                        OrderStatus.processing,
+                        OrderStatus.inTransit,
+                        OrderStatus.delivered,
+                      ])
+                        PopupMenuItem<OrderStatus>(
+                          value: s,
+                          child: Row(
+                            children: [
+                              Icon(s.chipIcon, color: s.chipColor, size: 16),
+                              const SizedBox(width: 8),
+                              Text(s.label,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: s == order.status
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: s == order.status
+                                        ? s.chipColor
+                                        : Colors.black87,
+                                  )),
+                              const Spacer(),
+                              if (s == order.status)
+                                Icon(Icons.check,
+                                    color: s.chipColor, size: 14),
+                            ],
+                          ),
+                        ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: order.status.chipColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(order.status.chipIcon,
+                              color: Colors.white, size: 15),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(order.status.label,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 3),
+                          const Icon(Icons.arrow_drop_down,
+                              color: Colors.white, size: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1190,11 +1199,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final String text;
 
     if (_filterByDelivery) {
-      final pending =
-          all.where((o) => o.status == OrderStatus.pending).length;
+      final operational = all
+          .where((o) =>
+              o.status == OrderStatus.waiting ||
+              o.status == OrderStatus.processing ||
+              o.status == OrderStatus.inTransit)
+          .length;
       final delivered =
           all.where((o) => o.status == OrderStatus.delivered).length;
-      text = '$pending por entregar  ·  ✅ $delivered entregados';
+      text = '$operational en operación  ·  ✅ $delivered entregados';
       color = const Color(0xFF2196F3);
       icon = Icons.local_shipping_outlined;
     } else {
@@ -1296,7 +1309,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            _selectedTab == 0 ? 'Sin pedidos pendientes' : 'Sin pedidos entregados',
+            _selectedTab == 0 ? 'Sin pedidos en operación' : 'Sin pedidos entregados',
             style: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 15, fontWeight: FontWeight.w500),
           ),
         ],
@@ -1306,8 +1319,118 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
+  /// Builds the flat or grouped list of widgets to render in the SliverList.
+  List<Widget> _buildOrderItems() {
+    // Search results and Entregados tab → flat list
+    if (_selectedTab == 1 || _searchQuery.isNotEmpty) {
+      return _filteredOrders.map((o) => _buildOrderCard(o)).toList();
+    }
+    // En operación tab → grouped by status with section headers
+    final items = <Widget>[];
+    for (final status in [
+      OrderStatus.waiting,
+      OrderStatus.processing,
+      OrderStatus.inTransit,
+    ]) {
+      final group =
+          _filteredOrders.where((o) => o.status == status).toList();
+      if (group.isEmpty) continue;
+      items.add(_buildStatusSectionHeader(status, group.length));
+      items.addAll(group.map((o) => _buildOrderCard(o)));
+    }
+    return items;
+  }
 
+  Widget _buildStatusSectionHeader(OrderStatus status, int count) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: status.chipColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: status.chipColor.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(status.chipIcon, size: 13, color: status.chipColor),
+                const SizedBox(width: 5),
+                Text(status.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: status.chipColor,
+                    )),
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: status.chipColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('$count',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Divider(
+              color: status.chipColor.withValues(alpha: 0.2),
+              indent: 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Future<void> _changeOrderStatus(
+      OrderModel order, OrderStatus newStatus) async {
+    if (order.id == null || newStatus == order.status) return;
+
+    // 🔒 Payment gate for delivered
+    if (newStatus == OrderStatus.delivered && !order.isPaid) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.lock_outline, color: Colors.white, size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Confirma el pago antes de marcar como Entregado.',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFD97706),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          duration: const Duration(seconds: 3),
+        ));
+      return;
+    }
+
+    final success =
+        await _orderRepo.updateOrderStatus(order.id!, newStatus);
+    if (success && mounted) {
+      setState(() => order.status = newStatus);
+    }
+  }
 
   String _formatDate(DateTime dt) {
     const meses = [
@@ -1372,7 +1495,13 @@ String _formatTimeGlobal(DateTime dt) {
 
 extension OrderShareExtension on OrderModel {
   String toShareMessage({bool isReceipt = false}) {
-    final statusLabel = status == OrderStatus.delivered ? '✅ Entregado' : '⏳ Pendiente';
+    final statusLabel = switch (status) {
+      OrderStatus.waiting    => '⏳ En espera',
+      OrderStatus.processing => '🔨 Elaborando',
+      OrderStatus.inTransit  => '🚚 En tránsito',
+      OrderStatus.delivered  => '✅ Entregado',
+      OrderStatus.cancelled  => '❌ Cancelado',
+    };
     final payLabel = isPaid ? '✅ Pagado' : '⏳ Pendiente de pago';
     final subtotal = price * quantity;
     final total = subtotal + shippingCost;
