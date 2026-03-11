@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
@@ -25,7 +24,6 @@ class _MainLayoutState extends State<MainLayout>
   // ── Overlay banner ────────────────────────────────────────────────────────
   OverlayEntry? _bannerEntry;
   late AnimationController _bannerController;
-  Timer? _bannerTimer;
 
   List<Widget> get _screens => [
         DashboardScreen(
@@ -53,7 +51,6 @@ class _MainLayoutState extends State<MainLayout>
 
   @override
   void dispose() {
-    _bannerTimer?.cancel();
     _bannerEntry?.remove();
     _bannerEntry = null;
     _bannerController.dispose();
@@ -137,15 +134,10 @@ class _MainLayoutState extends State<MainLayout>
     Overlay.of(context).insert(_bannerEntry!);
     _bannerController.forward(from: 0);
 
-    // Auto-dismiss after 5 s
-    _bannerTimer?.cancel();
-    _bannerTimer = Timer(const Duration(seconds: 5), _dismissBanner);
   }
 
   /// Animated dismiss (slide out upward).
   void _dismissBanner() {
-    _bannerTimer?.cancel();
-    _bannerTimer = null;
     if (_bannerEntry == null || !mounted) return;
     _bannerController.reverse().then((_) {
       _bannerEntry?.remove();
@@ -155,8 +147,6 @@ class _MainLayoutState extends State<MainLayout>
 
   /// Immediate dismiss (no animation) — used before showing a new banner.
   void _dismissBannerImmediately() {
-    _bannerTimer?.cancel();
-    _bannerTimer = null;
     _bannerEntry?.remove();
     _bannerEntry = null;
     _bannerController.reset();
