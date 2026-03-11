@@ -30,14 +30,24 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
   bool _isLoadingNotes = true;
   bool _isSavingNote = false;
 
-  // Clave única del cliente para la tabla crm_notes
+  // Datos editables del cliente (null = usar los de la orden)
+  String? _editedName;
+  String? _editedEmail;
+  List<String> _extraPhones = [];
+
+  // Clave única del cliente para las tablas crm_*
   String get _clientKey =>
       widget.phone.isNotEmpty ? widget.phone : widget.name;
+
+  // Valores mostrados: editados > originales de la orden
+  String get _displayName => (_editedName?.isNotEmpty == true) ? _editedName! : widget.name;
+  String get _displayEmail => (_editedEmail?.isNotEmpty == true) ? _editedEmail! : widget.email;
 
   @override
   void initState() {
     super.initState();
     _loadNotes();
+    _loadClientData();
   }
 
   @override
@@ -135,6 +145,81 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
         _noteCtrl.text = text;
       }
     }
+  }
+
+  // ── Supabase: cargar datos editables del cliente ─────────────────────────
+
+  Future<void> _loadClientData() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('crm_clients')
+          .select()
+          .eq('shop_id', user.id)
+          .eq('client_key', _clientKey)
+          .maybeSingle();
+      if (row != null && mounted) {
+        setState(() {
+          _editedName = row['display_name'] as String?;
+          _editedEmail = row['email'] as String?;
+          final phones = row['extra_phones'];
+          if (phones is List) {
+            _extraPhones = List<String>.from(phones);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('CRM client load error: $e');
+    }
+  }
+
+  Future<void> _saveClientData({
+    required String name,
+    required String email,
+    required List<String> extraPhones,
+  }) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    await Supabase.instance.client.from('crm_clients').upsert(
+      {
+        'shop_id': user.id,
+        'client_key': _clientKey,
+        'display_name': name.trim().isNotEmpty ? name.trim() : null,
+        'email': email.trim().isNotEmpty ? email.trim() : null,
+        'extra_phones': extraPhones.where((p) => p.trim().isNotEmpty).toList(),
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      onConflict: 'shop_id,client_key',
+    );
+    if (mounted) {
+      setState(() {
+        _editedName = name.trim().isNotEmpty ? name.trim() : null;
+        _editedEmail = email.trim().isNotEmpty ? email.trim() : null;
+        _extraPhones = extraPhones.where((p) => p.trim().isNotEmpty).toList();
+      });
+    }
+  }
+
+  // ── Abrir hoja de edición del cliente ─────────────────────────────────────
+
+  void _openEditSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditClientSheet(
+        initialName: _displayName,
+        initialEmail: _displayEmail,
+        primaryPhone: widget.phone,
+        initialExtraPhones: List<String>.from(_extraPhones),
+        onSave: (name, email, extras) => _saveClientData(
+          name: name,
+          email: email,
+          extraPhones: extras,
+        ),
+      ),
+    );
   }
 
   // ── Computed getters ─────────────────────────────────────────────────────
@@ -247,7 +332,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           ),
-          _iconButton(Icons.edit_outlined, () {}),
+          _iconButton(Icons.edit_outlined, _openEditSheet),
         ],
       ),
     );
@@ -291,7 +376,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
                 child: CircleAvatar(
                   backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                   child: Text(
-                    _initials(widget.name),
+                    _initials(_displayName),
                     style: const TextStyle(
                         fontSize: 34,
                         fontWeight: FontWeight.bold,
@@ -316,7 +401,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(widget.name,
+          Text(_displayName,
               style: const TextStyle(
                   fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black87)),
           const SizedBox(height: 4),
@@ -359,77 +444,58 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
             ),
             child: Column(
               children: [
-                // Phone row
+                // Teléfono principal
+                _phoneRow(
+                  phone: widget.phone.isNotEmpty ? widget.phone : '—',
+                  label: 'Móvil Principal',
+                  showWhatsApp: widget.phone.isNotEmpty,
+                  onWhatsApp: _openWhatsApp,
+                ),
+                // Teléfonos extra
+                ..._extraPhones.asMap().entries.map((e) {
+                  final phone = e.value;
+                  return Column(
+                    children: [
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      _phoneRow(
+                        phone: phone,
+                        label: 'Teléfono adicional',
+                        showWhatsApp: phone.isNotEmpty,
+                        onWhatsApp: () async {
+                          final digits = phone.replaceAll(RegExp(r'\D'), '');
+                          final uri = Uri.parse('https://wa.me/52$digits');
+                          if (await canLaunchUrl(uri)) {
+                            launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                }),
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                // Email
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Icon(Icons.call, color: AppTheme.primary, size: 22),
+                      const Icon(Icons.mail_outline, color: AppTheme.primary, size: 22),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                                widget.phone.isNotEmpty ? widget.phone : '—',
+                            Text(_displayEmail.isNotEmpty ? _displayEmail : '—',
                                 style: const TextStyle(
                                     fontSize: 14, fontWeight: FontWeight.w600)),
-                            const Text('Móvil Personal',
+                            const Text('Email Principal',
                                 style: TextStyle(
                                     fontSize: 11, color: AppTheme.mutedLight)),
                           ],
                         ),
-                      ),
-                      if (widget.phone.isNotEmpty)
-                        GestureDetector(
-                          onTap: _openWhatsApp,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF25D366),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.chat, color: Colors.white, size: 15),
-                                SizedBox(width: 6),
-                                Text('WhatsApp',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                // Email row
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.mail_outline,
-                          color: AppTheme.primary, size: 22),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.email.isNotEmpty ? widget.email : '—',
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600)),
-                          const Text('Email Principal',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppTheme.mutedLight)),
-                        ],
                       ),
                     ],
                   ),
@@ -437,6 +503,58 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneRow({
+    required String phone,
+    required String label,
+    required bool showWhatsApp,
+    required VoidCallback onWhatsApp,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          const Icon(Icons.call, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(phone,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 11, color: AppTheme.mutedLight)),
+              ],
+            ),
+          ),
+          if (showWhatsApp)
+            GestureDetector(
+              onTap: onWhatsApp,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF25D366),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.chat, color: Colors.white, size: 15),
+                    SizedBox(width: 6),
+                    Text('WhatsApp',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -702,6 +820,225 @@ class _NoteItemWidget extends StatelessWidget {
       'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
     ];
     return months[m];
+  }
+}
+
+// ── Edit client bottom sheet ──────────────────────────────────────────────────
+
+class _EditClientSheet extends StatefulWidget {
+  final String initialName;
+  final String initialEmail;
+  final String primaryPhone;
+  final List<String> initialExtraPhones;
+  final Future<void> Function(String name, String email, List<String> extras) onSave;
+
+  const _EditClientSheet({
+    required this.initialName,
+    required this.initialEmail,
+    required this.primaryPhone,
+    required this.initialExtraPhones,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditClientSheet> createState() => _EditClientSheetState();
+}
+
+class _EditClientSheetState extends State<_EditClientSheet> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _emailCtrl;
+  late List<TextEditingController> _phoneCtrllers;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.initialName);
+    _emailCtrl = TextEditingController(text: widget.initialEmail);
+    _phoneCtrllers = widget.initialExtraPhones
+        .map((p) => TextEditingController(text: p))
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    for (final c in _phoneCtrllers) c.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    try {
+      final extras = _phoneCtrllers
+          .map((c) => c.text.trim())
+          .where((p) => p.isNotEmpty)
+          .toList();
+      await widget.onSave(_nameCtrl.text, _emailCtrl.text, extras);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      debugPrint('Edit client save error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Editar perfil del cliente',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            _fieldLabel('Nombre'),
+            _inputField(_nameCtrl, 'Nombre completo', Icons.person_outline),
+            const SizedBox(height: 14),
+            _fieldLabel('Email'),
+            _inputField(_emailCtrl, 'correo@ejemplo.com', Icons.mail_outline),
+            const SizedBox(height: 14),
+            _fieldLabel('Teléfono principal'),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_outline, size: 16, color: AppTheme.mutedLight),
+                  const SizedBox(width: 8),
+                  Text(widget.primaryPhone.isNotEmpty ? widget.primaryPhone : '—',
+                      style: const TextStyle(
+                          fontSize: 14, color: AppTheme.mutedLight)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text('El teléfono principal no se puede editar aquí.',
+                style: TextStyle(fontSize: 11, color: AppTheme.mutedLight)),
+            const SizedBox(height: 16),
+            _fieldLabel('Teléfonos adicionales'),
+            ..._phoneCtrllers.asMap().entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _inputField(
+                            e.value, 'Teléfono ${e.key + 2}', Icons.call_outlined),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          e.value.dispose();
+                          _phoneCtrllers.removeAt(e.key);
+                        }),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.remove, color: Colors.redAccent, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+            TextButton.icon(
+              onPressed: () => setState(() =>
+                  _phoneCtrllers.add(TextEditingController())),
+              icon: const Icon(Icons.add, size: 16, color: AppTheme.primary),
+              label: const Text('Agregar teléfono',
+                  style: TextStyle(color: AppTheme.primary, fontSize: 13)),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.black87,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('Guardar cambios',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(text,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.mutedLight,
+                letterSpacing: 0.3)),
+      );
+
+  Widget _inputField(
+      TextEditingController ctrl, String hint, IconData icon) {
+    return TextField(
+      controller: ctrl,
+      style: const TextStyle(fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppTheme.mutedLight, fontSize: 14),
+        prefixIcon: Icon(icon, color: AppTheme.mutedLight, size: 18),
+        filled: true,
+        fillColor: const Color(0xFFF6F8F7),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      ),
+    );
   }
 }
 
