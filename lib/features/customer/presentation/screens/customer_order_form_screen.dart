@@ -296,7 +296,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           customerPhone: _buyerWhatsappCtrl.text,
                           quantity: 1, // Store as 1 bundle
                           price: subtotal,
-                          status: OrderStatus.pending,
+                          status: OrderStatus.waiting,
                           createdAt: DateTime.now(),
                           saleDate: _parseDeliveryDate(_selectedDate),
                           deliveryInfo: '$_selectedDate, $_selectedTime',

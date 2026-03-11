@@ -65,7 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final today = DateTime.now();
       
       for (var order in orders) {
-        if (order.status == OrderStatus.pending) pending++;
+        if (order.status == OrderStatus.waiting) pending++;
         if (order.status == OrderStatus.delivered) delivered++;
         
         // Sales today

@@ -51,7 +51,7 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   OrderStatus get _activeStatus =>
-      _selectedTab == 0 ? OrderStatus.pending : OrderStatus.delivered;
+      _selectedTab == 0 ? OrderStatus.waiting : OrderStatus.delivered;
 
   List<OrderModel> get _tabOrders =>
       _allOrders.where((o) => o.status == _activeStatus).toList();
@@ -645,7 +645,7 @@ class _OrderCalendarScreenState extends State<OrderCalendarScreen> {
   // ─── Order tile ───────────────────────────────────────────────────────────
 
   Widget _buildOrderTile(OrderModel order) {
-    final isPending = order.status == OrderStatus.pending;
+    final isPending = order.status == OrderStatus.waiting;
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
