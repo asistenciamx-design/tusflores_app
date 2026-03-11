@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../orders/domain/models/order_model.dart';
@@ -24,11 +26,114 @@ class CrmClientProfileScreen extends StatefulWidget {
 class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
   final _noteCtrl = TextEditingController();
   final List<_InternalNote> _notes = [];
+  bool _isLoadingNotes = true;
+  bool _isSavingNote = false;
+
+  // Clave única del cliente para la tabla crm_notes
+  String get _clientKey =>
+      widget.phone.isNotEmpty ? widget.phone : widget.name;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotes();
+  }
 
   @override
   void dispose() {
     _noteCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Supabase: cargar notas ────────────────────────────────────────────────
+
+  Future<void> _loadNotes() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingNotes = false);
+      return;
+    }
+    try {
+      final rows = await Supabase.instance.client
+          .from('crm_notes')
+          .select()
+          .eq('shop_id', user.id)
+          .eq('client_key', _clientKey)
+          .order('created_at', ascending: false);
+
+      if (mounted) {
+        setState(() {
+          _notes.clear();
+          for (final r in rows) {
+            _notes.add(_InternalNote(
+              id: r['id'] as String,
+              text: r['note'] as String,
+              createdAt: DateTime.parse(r['created_at'] as String),
+            ));
+          }
+          _isLoadingNotes = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('CRM notes load error: $e');
+      if (mounted) setState(() => _isLoadingNotes = false);
+    }
+  }
+
+  // ── Supabase: agregar nota (guarda inmediatamente) ────────────────────────
+
+  Future<void> _addNote() async {
+    final text = _noteCtrl.text.trim();
+    if (text.isEmpty || _isSavingNote) return;
+
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    // Actualización optimista en la UI
+    final optimistic = _InternalNote(id: '', text: text, createdAt: DateTime.now());
+    setState(() {
+      _notes.insert(0, optimistic);
+      _isSavingNote = true;
+    });
+    _noteCtrl.clear();
+
+    try {
+      final result = await Supabase.instance.client
+          .from('crm_notes')
+          .insert({
+            'shop_id': user.id,
+            'client_key': _clientKey,
+            'note': text,
+          })
+          .select()
+          .single();
+
+      if (mounted) {
+        setState(() {
+          final idx = _notes.indexOf(optimistic);
+          if (idx >= 0) {
+            _notes[idx] = _InternalNote(
+              id: result['id'] as String,
+              text: text,
+              createdAt: DateTime.parse(result['created_at'] as String),
+            );
+          }
+          _isSavingNote = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('CRM note save error: $e');
+      if (mounted) {
+        setState(() {
+          _notes.remove(optimistic);
+          _isSavingNote = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo guardar la nota. Intenta de nuevo.')),
+        );
+        _noteCtrl.text = text;
+      }
+    }
   }
 
   // ── Computed getters ─────────────────────────────────────────────────────
@@ -88,13 +193,6 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
     if (await canLaunchUrl(uri)) {
       launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-
-  void _addNote() {
-    final text = _noteCtrl.text.trim();
-    if (text.isEmpty) return;
-    setState(() => _notes.insert(0, _InternalNote(text: text, createdAt: DateTime.now())));
-    _noteCtrl.clear();
   }
 
   // ── Build ────────────────────────────────────────────────────────────────
@@ -362,7 +460,16 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                if (_notes.isEmpty)
+                if (_isLoadingNotes)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Center(
+                        child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))),
+                  )
+                else if (_notes.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 4),
                     child: Text('Sin notas aún.',
@@ -401,20 +508,28 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary,
+                          color: _isSavingNote
+                              ? AppTheme.primary.withValues(alpha: 0.5)
+                              : AppTheme.primary,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.add, color: Colors.white, size: 16),
-                            SizedBox(width: 4),
-                            Text('Agregar',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+                        child: _isSavingNote
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Row(
+                                children: [
+                                  Icon(Icons.add, color: Colors.white, size: 16),
+                                  SizedBox(width: 4),
+                                  Text('Agregar',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold)),
+                                ],
+                              ),
                       ),
                     ),
                   ],
@@ -484,7 +599,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
                 borderRadius: BorderRadius.circular(14)),
             elevation: 0,
           ),
-          child: const Text('Guardar Datos',
+          child: const Text('Cerrar Perfil',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
@@ -542,9 +657,10 @@ class _StatCard extends StatelessWidget {
 }
 
 class _InternalNote {
+  final String id;
   final String text;
   final DateTime createdAt;
-  _InternalNote({required this.text, required this.createdAt});
+  _InternalNote({required this.id, required this.text, required this.createdAt});
 }
 
 class _NoteItemWidget extends StatelessWidget {
@@ -592,11 +708,34 @@ class _OrderTile extends StatelessWidget {
   final OrderModel order;
   const _OrderTile({required this.order});
 
+  /// Convierte product_name aunque esté guardado como JSON array.
+  /// Ej: '[{"name":"florero","qty":1,"price":1000}]' → 'florero'
+  ///     'Orquídea Phalaenopsis'                      → 'Orquídea Phalaenopsis'
+  String _readableProductName(String raw) {
+    final trimmed = raw.trim();
+    if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) return raw;
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is List && decoded.isNotEmpty) {
+        return decoded.map((item) {
+          final name =
+              (item['name'] ?? item['product'] ?? 'Producto').toString();
+          final qty = item['qty'] ?? item['quantity'] ?? 1;
+          final qtyInt = qty is int ? qty : int.tryParse(qty.toString()) ?? 1;
+          return qtyInt == 1 ? name : '$name x$qtyInt';
+        }).join(', ');
+      }
+      if (decoded is Map) {
+        return (decoded['name'] ?? decoded['product'] ?? raw).toString();
+      }
+    } catch (_) {}
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     final dt = order.createdAt;
-    final dateLabel =
-        '${dt.day} de ${_monthFull(dt.month)}, ${dt.year}';
+    final dateLabel = '${dt.day} de ${_monthFull(dt.month)}, ${dt.year}';
     final statusLabel = order.status == OrderStatus.delivered
         ? 'Entregado'
         : order.status == OrderStatus.cancelled
@@ -641,7 +780,7 @@ class _OrderTile extends StatelessWidget {
                         color: AppTheme.primary,
                         letterSpacing: 0.5)),
                 const SizedBox(height: 2),
-                Text(order.productName,
+                Text(_readableProductName(order.productName),
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
