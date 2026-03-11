@@ -147,9 +147,16 @@ class _CustomerOrderSummaryScreenState
     buffer.writeln(
         '\u2605 *Envio$cityLabel:* ${widget.order.shippingCost == 0.0 ? 'GRATIS' : '\$${widget.order.shippingCost.toStringAsFixed(2)}'}');
 
-    buffer.writeln('\n\u2605 *DATOS DEL COMPRADOR*');
-    buffer.writeln('Nombre: ${widget.order.customerName}');
-    buffer.writeln('Telefono: ${widget.order.customerPhone}');
+    // Datos del destinatario (quien recibe)
+    final recipientName = widget.order.recipientName?.isNotEmpty == true
+        ? widget.order.recipientName!
+        : widget.order.customerName;
+    final recipientPhone = widget.order.recipientPhone?.isNotEmpty == true
+        ? widget.order.recipientPhone!
+        : widget.order.customerPhone;
+    buffer.writeln('\n\u2605 *DATOS DEL DESTINATARIO*');
+    buffer.writeln('Quien recibe: $recipientName');
+    buffer.writeln('Telefono destinatario: $recipientPhone');
 
     buffer.writeln('\n\u2605 *DETALLES DE ENTREGA*');
     buffer.writeln('Metodo: ${widget.order.deliveryMethod}');
@@ -174,6 +181,13 @@ class _CustomerOrderSummaryScreenState
       if (widget.order.isAnonymous) {
         buffer.writeln('_(Enviar de forma anonima)_');
       }
+    }
+
+    buffer.writeln('\n\u2605 *DATOS DEL COMPRADOR*');
+    buffer.writeln('Nombre: ${widget.order.customerName}');
+    buffer.writeln('WhatsApp: ${widget.order.customerPhone}');
+    if (widget.order.buyerEmail?.isNotEmpty == true) {
+      buffer.writeln('Email: ${widget.order.buyerEmail}');
     }
 
     if (_shopSettings != null) {
@@ -757,6 +771,38 @@ class _CustomerOrderSummaryScreenState
                       widget.order.recipientPhone?.isNotEmpty == true
                           ? widget.order.recipientPhone!
                           : widget.order.customerPhone),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: _buildDashedLine(),
+            ),
+
+            // Datos del comprador
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('DATOS DEL COMPRADOR',
+                      style: TextStyle(
+                          color: Colors.blueGrey[400],
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5)),
+                  const SizedBox(height: 12),
+                  _buildDataRow(Icons.person_outline, 'Comprador:',
+                      widget.order.customerName),
+                  const SizedBox(height: 8),
+                  _buildDataRow(Icons.chat, 'WhatsApp:',
+                      widget.order.customerPhone),
+                  if (widget.order.buyerEmail?.isNotEmpty == true) ...[
+                    const SizedBox(height: 8),
+                    _buildDataRow(Icons.email_outlined, 'Email:',
+                        widget.order.buyerEmail!),
+                  ],
                 ],
               ),
             ),
