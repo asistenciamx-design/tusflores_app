@@ -214,46 +214,60 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   }
 
   Future<Uint8List> _generatePdf(PdfPageFormat format) async {
-    // compress: false avoids zlib issues on Flutter Web
-    final pdf = pw.Document(version: PdfVersion.pdf_1_5, compress: false);
-    pw.Font font;
-    try {
-      font = await _pdfFont();
-    } catch (_) {
-      // Fallback to built-in PDF font if Google Font download/parse fails
-      font = _isBold ? pw.Font.helveticaBold() : pw.Font.helvetica();
-    }
     const cmPt = 28.3465;
-
     final pdfAlign = _textAlign == TextAlign.left
         ? pw.TextAlign.left
         : _textAlign == TextAlign.right
             ? pw.TextAlign.right
             : pw.TextAlign.center;
 
-    pdf.addPage(pw.Page(
-      pageFormat: format,
-      margin: pw.EdgeInsets.only(
-        top: _marginTopCm * cmPt,
-        left: _marginLeftCm * cmPt,
-        right: _marginRightCm * cmPt,
-        bottom: 20,
-      ),
-      build: (_) => pw.SizedBox(
-        width: double.infinity,
-        child: pw.Text(
-          _messageCtrl.text,
-          textAlign: pdfAlign,
-          style: pw.TextStyle(
-            font: font,
-            fontSize: _fontSize,
-            decoration:
-                _isStrikethrough ? pw.TextDecoration.lineThrough : null,
+    Future<Uint8List> buildWith(pw.Font f) async {
+      // compress: false avoids zlib issues on Flutter Web
+      final doc = pw.Document(version: PdfVersion.pdf_1_5, compress: false);
+      doc.addPage(pw.Page(
+        pageFormat: format,
+        margin: pw.EdgeInsets.only(
+          top: _marginTopCm * cmPt,
+          left: _marginLeftCm * cmPt,
+          right: _marginRightCm * cmPt,
+          bottom: 20,
+        ),
+        build: (_) => pw.SizedBox(
+          width: double.infinity,
+          child: pw.Text(
+            _messageCtrl.text,
+            textAlign: pdfAlign,
+            style: pw.TextStyle(
+              font: f,
+              fontSize: _fontSize,
+              decoration:
+                  _isStrikethrough ? pw.TextDecoration.lineThrough : null,
+            ),
           ),
         ),
-      ),
-    ));
-    return Uint8List.fromList(await pdf.save());
+      ));
+      return Uint8List.fromList(await doc.save());
+    }
+
+    // Try with the selected Google Font; if any stage fails (download, TTF
+    // parse, or PDF serialisation), fall back to the built-in Helvetica so
+    // the user always gets a usable PDF.
+    pw.Font font;
+    bool usingFallback = false;
+    try {
+      font = await _pdfFont();
+    } catch (_) {
+      font = _isBold ? pw.Font.helveticaBold() : pw.Font.helvetica();
+      usingFallback = true;
+    }
+
+    try {
+      return await buildWith(font);
+    } catch (_) {
+      if (usingFallback) rethrow; // already on fallback — propagate the error
+      return await buildWith(
+          _isBold ? pw.Font.helveticaBold() : pw.Font.helvetica());
+    }
   }
 
   // ── Preview text style ──────────────────────────────────────────────────────
