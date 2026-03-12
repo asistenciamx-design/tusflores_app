@@ -99,7 +99,8 @@ final appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
         final product = extra?['product'] as ProductItem?;
         final shopId = extra?['shopId'] as String?;
-        return CustomerProductDetailScreen(product: product, shopId: shopId);
+        final allProducts = extra?['allProducts'] as List<ProductItem>?;
+        return CustomerProductDetailScreen(product: product, shopId: shopId, allProducts: allProducts);
       },
     ),
     GoRoute(

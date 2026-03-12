@@ -299,7 +299,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
       return GestureDetector(
         onTap: () => context.push(
               '/shop/product',
-              extra: {'product': product, 'shopId': widget.shopId},
+              extra: {'product': product, 'shopId': widget.shopId, 'allProducts': _products},
             ),
         child: Container(
           decoration: BoxDecoration(

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
@@ -5,7 +6,8 @@ import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductI
 class CustomerProductDetailScreen extends StatefulWidget {
   final ProductItem? product;
   final String? shopId;
-  const CustomerProductDetailScreen({super.key, this.product, this.shopId});
+  final List<ProductItem>? allProducts;
+  const CustomerProductDetailScreen({super.key, this.product, this.shopId, this.allProducts});
 
   @override
   State<CustomerProductDetailScreen> createState() => _CustomerProductDetailScreenState();
@@ -130,6 +132,10 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
                    textAlign: TextAlign.center,
                  ),
                  const SizedBox(height: 32),
+
+                 // ── Productos similares ────────────────────────────────
+                 _buildRelatedProducts(),
+                 const SizedBox(height: 16),
               ],
             ),
           ),
@@ -218,6 +224,90 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
          ),
        ),
      );
+  }
+
+  List<ProductItem> get _relatedProducts {
+    final all = widget.allProducts ?? [];
+    final others = all.where((p) => p.id != widget.product?.id).toList();
+    others.shuffle(Random());
+    return others.take(3).toList();
+  }
+
+  Widget _buildRelatedProducts() {
+    final related = _relatedProducts;
+    if (related.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+        const SizedBox(height: 20),
+        const Text(
+          'También te puede gustar',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: related.map((p) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: p == related.last ? 0 : 10),
+              child: _buildRelatedCard(p),
+            ),
+          )).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRelatedCard(ProductItem p) {
+    final imageUrl = p.imageUrls.isNotEmpty ? p.imageUrls.first : '';
+    return GestureDetector(
+      onTap: () => context.push('/shop/product', extra: {
+        'product': p,
+        'shopId': widget.shopId,
+        'allProducts': widget.allProducts,
+      }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    height: 100,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildSmallPlaceholder(),
+                  )
+                : _buildSmallPlaceholder(),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            p.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '\$${p.price.toStringAsFixed(0)}',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF00C853)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallPlaceholder() {
+    return Container(
+      height: 100,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(Icons.local_florist, size: 36, color: Colors.grey),
+    );
   }
 
   Widget _buildTagChip(String label) {
