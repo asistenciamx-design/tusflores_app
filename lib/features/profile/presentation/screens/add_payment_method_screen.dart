@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/shop_settings_model.dart';
 import 'payment_method_success_screen.dart';
@@ -50,12 +51,17 @@ class _AddPaymentMethodScreenState extends State<AddPaymentMethodScreen> with Si
         _showSnack('Por favor llena el nombre del banco y el titular.');
         return;
       }
+      final clabe = _clabeCtrl.text.trim();
+      if (clabe.isNotEmpty && clabe.length != 18) {
+        _showSnack('La CLABE interbancaria debe tener exactamente 18 dígitos.');
+        return;
+      }
       final method = BankMethod(
         bankName: _bankNameCtrl.text.trim(),
         accountType: 'Cuenta Bancaria',
         holderName: _holderCtrl.text.trim(),
         accountNumber: _accountCtrl.text.trim(),
-        clabe: _clabeCtrl.text.trim(),
+        clabe: clabe,
       );
       Navigator.pop(context, method);
     } else {
@@ -63,7 +69,12 @@ class _AddPaymentMethodScreenState extends State<AddPaymentMethodScreen> with Si
         _showSnack('Por favor llena el nombre del servicio y la URL.');
         return;
       }
-      final method = LinkMethod(serviceName: _serviceNameCtrl.text.trim(), url: _urlCtrl.text.trim());
+      final url = _urlCtrl.text.trim();
+      if (!url.startsWith('https://')) {
+        _showSnack('La URL debe comenzar con https://');
+        return;
+      }
+      final method = LinkMethod(serviceName: _serviceNameCtrl.text.trim(), url: url);
       Navigator.pop(context, method);
     }
   }
@@ -158,12 +169,12 @@ class _AddPaymentMethodScreenState extends State<AddPaymentMethodScreen> with Si
               hint: 'Como aparece en el estado de cuenta', icon: Icons.person_outline),
           const SizedBox(height: 16),
 
-          _buildFormField('Número de Cuenta', _accountCtrl,
-              hint: '10 a 12 dígitos', icon: Icons.credit_card, keyboardType: TextInputType.number),
+          _buildFormField('Número de Cuenta o Tarjeta', _accountCtrl,
+              hint: '10 a 16 dígitos', icon: Icons.credit_card, keyboardType: TextInputType.number),
           const SizedBox(height: 16),
 
           _buildFormField('CLABE Interbancaria', _clabeCtrl,
-              hint: '18 dígitos', icon: Icons.tag, keyboardType: TextInputType.number),
+              hint: 'Exactamente 18 dígitos', icon: Icons.tag, keyboardType: TextInputType.number, maxLength: 18),
           const SizedBox(height: 8),
           const Padding(
             padding: EdgeInsets.only(left: 4),
@@ -217,6 +228,7 @@ class _AddPaymentMethodScreenState extends State<AddPaymentMethodScreen> with Si
   Widget _buildFormField(String label, TextEditingController ctrl, {
     required String hint, required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    int? maxLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,6 +244,10 @@ class _AddPaymentMethodScreenState extends State<AddPaymentMethodScreen> with Si
           child: TextFormField(
             controller: ctrl,
             keyboardType: keyboardType,
+            maxLength: maxLength,
+            inputFormatters: maxLength != null
+                ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(maxLength)]
+                : null,
             style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
             decoration: InputDecoration(
               hintText: hint,
@@ -239,6 +255,7 @@ class _AddPaymentMethodScreenState extends State<AddPaymentMethodScreen> with Si
               prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              counterText: '',
             ),
           ),
         ),
