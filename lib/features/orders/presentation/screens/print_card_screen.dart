@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -178,8 +179,15 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
       });
 
   // ── PDF ─────────────────────────────────────────────────────────────────────
+  /// Loads a bundled TTF asset and returns a [pw.Font].
+  Future<pw.Font> _assetFont(String path) async {
+    final data = await rootBundle.load(path);
+    return pw.Font.ttf(data);
+  }
+
   Future<pw.Font> _pdfFont() async {
     switch (_selectedFont) {
+      // ── Sans-serif: fetched via PdfGoogleFonts (no DataView issues) ──
       case 'Montserrat':
         if (_isBold && _isItalic) return PdfGoogleFonts.montserratBoldItalic();
         if (_isBold) return PdfGoogleFonts.montserratBold();
@@ -194,18 +202,21 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
       case 'Roboto':
         if (_isBold) return PdfGoogleFonts.robotoBold();
         return PdfGoogleFonts.robotoRegular();
+      // ── Script / display: loaded from bundled static TTF assets ──
       case 'Dancing Script':
-        if (_isBold) return PdfGoogleFonts.dancingScriptBold();
-        return PdfGoogleFonts.dancingScriptRegular();
+        return _assetFont(_isBold
+            ? 'assets/fonts/DancingScript-Bold.ttf'
+            : 'assets/fonts/DancingScript-Regular.ttf');
       case 'Great Vibes':
-        return PdfGoogleFonts.greatVibesRegular();
+        return _assetFont('assets/fonts/GreatVibes-Regular.ttf');
       case 'Caveat':
-        if (_isBold) return PdfGoogleFonts.caveatBold();
-        return PdfGoogleFonts.caveatRegular();
+        return _assetFont(_isBold
+            ? 'assets/fonts/Caveat-Bold.ttf'
+            : 'assets/fonts/Caveat-Regular.ttf');
       case 'Pacifico':
-        return PdfGoogleFonts.pacificoRegular();
+        return _assetFont('assets/fonts/Pacifico-Regular.ttf');
       case 'Sacramento':
-        return PdfGoogleFonts.sacramentoRegular();
+        return _assetFont('assets/fonts/Sacramento-Regular.ttf');
       case 'Manrope':
       default:
         if (_isBold) return PdfGoogleFonts.manropeBold();

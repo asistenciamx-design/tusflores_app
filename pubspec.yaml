@@ -52,3 +52,10 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/fonts/DancingScript-Regular.ttf
+    - assets/fonts/DancingScript-Bold.ttf
+    - assets/fonts/GreatVibes-Regular.ttf
+    - assets/fonts/Caveat-Regular.ttf
+    - assets/fonts/Caveat-Bold.ttf
+    - assets/fonts/Pacifico-Regular.ttf
+    - assets/fonts/Sacramento-Regular.ttf
