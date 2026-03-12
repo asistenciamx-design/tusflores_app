@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import 'edit_order_screen.dart';
 import 'confirm_payment_screen.dart';
 import 'order_calendar_screen.dart';
+import 'print_card_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/order_model.dart';
@@ -886,7 +887,77 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ],
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
+
+            // Print buttons row
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      final msg = order.dedicationMessage ?? '';
+                      Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => PrintCardScreen(initialMessage: msg)));
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.note_alt_outlined, color: AppTheme.primary, size: 15),
+                          const SizedBox(width: 5),
+                          Text('Dedicatoria',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      // TODO: navegar a pantalla de albarán (próximamente)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Albarán próximamente'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.receipt_long_outlined, color: Colors.blueGrey[600], size: 15),
+                          const SizedBox(width: 5),
+                          Text('Albarán',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blueGrey[600])),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
 
             // Action row
             Row(
