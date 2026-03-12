@@ -111,6 +111,31 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     super.initState();
     _messageCtrl = TextEditingController(text: widget.initialMessage);
     _loadTemplates();
+    _loadBundledFonts();
+  }
+
+  /// Pre-loads bundled script TTF assets into Flutter's font system so the
+  /// preview renders correctly on Flutter Web (where GoogleFonts CDN may be
+  /// blocked by CSP/CORS).
+  Future<void> _loadBundledFonts() async {
+    final families = {
+      'DancingScript': [
+        'assets/fonts/DancingScript-Regular.ttf',
+        'assets/fonts/DancingScript-Bold.ttf',
+      ],
+      'GreatVibes':  ['assets/fonts/GreatVibes-Regular.ttf'],
+      'Caveat':      ['assets/fonts/Caveat-Regular.ttf', 'assets/fonts/Caveat-Bold.ttf'],
+      'Pacifico':    ['assets/fonts/Pacifico-Regular.ttf'],
+      'Sacramento':  ['assets/fonts/Sacramento-Regular.ttf'],
+    };
+    for (final entry in families.entries) {
+      final loader = FontLoader(entry.key);
+      for (final path in entry.value) {
+        loader.addFont(rootBundle.load(path));
+      }
+      await loader.load();
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -298,19 +323,19 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         base = GoogleFonts.roboto();
         break;
       case 'Dancing Script':
-        base = GoogleFonts.dancingScript();
+        base = const TextStyle(fontFamily: 'DancingScript');
         break;
       case 'Great Vibes':
-        base = GoogleFonts.greatVibes();
+        base = const TextStyle(fontFamily: 'GreatVibes');
         break;
       case 'Caveat':
-        base = GoogleFonts.caveat();
+        base = const TextStyle(fontFamily: 'Caveat');
         break;
       case 'Pacifico':
-        base = GoogleFonts.pacifico();
+        base = const TextStyle(fontFamily: 'Pacifico');
         break;
       case 'Sacramento':
-        base = GoogleFonts.sacramento();
+        base = const TextStyle(fontFamily: 'Sacramento');
         break;
       case 'Manrope':
       default:
