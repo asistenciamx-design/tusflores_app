@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -133,10 +134,31 @@ class _WeeklyStatsScreenState extends State<WeeklyStatsScreen> {
 
   // ── Best sellers ──────────────────────────────────────────────────────────
 
+  /// Extrae el nombre legible del producto aunque esté almacenado como JSON.
+  /// Ej: '[{"name":"florero","qty":1}]' → 'florero'
+  String _parseName(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      String? name;
+      if (decoded is List && decoded.isNotEmpty) {
+        final first = decoded.first;
+        if (first is Map && first['name'] != null) name = first['name'].toString();
+      } else if (decoded is Map && decoded['name'] != null) {
+        name = decoded['name'].toString();
+      }
+      if (name != null && name.isNotEmpty) {
+        return name[0].toUpperCase() + name.substring(1);
+      }
+    } catch (_) {}
+    // texto plano — capitalizar primera letra
+    return raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
+  }
+
   List<_BestSeller> get _bestSellers {
     final map = <String, int>{};
     for (final o in _ordersInPeriod) {
-      map[o.productName] = (map[o.productName] ?? 0) + o.quantity;
+      final name = _parseName(o.productName);
+      map[name] = (map[name] ?? 0) + o.quantity;
     }
     final sorted = map.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
