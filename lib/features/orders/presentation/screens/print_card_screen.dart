@@ -84,6 +84,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   // 3 saved template slots (null = empty)
   final List<_Template?> _templates = [null, null, null];
 
+  bool _isPrinting = false;
+
   static const _prefTmplPrefix = 'print_template_';
 
   // ── Font catalogue ──────────────────────────────────────────────────────────
@@ -290,6 +292,25 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
           _isStrikethrough ? TextDecoration.lineThrough : TextDecoration.none,
       color: Colors.black87,
     );
+  }
+
+  // ── Action runner (loading + error handling) ────────────────────────────────
+  Future<void> _runAction(Future<void> Function() action) async {
+    if (_isPrinting) return;
+    setState(() => _isPrinting = true);
+    try {
+      await action();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
+    }
   }
 
   // ── Dialogs ─────────────────────────────────────────────────────────────────
@@ -832,16 +853,16 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
       children: [
         Expanded(
           child: _actionBtn(
-            icon: Icons.print,
+            icon: _isPrinting ? Icons.hourglass_top : Icons.print,
             label: 'IMPRIMIR',
             bg: AppTheme.primary,
             fg: Colors.black87,
             shadow: true,
-            onTap: () async {
+            enabled: !_isPrinting,
+            onTap: () => _runAction(() async {
               final pdf = await _generatePdf(PdfPageFormat.letter);
-              await Printing.layoutPdf(
-                  onLayout: (_) async => pdf);
-            },
+              await Printing.layoutPdf(onLayout: (_) async => pdf);
+            }),
           ),
         ),
         const SizedBox(width: 8),
@@ -852,11 +873,11 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             bg: AppTheme.primary.withValues(alpha: 0.12),
             fg: AppTheme.primary,
             shadow: false,
-            onTap: () async {
+            enabled: !_isPrinting,
+            onTap: () => _runAction(() async {
               final pdf = await _generatePdf(PdfPageFormat.letter);
-              await Printing.sharePdf(
-                  bytes: pdf, filename: 'dedicatoria.pdf');
-            },
+              await Printing.sharePdf(bytes: pdf, filename: 'dedicatoria.pdf');
+            }),
           ),
         ),
         const SizedBox(width: 8),
@@ -867,11 +888,11 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             bg: AppTheme.primary.withValues(alpha: 0.12),
             fg: AppTheme.primary,
             shadow: false,
-            onTap: () async {
+            enabled: !_isPrinting,
+            onTap: () => _runAction(() async {
               final pdf = await _generatePdf(PdfPageFormat.letter);
-              await Printing.sharePdf(
-                  bytes: pdf, filename: 'dedicatoria.pdf');
-            },
+              await Printing.sharePdf(bytes: pdf, filename: 'dedicatoria.pdf');
+            }),
           ),
         ),
       ],
@@ -1015,35 +1036,39 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     required Color bg,
     required Color fg,
     required bool shadow,
-    required VoidCallback onTap,
+    required bool enabled,
+    required Future<void> Function() onTap,
   }) =>
       GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: shadow
-                ? [
-                    BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4))
-                  ]
-                : null,
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: fg, size: 22),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: fg,
-                      letterSpacing: 0.5)),
-            ],
+        onTap: enabled ? () { onTap(); } : null,
+        child: Opacity(
+          opacity: enabled ? 1.0 : 0.5,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: shadow && enabled
+                  ? [
+                      BoxShadow(
+                          color: AppTheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ]
+                  : null,
+            ),
+            child: Column(
+              children: [
+                Icon(icon, color: fg, size: 22),
+                const SizedBox(height: 4),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: fg,
+                        letterSpacing: 0.5)),
+              ],
+            ),
           ),
         ),
       );
