@@ -230,14 +230,17 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         right: _marginRightCm * cmPt,
         bottom: 20,
       ),
-      build: (_) => pw.Text(
-        _messageCtrl.text,
-        textAlign: pdfAlign,
-        style: pw.TextStyle(
-          font: font,
-          fontSize: _fontSize,
-          decoration:
-              _isStrikethrough ? pw.TextDecoration.lineThrough : null,
+      build: (_) => pw.SizedBox(
+        width: double.infinity,
+        child: pw.Text(
+          _messageCtrl.text,
+          textAlign: pdfAlign,
+          style: pw.TextStyle(
+            font: font,
+            fontSize: _fontSize,
+            decoration:
+                _isStrikethrough ? pw.TextDecoration.lineThrough : null,
+          ),
         ),
       ),
     ));
