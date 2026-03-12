@@ -92,7 +92,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   // ── Font catalogue ──────────────────────────────────────────────────────────
   static const _sansFonts = ['Manrope', 'Montserrat', 'Poppins', 'Lato', 'Roboto'];
   static const _scriptFonts = [
-    'Playfair',
+    'Satisfy',
     'Great Vibes',
     'Caveat',
     'Pacifico',
@@ -224,10 +224,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         if (_isBold) return PdfGoogleFonts.robotoBold();
         return PdfGoogleFonts.robotoRegular();
       // ── Script / display: fetched via PdfGoogleFonts (proven static TTFs) ──
-      case 'Playfair':
-        return _isBold
-            ? PdfGoogleFonts.playfairBold()
-            : PdfGoogleFonts.playfairRegular();
+      case 'Satisfy':
+        return PdfGoogleFonts.satisfyRegular();
       case 'Great Vibes':
         return PdfGoogleFonts.greatVibesRegular();
       case 'Caveat':
@@ -318,8 +316,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
       case 'Roboto':
         base = GoogleFonts.roboto();
         break;
-      case 'Playfair':
-        base = GoogleFonts.playfairDisplay();
+      case 'Satisfy':
+        base = GoogleFonts.satisfy();
         break;
       case 'Great Vibes':
         base = const TextStyle(fontFamily: 'GreatVibes');
