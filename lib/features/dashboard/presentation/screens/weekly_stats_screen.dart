@@ -1,6 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../orders/domain/models/order_model.dart';
+import '../../../orders/domain/repositories/order_repository.dart';
 
 class WeeklyStatsScreen extends StatefulWidget {
   const WeeklyStatsScreen({super.key});
@@ -10,17 +13,149 @@ class WeeklyStatsScreen extends StatefulWidget {
 }
 
 class _WeeklyStatsScreenState extends State<WeeklyStatsScreen> {
-  int _selectedPeriod = 1; // 0=Ayer 1=Hoy 2=Mañana 3=7días
-  final List<String> _periods = ['Ayer', 'Hoy', 'Mañana', '7 días'];
+  // 0=Ayer  1=Hoy  2=7 días  3=Mes
+  int _selectedPeriod = 2;
+  final List<String> _periods = ['Ayer', 'Hoy', '7 días', 'Mes'];
 
-  // Mock sales line chart data (Mon–Sun)
-  final List<double> _salesData = [1200, 1800, 2300, 1700, 3000, 3500, 8450];
-  final List<String> _days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  bool _isLoading = true;
+  String? _shopId;
+  List<OrderModel> _allOrders = [];
+  DateTimeRange? _customRange;
 
-  // Mock catalog visits bar data [new, returning]
-  final List<List<int>> _visits = [
-    [50, 15], [42, 18], [57, 25], [42, 43], [67, 48], [85, 69], [100, 42],
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _shopId = Supabase.instance.client.auth.currentUser?.id;
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    if (_shopId == null) return;
+    setState(() => _isLoading = true);
+    try {
+      _allOrders = await OrderRepository().getOrders(_shopId!);
+    } catch (_) {}
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  // ── Date ranges ────────────────────────────────────────────────────────────
+
+  DateTimeRange get _dateRange {
+    if (_customRange != null) return _customRange!;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    switch (_selectedPeriod) {
+      case 0: // Ayer
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 1)),
+          end: today,
+        );
+      case 1: // Hoy
+        return DateTimeRange(
+          start: today,
+          end: today.add(const Duration(days: 1)),
+        );
+      case 3: // Mes
+        return DateTimeRange(
+          start: DateTime(now.year, now.month, 1),
+          end: today.add(const Duration(days: 1)),
+        );
+      case 2: // 7 días (default)
+      default:
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 6)),
+          end: today.add(const Duration(days: 1)),
+        );
+    }
+  }
+
+  DateTimeRange get _previousDateRange {
+    final r = _dateRange;
+    final duration = r.end.difference(r.start);
+    return DateTimeRange(
+      start: r.start.subtract(duration),
+      end: r.start,
+    );
+  }
+
+  // ── Filtered orders ────────────────────────────────────────────────────────
+
+  List<OrderModel> _filterOrders(DateTimeRange range) => _allOrders
+      .where((o) =>
+          !o.saleDate.isBefore(range.start) &&
+          o.saleDate.isBefore(range.end) &&
+          o.status != OrderStatus.cancelled)
+      .toList();
+
+  List<OrderModel> get _ordersInPeriod => _filterOrders(_dateRange);
+  List<OrderModel> get _ordersInPreviousPeriod =>
+      _filterOrders(_previousDateRange);
+
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+
+  double get _totalSales =>
+      _ordersInPeriod.fold(0.0, (s, o) => s + o.total);
+
+  double get _previousTotal =>
+      _ordersInPreviousPeriod.fold(0.0, (s, o) => s + o.total);
+
+  double get _changePercent {
+    if (_previousTotal == 0) return 0;
+    return ((_totalSales - _previousTotal) / _previousTotal) * 100;
+  }
+
+  // ── Chart: last-7-days daily sales ────────────────────────────────────────
+
+  List<double> get _last7DaysSales {
+    final today = DateTime.now();
+    return List.generate(7, (i) {
+      final day = DateTime(today.year, today.month, today.day)
+          .subtract(Duration(days: 6 - i));
+      final nextDay = day.add(const Duration(days: 1));
+      return _allOrders
+          .where((o) =>
+              !o.saleDate.isBefore(day) &&
+              o.saleDate.isBefore(nextDay) &&
+              o.status != OrderStatus.cancelled)
+          .fold(0.0, (s, o) => s + o.total);
+    });
+  }
+
+  List<String> get _last7DayLabels {
+    const abbr = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+    final today = DateTime.now();
+    return List.generate(7, (i) {
+      final day = DateTime(today.year, today.month, today.day)
+          .subtract(Duration(days: 6 - i));
+      return abbr[day.weekday - 1]; // weekday: 1=Mon … 7=Sun
+    });
+  }
+
+  // ── Best sellers ──────────────────────────────────────────────────────────
+
+  List<_BestSeller> get _bestSellers {
+    final map = <String, int>{};
+    for (final o in _ordersInPeriod) {
+      map[o.productName] = (map[o.productName] ?? 0) + o.quantity;
+    }
+    final sorted = map.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.take(3).map((e) => _BestSeller(e.key, e.value)).toList();
+  }
+
+  // ── Orders by status ──────────────────────────────────────────────────────
+
+  Map<OrderStatus, int> get _ordersByStatus {
+    final map = <OrderStatus, int>{};
+    final r = _dateRange;
+    for (final o in _allOrders.where((o) =>
+        !o.saleDate.isBefore(r.start) && o.saleDate.isBefore(r.end))) {
+      map[o.status] = (map[o.status] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -31,113 +166,169 @@ class _WeeklyStatsScreenState extends State<WeeklyStatsScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
-            child: const Icon(Icons.arrow_back_ios_new, size: 16, color: AppTheme.textLight),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+                color: Colors.grey[100], shape: BoxShape.circle),
+            child: const Icon(Icons.arrow_back_ios_new,
+                size: 16, color: AppTheme.textLight),
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Estadísticas Semanales',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.textLight)),
+        title: const Text('Estadísticas',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                color: AppTheme.textLight)),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: AppTheme.mutedLight),
+            onPressed: _loadData,
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Period tabs ──────────────────────────────────────────────────
-            _buildPeriodTabs(),
-            const SizedBox(height: 16),
-
-            // ── Date range picker ─────────────────────────────────────────────
-            _buildDateRangePicker(context),
-            const SizedBox(height: 20),
-
-            // ── Total sales card with line chart ──────────────────────────────
-            _buildSalesCard(),
-            const SizedBox(height: 20),
-
-            // ── Best-selling products ─────────────────────────────────────────
-            _buildBestSellers(context),
-            const SizedBox(height: 20),
-
-            // ── Catalog visits bar chart ──────────────────────────────────────
-            _buildVisitsChart(),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary))
+          : RefreshIndicator(
+              color: AppTheme.primary,
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildPeriodTabs(),
+                    const SizedBox(height: 16),
+                    _buildDateRangePicker(context),
+                    const SizedBox(height: 20),
+                    _buildSalesCard(),
+                    const SizedBox(height: 20),
+                    _buildBestSellers(),
+                    const SizedBox(height: 20),
+                    _buildOrdersByStatus(),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
-  // ─── Period Tabs ──────────────────────────────────────────────────────────
+  // ── Period tabs ────────────────────────────────────────────────────────────
 
   Widget _buildPeriodTabs() {
-    return Row(
-      children: List.generate(_periods.length, (i) {
-        final sel = i == _selectedPeriod;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedPeriod = i),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-            decoration: BoxDecoration(
-              color: sel ? AppTheme.primary : Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: sel ? AppTheme.primary : Colors.grey.withValues(alpha: 0.2)),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: List.generate(_periods.length, (i) {
+          final sel = i == _selectedPeriod && _customRange == null;
+          return GestureDetector(
+            onTap: () => setState(() {
+              _selectedPeriod = i;
+              _customRange = null;
+            }),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(right: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+              decoration: BoxDecoration(
+                color: sel ? AppTheme.primary : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                    color: sel
+                        ? AppTheme.primary
+                        : Colors.grey.withValues(alpha: 0.2)),
+              ),
+              child: Text(
+                _periods[i],
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: sel ? Colors.white : AppTheme.mutedLight),
+              ),
             ),
-            child: Text(_periods[i],
-              style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600,
-                color: sel ? Colors.white : AppTheme.mutedLight)),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 
-  // ─── Date Range Picker ────────────────────────────────────────────────────
+  // ── Date range picker ──────────────────────────────────────────────────────
 
   Widget _buildDateRangePicker(BuildContext context) {
+    final label = _customRange != null
+        ? '${_fmt(_customRange!.start)} – ${_fmt(_customRange!.end)}'
+        : 'Seleccionar rango de fechas';
+
     return GestureDetector(
       onTap: () async {
-        await showDateRangePicker(
+        final picked = await showDateRangePicker(
           context: context,
           firstDate: DateTime(2024),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
+          lastDate: DateTime.now().add(const Duration(days: 1)),
           locale: const Locale('es'),
           builder: (ctx, child) => Theme(
-            data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.primary)),
+            data: Theme.of(ctx).copyWith(
+                colorScheme:
+                    const ColorScheme.light(primary: AppTheme.primary)),
             child: child!,
           ),
         );
+        if (picked != null) setState(() => _customRange = picked);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+          border: Border.all(
+              color: _customRange != null
+                  ? AppTheme.primary
+                  : Colors.grey.withValues(alpha: 0.15)),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.calendar_today_outlined, color: AppTheme.primary, size: 18),
-            SizedBox(width: 12),
+            Icon(Icons.calendar_today_outlined,
+                color: _customRange != null
+                    ? AppTheme.primary
+                    : AppTheme.mutedLight,
+                size: 18),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text('Seleccionar rango de fechas',
-                style: TextStyle(fontSize: 14, color: AppTheme.mutedLight))),
-            Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedLight),
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: _customRange != null
+                          ? AppTheme.textLight
+                          : AppTheme.mutedLight)),
+            ),
+            if (_customRange != null)
+              GestureDetector(
+                onTap: () => setState(() => _customRange = null),
+                child: const Icon(Icons.close,
+                    size: 16, color: AppTheme.mutedLight),
+              )
+            else
+              const Icon(Icons.keyboard_arrow_down,
+                  color: AppTheme.mutedLight),
           ],
         ),
       ),
     );
   }
 
-  // ─── Sales Card with Line Chart ───────────────────────────────────────────
+  // ── Sales card ─────────────────────────────────────────────────────────────
 
   Widget _buildSalesCard() {
+    final change = _changePercent;
+    final isUp = change >= 0;
+    final chartData = _last7DaysSales;
+    final chartDays = _last7DayLabels;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -149,60 +340,87 @@ class _WeeklyStatsScreenState extends State<WeeklyStatsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('VENTAS TOTALES',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
-              color: AppTheme.primary, letterSpacing: 1.2)),
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                  letterSpacing: 1.2)),
           const SizedBox(height: 6),
-          const Text('\$8,450 MXN',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
+          Text(
+            '\$${_totalSales.toStringAsFixed(2)} MXN',
+            style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textLight),
+          ),
           const SizedBox(height: 6),
           Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-              child: const Row(children: [
-                Icon(Icons.trending_up, color: Colors.green, size: 13),
-                SizedBox(width: 4),
-                Text('+20%', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
-              ]),
-            ),
-            const SizedBox(width: 8),
-            const Text('vs semana anterior', style: TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
+            if (_previousTotal > 0) ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (isUp ? Colors.green : Colors.red)
+                      .withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(children: [
+                  Icon(
+                      isUp ? Icons.trending_up : Icons.trending_down,
+                      color: isUp ? Colors.green : Colors.red,
+                      size: 13),
+                  const SizedBox(width: 4),
+                  Text(
+                      '${isUp ? '+' : ''}${change.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                          color: isUp ? Colors.green : Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              const Text('vs período anterior',
+                  style:
+                      TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
+            ] else
+              const Text('Sin datos del período anterior',
+                  style:
+                      TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
           ]),
+          const SizedBox(height: 6),
+          Text(
+            '${_ordersInPeriod.length} pedido${_ordersInPeriod.length != 1 ? 's' : ''}',
+            style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight),
+          ),
           const SizedBox(height: 20),
-          SizedBox(height: 120, child: _LineChart(data: _salesData, days: _days)),
+          if (chartData.any((v) => v > 0))
+            SizedBox(
+                height: 120,
+                child: _LineChart(data: chartData, days: chartDays))
+          else
+            Container(
+              height: 60,
+              alignment: Alignment.center,
+              child: const Text('Sin ventas en los últimos 7 días',
+                  style: TextStyle(color: AppTheme.mutedLight, fontSize: 13)),
+            ),
         ],
       ),
     );
   }
 
-  // ─── Best Sellers ─────────────────────────────────────────────────────────
+  // ── Best sellers ───────────────────────────────────────────────────────────
 
-  Widget _buildBestSellers(BuildContext context) {
-    final products = [
-      const _Product('Ramo "Amor Eterno"', 'Rosas rojas importadas', 42,
-        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=80&q=80'),
-      const _Product('Cesta Primaveral', 'Mix de flores de temporada', 28,
-        'https://images.unsplash.com/photo-1487530811015-780f93f1b6cc?w=80&q=80'),
-      const _Product('Orquídea Phalaenopsis', 'Blanca en maceta cerámica', 15,
-        'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=80&q=80'),
-    ];
-
+  Widget _buildBestSellers() {
+    final sellers = _bestSellers;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Productos más vendidos',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
-            GestureDetector(
-              onTap: () {},
-              child: const Text('Ver todo',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primary)),
-            ),
-          ],
-        ),
+        const Text('Productos más vendidos',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textLight)),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
@@ -210,60 +428,125 @@ class _WeeklyStatsScreenState extends State<WeeklyStatsScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.grey.withValues(alpha: 0.08)),
           ),
-          child: Column(
-            children: List.generate(products.length, (i) {
-              final p = products[i];
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(p.imageUrl,
-                          width: 52, height: 52, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 52, height: 52,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.local_florist, color: AppTheme.primary)),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold,
-                            fontSize: 14, color: AppTheme.textLight)),
-                          const SizedBox(height: 2),
-                          Text(p.subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
-                        ],
-                      )),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('${p.sold}',
-                            style: const TextStyle(fontWeight: FontWeight.bold,
-                              fontSize: 16, color: AppTheme.textLight)),
-                          const Text('vendidos', style: TextStyle(fontSize: 11, color: AppTheme.mutedLight)),
-                        ],
-                      ),
-                    ]),
+          child: sellers.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: Text('Sin pedidos en este período',
+                        style: TextStyle(
+                            color: AppTheme.mutedLight, fontSize: 14)),
                   ),
-                  if (i < products.length - 1)
-                    Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1), indent: 82),
-                ],
-              );
-            }),
-          ),
+                )
+              : Column(
+                  children: List.generate(sellers.length, (i) {
+                    final s = sellers[i];
+                    final maxSold = sellers.first.sold;
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: i == 0
+                                    ? const Color(0xFFFFF3CD)
+                                    : Colors.grey[100],
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text('${i + 1}',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: i == 0
+                                            ? const Color(0xFFB8860B)
+                                            : AppTheme.mutedLight)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.local_florist,
+                                  color: AppTheme.primary, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(s.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: AppTheme.textLight)),
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: s.sold / maxSold,
+                                      backgroundColor: Colors.grey[100],
+                                      color: AppTheme.primary,
+                                      minHeight: 4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('${s.sold}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: AppTheme.textLight)),
+                                const Text('vendidos',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppTheme.mutedLight)),
+                              ],
+                            ),
+                          ]),
+                        ),
+                        if (i < sellers.length - 1)
+                          Divider(
+                              height: 1,
+                              color: Colors.grey.withValues(alpha: 0.1),
+                              indent: 72),
+                      ],
+                    );
+                  }),
+                ),
         ),
       ],
     );
   }
 
-  // ─── Catalog Visits Bar Chart ─────────────────────────────────────────────
+  // ── Orders by status ───────────────────────────────────────────────────────
 
-  Widget _buildVisitsChart() {
+  Widget _buildOrdersByStatus() {
+    final statusMap = _ordersByStatus;
+    final total = statusMap.values.fold(0, (s, v) => s + v);
+
+    const statuses = [
+      OrderStatus.waiting,
+      OrderStatus.processing,
+      OrderStatus.inTransit,
+      OrderStatus.delivered,
+      OrderStatus.cancelled,
+    ];
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -274,37 +557,84 @@ class _WeeklyStatsScreenState extends State<WeeklyStatsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text('Visitas al catálogo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
-              const Spacer(),
-              Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
-              const SizedBox(width: 4),
-              const Text('Nuevos', style: TextStyle(fontSize: 11, color: AppTheme.mutedLight)),
-              const SizedBox(width: 12),
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.35), shape: BoxShape.circle)),
-              const SizedBox(width: 4),
-              const Text('Recurrentes', style: TextStyle(fontSize: 11, color: AppTheme.mutedLight)),
-            ],
-          ),
+          const Text('Pedidos por estado',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textLight)),
+          const SizedBox(height: 4),
+          Text('$total pedido${total != 1 ? 's' : ''} en este período',
+              style:
+                  const TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
           const SizedBox(height: 20),
-          SizedBox(height: 160, child: _BarChart(data: _visits, days: _days)),
+          if (total == 0)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text('Sin pedidos en este período',
+                    style: TextStyle(
+                        color: AppTheme.mutedLight, fontSize: 14)),
+              ),
+            )
+          else
+            ...statuses.map((status) {
+              final count = statusMap[status] ?? 0;
+              if (count == 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(children: [
+                  Icon(status.chipIcon, color: status.chipColor, size: 18),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 90,
+                    child: Text(status.label,
+                        style: const TextStyle(
+                            fontSize: 13, color: AppTheme.textLight)),
+                  ),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: count / total,
+                        backgroundColor: Colors.grey[100],
+                        valueColor:
+                            AlwaysStoppedAnimation(status.chipColor),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 28,
+                    child: Text('$count',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: AppTheme.textLight)),
+                  ),
+                ]),
+              );
+            }),
         ],
       ),
     );
   }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  String _fmt(DateTime d) => '${d.day}/${d.month}/${d.year}';
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ── Data class ────────────────────────────────────────────────────────────────
 
-class _Product {
-  final String name, subtitle, imageUrl;
+class _BestSeller {
+  final String name;
   final int sold;
-  const _Product(this.name, this.subtitle, this.sold, this.imageUrl);
+  const _BestSeller(this.name, this.sold);
 }
 
-// ─── Custom Line Chart ────────────────────────────────────────────────────────
+// ── Custom Line Chart ─────────────────────────────────────────────────────────
 
 class _LineChart extends StatelessWidget {
   final List<double> data;
@@ -329,21 +659,24 @@ class _LineChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final maxVal = data.reduce(max);
     final minVal = data.reduce(min);
-    final range = maxVal - minVal == 0 ? 1 : maxVal - minVal;
+    final range = maxVal - minVal == 0 ? 1.0 : maxVal - minVal;
     final chartH = size.height - 20;
 
     final pts = List.generate(data.length, (i) {
-      final x = (i / (data.length - 1)) * size.width;
+      final x = data.length < 2
+          ? size.width / 2
+          : (i / (data.length - 1)) * size.width;
       final y = chartH - ((data[i] - minVal) / range) * chartH;
       return Offset(x, y);
     });
 
-    // Fill
+    // Gradient fill
     final fillPath = Path()..moveTo(pts.first.dx, pts.first.dy);
     for (int i = 0; i < pts.length - 1; i++) {
       final cp1 = Offset((pts[i].dx + pts[i + 1].dx) / 2, pts[i].dy);
       final cp2 = Offset((pts[i].dx + pts[i + 1].dx) / 2, pts[i + 1].dy);
-      fillPath.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, pts[i + 1].dx, pts[i + 1].dy);
+      fillPath.cubicTo(
+          cp1.dx, cp1.dy, cp2.dx, cp2.dy, pts[i + 1].dx, pts[i + 1].dy);
     }
     fillPath
       ..lineTo(size.width, chartH)
@@ -352,10 +685,15 @@ class _LineChartPainter extends CustomPainter {
 
     canvas.drawPath(
       fillPath,
-      Paint()..shader = LinearGradient(
-        colors: [AppTheme.primary.withValues(alpha: 0.25), AppTheme.primary.withValues(alpha: 0.0)],
-        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, chartH)),
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            AppTheme.primary.withValues(alpha: 0.25),
+            AppTheme.primary.withValues(alpha: 0.0),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(Rect.fromLTWH(0, 0, size.width, chartH)),
     );
 
     // Line
@@ -363,113 +701,50 @@ class _LineChartPainter extends CustomPainter {
     for (int i = 0; i < pts.length - 1; i++) {
       final cp1 = Offset((pts[i].dx + pts[i + 1].dx) / 2, pts[i].dy);
       final cp2 = Offset((pts[i].dx + pts[i + 1].dx) / 2, pts[i + 1].dy);
-      linePath.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, pts[i + 1].dx, pts[i + 1].dy);
+      linePath.cubicTo(
+          cp1.dx, cp1.dy, cp2.dx, cp2.dy, pts[i + 1].dx, pts[i + 1].dy);
     }
-    canvas.drawPath(linePath,
-      Paint()..color = AppTheme.primary..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    canvas.drawPath(
+        linePath,
+        Paint()
+          ..color = AppTheme.primary
+          ..strokeWidth = 2.5
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round);
 
     // Dots
-    for (int i = 0; i < pts.length; i++) {
-      canvas.drawCircle(pts[i], 5, Paint()..color = Colors.white);
-      canvas.drawCircle(pts[i], 5, Paint()
-        ..color = AppTheme.primary..style = PaintingStyle.stroke..strokeWidth = 2);
+    for (final p in pts) {
+      canvas.drawCircle(p, 5, Paint()..color = Colors.white);
+      canvas.drawCircle(
+          p,
+          5,
+          Paint()
+            ..color = AppTheme.primary
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2);
     }
 
     // Day labels
     final tp = TextPainter(textDirection: TextDirection.ltr);
     for (int i = 0; i < days.length; i++) {
-      tp.text = TextSpan(text: days[i],
-        style: TextStyle(fontSize: 11, color: i == days.length - 1
-          ? AppTheme.primary : AppTheme.mutedLight, fontWeight: FontWeight.w600));
+      tp.text = TextSpan(
+        text: days[i],
+        style: TextStyle(
+            fontSize: 11,
+            color: i == days.length - 1
+                ? AppTheme.primary
+                : AppTheme.mutedLight,
+            fontWeight: FontWeight.w600),
+      );
       tp.layout();
-      final x = (i / (days.length - 1)) * size.width - tp.width / 2;
+      final x = data.length < 2
+          ? size.width / 2 - tp.width / 2
+          : (i / (days.length - 1)) * size.width - tp.width / 2;
       tp.paint(canvas, Offset(x, size.height - 14));
     }
   }
 
   @override
-  bool shouldRepaint(_LineChartPainter old) => old.data != data;
-}
-
-// ─── Custom Bar Chart ─────────────────────────────────────────────────────────
-
-class _BarChart extends StatelessWidget {
-  final List<List<int>> data;
-  final List<String> days;
-  const _BarChart({required this.data, required this.days});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _BarChartPainter(data: data, days: days),
-      size: Size.infinite,
-    );
-  }
-}
-
-class _BarChartPainter extends CustomPainter {
-  final List<List<int>> data; // [[new, returning], ...]
-  final List<String> days;
-  _BarChartPainter({required this.data, required this.days});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final allTotals = data.map((d) => d[0] + d[1]).toList();
-    final maxTotal = allTotals.reduce(max).toDouble();
-    const labelH = 18.0;
-    const dayH = 18.0;
-    final chartH = size.height - labelH - dayH;
-    final colW = size.width / data.length;
-    const barW = 22.0;
-    const barSpacing = 4.0;
-
-    for (int i = 0; i < data.length; i++) {
-      final newV = data[i][0];
-      final retV = data[i][1];
-      final total = newV + retV;
-      final cx = colW * i + colW / 2;
-
-      final newH = (newV / maxTotal) * chartH;
-      final retH = (retV / maxTotal) * chartH;
-
-      // Returning bar (lighter, left)
-      final retLeft = cx - barW - barSpacing / 2;
-      final retTop = chartH - retH;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(retLeft, retTop, barW, retH), const Radius.circular(5)),
-        Paint()..color = AppTheme.primary.withValues(alpha: 0.35),
-      );
-
-      // New bar (solid, right)
-      final newLeft = cx + barSpacing / 2;
-      final newTop = chartH - newH;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(newLeft, newTop, barW, newH), const Radius.circular(5)),
-        Paint()..color = AppTheme.primary,
-      );
-
-      // Total label
-      if (i == data.length - 1 || total >= allTotals.reduce(max) * 0.8) {
-        final tp = TextPainter(
-          text: TextSpan(text: '$total visitas',
-            style: const TextStyle(fontSize: 9, color: AppTheme.mutedLight, fontWeight: FontWeight.w600)),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, Offset(cx - tp.width / 2, min(retTop, newTop) - 14));
-      }
-
-      // Day label
-      final tp = TextPainter(
-        text: TextSpan(text: days[i],
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-            color: i == data.length - 1 ? AppTheme.primary : AppTheme.mutedLight)),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(cx - tp.width / 2, size.height - dayH));
-    }
-  }
-
-  @override
-  bool shouldRepaint(_BarChartPainter old) => false;
+  bool shouldRepaint(_LineChartPainter old) =>
+      old.data != data || old.days != days;
 }
