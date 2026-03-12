@@ -1,5 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -7,6 +8,58 @@ import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 
+// ── Template model ────────────────────────────────────────────────────────────
+class _Template {
+  String font;
+  double fontSize;
+  double marginTop;
+  double marginLeft;
+  double marginRight;
+  bool bold;
+  bool italic;
+  bool strikethrough;
+  String align;
+
+  _Template({
+    this.font = 'Manrope',
+    this.fontSize = 14,
+    this.marginTop = 1.0,
+    this.marginLeft = 1.0,
+    this.marginRight = 1.0,
+    this.bold = false,
+    this.italic = false,
+    this.strikethrough = false,
+    this.align = 'center',
+  });
+
+  String get label => font.split(' ').first;
+
+  Map<String, dynamic> toJson() => {
+        'font': font,
+        'fontSize': fontSize,
+        'marginTop': marginTop,
+        'marginLeft': marginLeft,
+        'marginRight': marginRight,
+        'bold': bold,
+        'italic': italic,
+        'strikethrough': strikethrough,
+        'align': align,
+      };
+
+  factory _Template.fromJson(Map<String, dynamic> j) => _Template(
+        font: j['font'] ?? 'Manrope',
+        fontSize: (j['fontSize'] as num?)?.toDouble() ?? 14,
+        marginTop: (j['marginTop'] as num?)?.toDouble() ?? 1.0,
+        marginLeft: (j['marginLeft'] as num?)?.toDouble() ?? 1.0,
+        marginRight: (j['marginRight'] as num?)?.toDouble() ?? 1.0,
+        bold: j['bold'] ?? false,
+        italic: j['italic'] ?? false,
+        strikethrough: j['strikethrough'] ?? false,
+        align: j['align'] ?? 'center',
+      );
+}
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 class PrintCardScreen extends StatefulWidget {
   final String initialMessage;
   const PrintCardScreen({super.key, required this.initialMessage});
@@ -16,11 +69,7 @@ class PrintCardScreen extends StatefulWidget {
 }
 
 class _PrintCardScreenState extends State<PrintCardScreen> {
-  late TextEditingController _messageCtrl;
-  late TextEditingController _fontSizeCtrl;
-  late TextEditingController _marginTopCtrl;
-  late TextEditingController _marginLeftCtrl;
-  late TextEditingController _marginRightCtrl;
+  late final TextEditingController _messageCtrl;
 
   String _selectedFont = 'Manrope';
   double _fontSize = 14.0;
@@ -32,154 +81,258 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   double _marginLeftCm = 1.0;
   double _marginRightCm = 1.0;
 
-  static const _prefFont = 'print_font';
-  static const _prefFontSize = 'print_font_size';
-  static const _prefMarginTop = 'print_margin_top';
-  static const _prefMarginLeft = 'print_margin_left';
-  static const _prefMarginRight = 'print_margin_right';
+  // 3 saved template slots (null = empty)
+  final List<_Template?> _templates = [null, null, null];
 
-  final List<Map<String, String>> _fonts = const [
-    {'name': 'Manrope', 'label': 'Manrope (Sans)'},
-    {'name': 'Playfair Display', 'label': 'Playfair Display (Serif)'},
-    {'name': 'Dancing Script', 'label': 'Dancing Script (Cursiva)'},
-    {'name': 'Montserrat', 'label': 'Montserrat'},
+  static const _prefTmplPrefix = 'print_template_';
+
+  // ── Font catalogue ──────────────────────────────────────────────────────────
+  static const _sansFonts = ['Manrope', 'Montserrat', 'Poppins', 'Lato', 'Roboto'];
+  static const _scriptFonts = [
+    'Dancing Script',
+    'Great Vibes',
+    'Caveat',
+    'Pacifico',
+    'Sacramento',
   ];
 
-  final List<String> _commonEmojis = const [
+  // ── Emoji palette ───────────────────────────────────────────────────────────
+  static const _emojis = [
     '🌹', '🌸', '💐', '🌺', '✨', '💖', '🎉', '🥰',
     '💝', '🌷', '🌻', '🍀', '🌿', '🦋', '⭐', '🎊',
   ];
 
+  // ───────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _messageCtrl = TextEditingController(text: widget.initialMessage);
-    _fontSizeCtrl = TextEditingController(text: '14');
-    _marginTopCtrl = TextEditingController(text: '1.0');
-    _marginLeftCtrl = TextEditingController(text: '1.0');
-    _marginRightCtrl = TextEditingController(text: '1.0');
-    _loadTemplate();
-  }
-
-  Future<void> _loadTemplate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final font = prefs.getString(_prefFont);
-    final fontSize = prefs.getDouble(_prefFontSize);
-    final top = prefs.getDouble(_prefMarginTop);
-    final left = prefs.getDouble(_prefMarginLeft);
-    final right = prefs.getDouble(_prefMarginRight);
-    if (!mounted) return;
-    setState(() {
-      if (font != null) _selectedFont = font;
-      if (fontSize != null) {
-        _fontSize = fontSize;
-        _fontSizeCtrl.text = fontSize.toInt().toString();
-      }
-      if (top != null) {
-        _marginTopCm = top;
-        _marginTopCtrl.text = top.toStringAsFixed(1);
-      }
-      if (left != null) {
-        _marginLeftCm = left;
-        _marginLeftCtrl.text = left.toStringAsFixed(1);
-      }
-      if (right != null) {
-        _marginRightCm = right;
-        _marginRightCtrl.text = right.toStringAsFixed(1);
-      }
-    });
-  }
-
-  Future<void> _saveTemplate() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefFont, _selectedFont);
-    await prefs.setDouble(_prefFontSize, _fontSize);
-    await prefs.setDouble(_prefMarginTop, _marginTopCm);
-    await prefs.setDouble(_prefMarginLeft, _marginLeftCm);
-    await prefs.setDouble(_prefMarginRight, _marginRightCm);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Plantilla guardada'),
-        backgroundColor: AppTheme.primary,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
+    _loadTemplates();
   }
 
   @override
   void dispose() {
     _messageCtrl.dispose();
-    _fontSizeCtrl.dispose();
-    _marginTopCtrl.dispose();
-    _marginLeftCtrl.dispose();
-    _marginRightCtrl.dispose();
     super.dispose();
   }
 
-  Future<pw.Font> _getPdfFont({bool bold = false, bool italic = false}) async {
+  // ── Persistence ─────────────────────────────────────────────────────────────
+  Future<void> _loadTemplates() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      for (int i = 0; i < 3; i++) {
+        final raw = prefs.getString('$_prefTmplPrefix${i + 1}');
+        if (raw != null) {
+          try {
+            _templates[i] = _Template.fromJson(jsonDecode(raw));
+          } catch (_) {}
+        }
+      }
+    });
+  }
+
+  Future<void> _saveToSlot(int slot) async {
+    final t = _Template(
+      font: _selectedFont,
+      fontSize: _fontSize,
+      marginTop: _marginTopCm,
+      marginLeft: _marginLeftCm,
+      marginRight: _marginRightCm,
+      bold: _isBold,
+      italic: _isItalic,
+      strikethrough: _isStrikethrough,
+      align: _textAlign == TextAlign.left
+          ? 'left'
+          : _textAlign == TextAlign.right
+              ? 'right'
+              : 'center',
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('$_prefTmplPrefix$slot', jsonEncode(t.toJson()));
+    if (!mounted) return;
+    setState(() => _templates[slot - 1] = t);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Guardado en Plantilla $slot'),
+      backgroundColor: AppTheme.primary,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  void _applyTemplate(_Template t) => setState(() {
+        _selectedFont = t.font;
+        _fontSize = t.fontSize;
+        _marginTopCm = t.marginTop;
+        _marginLeftCm = t.marginLeft;
+        _marginRightCm = t.marginRight;
+        _isBold = t.bold;
+        _isItalic = t.italic;
+        _isStrikethrough = t.strikethrough;
+        _textAlign = t.align == 'left'
+            ? TextAlign.left
+            : t.align == 'right'
+                ? TextAlign.right
+                : TextAlign.center;
+      });
+
+  // ── PDF ─────────────────────────────────────────────────────────────────────
+  Future<pw.Font> _pdfFont() async {
     switch (_selectedFont) {
-      case 'Playfair Display':
-        if (bold) return await PdfGoogleFonts.playfairDisplayBold();
-        return await PdfGoogleFonts.playfairDisplayRegular();
-      case 'Dancing Script':
-        if (bold) return await PdfGoogleFonts.dancingScriptBold();
-        return await PdfGoogleFonts.dancingScriptRegular();
       case 'Montserrat':
-        if (bold && italic) return await PdfGoogleFonts.montserratBoldItalic();
-        if (bold) return await PdfGoogleFonts.montserratBold();
-        if (italic) return await PdfGoogleFonts.montserratItalic();
-        return await PdfGoogleFonts.montserratRegular();
+        if (_isBold && _isItalic) return PdfGoogleFonts.montserratBoldItalic();
+        if (_isBold) return PdfGoogleFonts.montserratBold();
+        if (_isItalic) return PdfGoogleFonts.montserratItalic();
+        return PdfGoogleFonts.montserratRegular();
+      case 'Poppins':
+        if (_isBold) return PdfGoogleFonts.poppinsBold();
+        return PdfGoogleFonts.poppinsRegular();
+      case 'Lato':
+        if (_isBold) return PdfGoogleFonts.latoBold();
+        return PdfGoogleFonts.latoRegular();
+      case 'Roboto':
+        if (_isBold) return PdfGoogleFonts.robotoBold();
+        return PdfGoogleFonts.robotoRegular();
+      case 'Dancing Script':
+        if (_isBold) return PdfGoogleFonts.dancingScriptBold();
+        return PdfGoogleFonts.dancingScriptRegular();
+      case 'Great Vibes':
+        return PdfGoogleFonts.greatVibesRegular();
+      case 'Caveat':
+        if (_isBold) return PdfGoogleFonts.caveatBold();
+        return PdfGoogleFonts.caveatRegular();
+      case 'Pacifico':
+        return PdfGoogleFonts.pacificoRegular();
+      case 'Sacramento':
+        return PdfGoogleFonts.sacramentoRegular();
       case 'Manrope':
       default:
-        if (bold) return await PdfGoogleFonts.manropeBold();
-        return await PdfGoogleFonts.manropeRegular();
+        if (_isBold) return PdfGoogleFonts.manropeBold();
+        return PdfGoogleFonts.manropeRegular();
     }
   }
 
   Future<Uint8List> _generatePdf(PdfPageFormat format) async {
     final pdf = pw.Document(version: PdfVersion.pdf_1_5, compress: true);
-    final font = await _getPdfFont(bold: _isBold, italic: _isItalic);
+    final font = await _pdfFont();
+    const cmPt = 28.3465;
 
-    const double cmToPoints = 28.3465;
-    final double marginTop = _marginTopCm * cmToPoints;
-    final double marginLeft = _marginLeftCm * cmToPoints;
-    final double marginRight = _marginRightCm * cmToPoints;
+    final pdfAlign = _textAlign == TextAlign.left
+        ? pw.TextAlign.left
+        : _textAlign == TextAlign.right
+            ? pw.TextAlign.right
+            : pw.TextAlign.center;
 
-    pw.TextAlign pdfAlign;
-    switch (_textAlign) {
-      case TextAlign.left:
-        pdfAlign = pw.TextAlign.left;
-        break;
-      case TextAlign.right:
-        pdfAlign = pw.TextAlign.right;
-        break;
-      default:
-        pdfAlign = pw.TextAlign.center;
-    }
-
-    pdf.addPage(
-      pw.Page(
-        pageFormat: format,
-        margin: pw.EdgeInsets.only(
-          top: marginTop,
-          left: marginLeft,
-          right: marginRight,
-          bottom: 20,
+    pdf.addPage(pw.Page(
+      pageFormat: format,
+      margin: pw.EdgeInsets.only(
+        top: _marginTopCm * cmPt,
+        left: _marginLeftCm * cmPt,
+        right: _marginRightCm * cmPt,
+        bottom: 20,
+      ),
+      build: (_) => pw.Text(
+        _messageCtrl.text,
+        textAlign: pdfAlign,
+        style: pw.TextStyle(
+          font: font,
+          fontSize: _fontSize,
+          decoration:
+              _isStrikethrough ? pw.TextDecoration.lineThrough : null,
         ),
-        build: (context) {
-          return pw.Text(
-            _messageCtrl.text,
-            textAlign: pdfAlign,
-            style: pw.TextStyle(
-              font: font,
-              fontSize: _fontSize,
-              decoration: _isStrikethrough ? pw.TextDecoration.lineThrough : null,
-            ),
-          );
-        },
+      ),
+    ));
+    return Uint8List.fromList(await pdf.save());
+  }
+
+  // ── Preview text style ──────────────────────────────────────────────────────
+  TextStyle _previewStyle() {
+    TextStyle base;
+    switch (_selectedFont) {
+      case 'Montserrat':
+        base = GoogleFonts.montserrat();
+        break;
+      case 'Poppins':
+        base = GoogleFonts.poppins();
+        break;
+      case 'Lato':
+        base = GoogleFonts.lato();
+        break;
+      case 'Roboto':
+        base = GoogleFonts.roboto();
+        break;
+      case 'Dancing Script':
+        base = GoogleFonts.dancingScript();
+        break;
+      case 'Great Vibes':
+        base = GoogleFonts.greatVibes();
+        break;
+      case 'Caveat':
+        base = GoogleFonts.caveat();
+        break;
+      case 'Pacifico':
+        base = GoogleFonts.pacifico();
+        break;
+      case 'Sacramento':
+        base = GoogleFonts.sacramento();
+        break;
+      case 'Manrope':
+      default:
+        base = GoogleFonts.manrope();
+    }
+    return base.copyWith(
+      fontSize: _fontSize.clamp(9.0, 20.0),
+      fontWeight: _isBold ? FontWeight.bold : FontWeight.normal,
+      fontStyle: _isItalic ? FontStyle.italic : FontStyle.normal,
+      decoration:
+          _isStrikethrough ? TextDecoration.lineThrough : TextDecoration.none,
+      color: Colors.black87,
+    );
+  }
+
+  // ── Dialogs ─────────────────────────────────────────────────────────────────
+  void _showSaveDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('¿Guardar en qué plantilla?',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            for (int i = 1; i <= 3; i++)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor:
+                      AppTheme.primary.withValues(alpha: 0.1),
+                  child: Text('$i',
+                      style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.bold)),
+                ),
+                title: Text(
+                  _templates[i - 1] != null
+                      ? 'Plantilla $i  ·  ${_templates[i - 1]!.label}'
+                      : 'Plantilla $i  ·  vacía',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                trailing: const Icon(Icons.save_alt,
+                    color: AppTheme.primary, size: 20),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _saveToSlot(i);
+                },
+              ),
+          ],
+        ),
       ),
     );
-    return pdf.save();
   }
 
   void _showEmojiPicker() {
@@ -193,24 +346,25 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Insertar Emoji',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _commonEmojis
-                  .map((emoji) => GestureDetector(
+              children: _emojis
+                  .map((e) => GestureDetector(
                         onTap: () {
                           final sel = _messageCtrl.selection;
                           final text = _messageCtrl.text;
                           final newText = sel.isValid
-                              ? text.replaceRange(sel.start, sel.end, emoji)
-                              : text + emoji;
+                              ? text.replaceRange(sel.start, sel.end, e)
+                              : text + e;
                           _messageCtrl.value = TextEditingValue(
                             text: newText,
                             selection: TextSelection.collapsed(
                               offset: sel.isValid
-                                  ? sel.start + emoji.length
+                                  ? sel.start + e.length
                                   : newText.length,
                             ),
                           );
@@ -220,10 +374,11 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            color: AppTheme.primary
+                                .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(emoji,
+                          child: Text(e,
                               style: const TextStyle(fontSize: 24)),
                         ),
                       ))
@@ -235,39 +390,17 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
-  TextStyle _previewTextStyle() {
-    TextStyle base;
-    switch (_selectedFont) {
-      case 'Playfair Display':
-        base = GoogleFonts.playfairDisplay();
-        break;
-      case 'Dancing Script':
-        base = GoogleFonts.dancingScript();
-        break;
-      case 'Montserrat':
-        base = GoogleFonts.montserrat();
-        break;
-      case 'Manrope':
-      default:
-        base = GoogleFonts.manrope();
-    }
-    return base.copyWith(
-      fontSize: _fontSize.clamp(10.0, 18.0),
-      fontWeight: _isBold ? FontWeight.bold : FontWeight.normal,
-      fontStyle: _isItalic ? FontStyle.italic : FontStyle.normal,
-      decoration:
-          _isStrikethrough ? TextDecoration.lineThrough : TextDecoration.none,
-      color: Colors.black87,
-    );
-  }
-
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8F7),
       appBar: AppBar(
         title: const Text('Dedicatoria Impresa',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            style:
+                TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: const Color(0xFFF6F8F7),
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -282,18 +415,20 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPreviewSection(),
-            const SizedBox(height: 24),
-            _buildTextSection(),
-            const SizedBox(height: 20),
+            _buildTemplatesRow(),
+            const SizedBox(height: 14),
+            _buildPreview(),
+            const SizedBox(height: 18),
+            _buildTextarea(),
+            const SizedBox(height: 16),
             _buildTypographyRow(),
+            const SizedBox(height: 16),
+            _buildStyleRow(),
+            const SizedBox(height: 16),
+            _buildMarginsRow(),
+            const SizedBox(height: 18),
+            _buildSaveBtn(),
             const SizedBox(height: 20),
-            _buildStyleAndAlignment(),
-            const SizedBox(height: 20),
-            _buildMargins(),
-            const SizedBox(height: 20),
-            _buildSaveTemplateButton(),
-            const SizedBox(height: 24),
             _buildActionButtons(),
             const SizedBox(height: 32),
           ],
@@ -302,7 +437,74 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
-  Widget _buildPreviewSection() {
+  // ── Template slots ──────────────────────────────────────────────────────────
+  Widget _buildTemplatesRow() {
+    return Row(
+      children: List.generate(3, (i) {
+        final t = _templates[i];
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: i < 2 ? 8 : 0),
+            child: GestureDetector(
+              onTap: t != null ? () => _applyTemplate(t) : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 10, horizontal: 6),
+                decoration: BoxDecoration(
+                  color: t != null
+                      ? AppTheme.primary.withValues(alpha: 0.08)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: t != null
+                        ? AppTheme.primary.withValues(alpha: 0.3)
+                        : Colors.grey.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      t != null ? Icons.text_fields : Icons.add,
+                      size: 16,
+                      color: t != null
+                          ? AppTheme.primary
+                          : Colors.grey[400],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      t != null ? t.label : 'Vacía',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: t != null
+                            ? AppTheme.primary
+                            : Colors.grey[400],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Plantilla ${i + 1}',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: t != null
+                            ? Colors.black45
+                            : Colors.grey[300],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  // ── Preview ─────────────────────────────────────────────────────────────────
+  Widget _buildPreview() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -315,38 +517,36 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             letterSpacing: 1.2,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         AspectRatio(
-          aspectRatio: 4 / 3,
+          aspectRatio: 5 / 3, // ~20 % shorter than 4/3
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                   color: AppTheme.primary.withValues(alpha: 0.12)),
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
+                    blurRadius: 10,
                     offset: const Offset(0, 4))
               ],
             ),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(10),
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.18),
-                    style: BorderStyle.solid),
-                borderRadius: BorderRadius.circular(8),
+                    color: AppTheme.primary.withValues(alpha: 0.18)),
+                borderRadius: BorderRadius.circular(6),
               ),
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Márgenes de impresión',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 10),
-                  ),
+                  Text('Márgenes de impresión',
+                      style: TextStyle(
+                          color: Colors.grey[400], fontSize: 9)),
                   Expanded(
                     child: Center(
                       child: _messageCtrl.text.isEmpty
@@ -355,13 +555,14 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
                               style: TextStyle(
                                   color: Colors.grey[400],
                                   fontStyle: FontStyle.italic,
-                                  fontSize: 13),
+                                  fontSize: 11),
                               textAlign: TextAlign.center,
                             )
                           : Text(
                               _messageCtrl.text,
                               textAlign: _textAlign,
-                              style: _previewTextStyle(),
+                              style: _previewStyle(),
+                              overflow: TextOverflow.fade,
                             ),
                     ),
                   ),
@@ -374,7 +575,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
-  Widget _buildTextSection() {
+  // ── Textarea ────────────────────────────────────────────────────────────────
+  Widget _buildTextarea() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -387,21 +589,21 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border:
-                Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.2)),
           ),
           child: TextField(
             controller: _messageCtrl,
-            maxLines: 5,
-            minLines: 4,
+            maxLines: 4,
+            minLines: 3,
             onChanged: (_) => setState(() {}),
             style: const TextStyle(fontSize: 14, color: Colors.black87),
             decoration: const InputDecoration(
               hintText: 'Escribe tu dedicatoria aquí... 🌹✨',
               hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.all(16),
+              contentPadding: EdgeInsets.all(14),
             ),
           ),
         ),
@@ -409,38 +611,46 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
+  // ── Typography row: font | size stepper | emoji ─────────────────────────────
   Widget _buildTypographyRow() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Fuente
         Expanded(
           flex: 6,
-          child: _labeledField(
-            label: 'FUENTE',
-            child: Container(
+          child: _labeled(
+            'FUENTE',
+            Container(
               height: 44,
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.2)),
-              ),
+              decoration: _fieldBox(),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedFont,
                   isExpanded: true,
                   style: const TextStyle(
                       fontSize: 12, color: Colors.black87),
-                  items: _fonts
-                      .map((f) => DropdownMenuItem(
-                          value: f['name'],
-                          child: Text(f['label']!,
-                              style: const TextStyle(fontSize: 12))))
-                      .toList(),
+                  items: [
+                    ..._sansFonts.map((f) => DropdownMenuItem(
+                        value: f,
+                        child: Text(f,
+                            style: const TextStyle(fontSize: 12)))),
+                    const DropdownMenuItem(
+                      value: '__sep__',
+                      enabled: false,
+                      child: Divider(height: 1),
+                    ),
+                    ..._scriptFonts.map((f) => DropdownMenuItem(
+                        value: f,
+                        child: Text(f,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic)))),
+                  ],
                   onChanged: (val) {
-                    if (val != null) setState(() => _selectedFont = val);
+                    if (val != null && val != '__sep__') {
+                      setState(() => _selectedFont = val);
+                    }
                   },
                 ),
               ),
@@ -448,48 +658,26 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        // Tamaño
         Expanded(
-          flex: 3,
-          child: _labeledField(
-            label: 'TAMAÑO',
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.2)),
-              ),
-              child: TextField(
-                controller: _fontSizeCtrl,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: const TextStyle(
-                    fontSize: 14, color: Colors.black87),
-                onChanged: (val) {
-                  final n = double.tryParse(val);
-                  if (n != null && n >= 8 && n <= 24) {
-                    setState(() => _fontSize = n);
-                  }
-                },
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                ),
-              ),
+          flex: 4,
+          child: _labeled(
+            'TAMAÑO',
+            _stepper(
+              value: _fontSize,
+              min: 8,
+              max: 36,
+              step: 1,
+              display: _fontSize.toInt().toString(),
+              onChanged: (v) => setState(() => _fontSize = v),
             ),
           ),
         ),
         const SizedBox(width: 8),
-        // Emoji
         Expanded(
           flex: 3,
-          child: _labeledField(
-            label: 'EMOJI',
-            child: SizedBox(
+          child: _labeled(
+            'EMOJI',
+            SizedBox(
               height: 44,
               child: OutlinedButton(
                 onPressed: _showEmojiPicker,
@@ -511,122 +699,42 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
-  Widget _labeledField({required String label, required Widget child}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.8,
-                color: Colors.black54)),
-        const SizedBox(height: 6),
-        child,
-      ],
-    );
-  }
-
-  Widget _buildStyleAndAlignment() {
+  // ── Style + Alignment ────────────────────────────────────────────────────────
+  Widget _buildStyleRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // B I S
-        _toggleGroup(children: [
-          _styleToggle(
-              label: 'B',
-              active: _isBold,
-              onTap: () => setState(() => _isBold = !_isBold),
-              textStyle: const TextStyle(
+        _toggleGroup([
+          _styleBtn('B', _isBold,
+              () => setState(() => _isBold = !_isBold),
+              const TextStyle(
                   fontWeight: FontWeight.bold, fontSize: 15)),
-          _styleToggle(
-              label: 'I',
-              active: _isItalic,
-              onTap: () => setState(() => _isItalic = !_isItalic),
-              textStyle: const TextStyle(
+          _styleBtn(
+              'I',
+              _isItalic,
+              () => setState(() => _isItalic = !_isItalic),
+              const TextStyle(
                   fontStyle: FontStyle.italic, fontSize: 15)),
-          _styleToggle(
-              label: 'S',
-              active: _isStrikethrough,
-              onTap: () =>
-                  setState(() => _isStrikethrough = !_isStrikethrough),
-              textStyle: const TextStyle(
-                  decoration: TextDecoration.lineThrough, fontSize: 15)),
+          _styleBtn(
+              'S',
+              _isStrikethrough,
+              () => setState(
+                  () => _isStrikethrough = !_isStrikethrough),
+              const TextStyle(
+                  decoration: TextDecoration.lineThrough,
+                  fontSize: 15)),
         ]),
-        // Alignment
-        _toggleGroup(children: [
-          _alignToggle(Icons.format_align_left, TextAlign.left),
-          _alignToggle(Icons.format_align_center, TextAlign.center),
-          _alignToggle(Icons.format_align_right, TextAlign.right),
+        _toggleGroup([
+          _alignBtn(Icons.format_align_left, TextAlign.left),
+          _alignBtn(Icons.format_align_center, TextAlign.center),
+          _alignBtn(Icons.format_align_right, TextAlign.right),
         ]),
       ],
     );
   }
 
-  Widget _toggleGroup({required List<Widget> children}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(children: children),
-    );
-  }
-
-  Widget _styleToggle({
-    required String label,
-    required bool active,
-    required VoidCallback onTap,
-    required TextStyle textStyle,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: active ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: active
-              ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: textStyle.copyWith(
-                color: active ? AppTheme.primary : Colors.black54),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _alignToggle(IconData icon, TextAlign align) {
-    final isActive = _textAlign == align;
-    return GestureDetector(
-      onTap: () => setState(() => _textAlign = align),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: isActive
-              ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
-              : null,
-        ),
-        child: Icon(icon,
-            size: 20,
-            color: isActive ? AppTheme.primary : Colors.black54),
-      ),
-    );
-  }
-
-  Widget _buildMargins() {
+  // ── Margins row ─────────────────────────────────────────────────────────────
+  Widget _buildMarginsRow() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -640,70 +748,50 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         Row(
           children: [
             Expanded(
-              child: _marginField('Superior', _marginTopCtrl,
-                  (v) => setState(() => _marginTopCm = v)),
-            ),
+                child: _marginCell('Superior', _marginTopCm,
+                    (v) => setState(() => _marginTopCm = v))),
             const SizedBox(width: 8),
             Expanded(
-              child: _marginField('Izquierdo', _marginLeftCtrl,
-                  (v) => setState(() => _marginLeftCm = v)),
-            ),
+                child: _marginCell('Izquierdo', _marginLeftCm,
+                    (v) => setState(() => _marginLeftCm = v))),
             const SizedBox(width: 8),
             Expanded(
-              child: _marginField('Derecho', _marginRightCtrl,
-                  (v) => setState(() => _marginRightCm = v)),
-            ),
+                child: _marginCell('Derecho', _marginRightCm,
+                    (v) => setState(() => _marginRightCm = v))),
           ],
         ),
       ],
     );
   }
 
-  Widget _marginField(String label, TextEditingController ctrl,
-      void Function(double) onChanged) {
+  Widget _marginCell(
+      String label, double value, void Function(double) onChanged) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 4),
-          child: Text(label,
-              style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border:
-                Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
-          ),
-          child: TextField(
-            controller: ctrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: Colors.black87),
-            onChanged: (val) {
-              final n = double.tryParse(val);
-              if (n != null && n >= 0) onChanged(n);
-            },
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding:
-                  EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            ),
-          ),
+        Text(label,
+            style:
+                const TextStyle(fontSize: 10, color: Colors.grey)),
+        const SizedBox(height: 4),
+        _stepper(
+          value: value,
+          min: 0,
+          max: 5,
+          step: 0.5,
+          display: value.toStringAsFixed(1),
+          onChanged: onChanged,
         ),
       ],
     );
   }
 
-  Widget _buildSaveTemplateButton() {
+  // ── Save template button ─────────────────────────────────────────────────────
+  Widget _buildSaveBtn() {
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: _saveTemplate,
+            onPressed: _showSaveDialog,
             icon: const Icon(Icons.save, size: 20),
             label: const Text('GUARDAR PLANTILLA',
                 style: TextStyle(
@@ -735,30 +823,32 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
+  // ── Action buttons ───────────────────────────────────────────────────────────
   Widget _buildActionButtons() {
     return Row(
       children: [
         Expanded(
-          child: _actionButton(
+          child: _actionBtn(
             icon: Icons.print,
             label: 'IMPRIMIR',
-            backgroundColor: AppTheme.primary,
-            foregroundColor: Colors.black87,
-            hasShadow: true,
+            bg: AppTheme.primary,
+            fg: Colors.black87,
+            shadow: true,
             onTap: () async {
               final pdf = await _generatePdf(PdfPageFormat.letter);
-              await Printing.layoutPdf(onLayout: (format) => pdf);
+              await Printing.layoutPdf(
+                  onLayout: (_) async => pdf);
             },
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _actionButton(
+          child: _actionBtn(
             icon: Icons.picture_as_pdf,
             label: 'DESCARGAR',
-            backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-            foregroundColor: AppTheme.primary,
-            hasShadow: false,
+            bg: AppTheme.primary.withValues(alpha: 0.12),
+            fg: AppTheme.primary,
+            shadow: false,
             onTap: () async {
               final pdf = await _generatePdf(PdfPageFormat.letter);
               await Printing.sharePdf(
@@ -768,12 +858,12 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _actionButton(
+          child: _actionBtn(
             icon: Icons.share,
             label: 'COMPARTIR',
-            backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-            foregroundColor: AppTheme.primary,
-            hasShadow: false,
+            bg: AppTheme.primary.withValues(alpha: 0.12),
+            fg: AppTheme.primary,
+            shadow: false,
             onTap: () async {
               final pdf = await _generatePdf(PdfPageFormat.letter);
               await Printing.sharePdf(
@@ -785,43 +875,173 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
-  Widget _actionButton({
-    required IconData icon,
-    required String label,
-    required Color backgroundColor,
-    required Color foregroundColor,
-    required bool hasShadow,
-    required VoidCallback onTap,
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  SMALL HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  BoxDecoration _fieldBox() => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border:
+            Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+      );
+
+  Widget _labeled(String label, Widget child) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                  color: Colors.black54)),
+          const SizedBox(height: 6),
+          child,
+        ],
+      );
+
+  Widget _stepper({
+    required double value,
+    required double min,
+    required double max,
+    required double step,
+    required String display,
+    required void Function(double) onChanged,
   }) {
+    return Container(
+      height: 44,
+      decoration: _fieldBox(),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _stepBtn(
+            Icons.remove,
+            value > min
+                ? () => onChanged((value - step).clamp(min, max))
+                : null,
+          ),
+          Text(display,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87)),
+          _stepBtn(
+            Icons.add,
+            value < max
+                ? () => onChanged((value + step).clamp(min, max))
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepBtn(IconData icon, VoidCallback? onTap) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Icon(icon,
+              size: 16,
+              color: onTap != null
+                  ? AppTheme.primary
+                  : Colors.grey[300]),
+        ),
+      );
+
+  Widget _toggleGroup(List<Widget> children) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.all(4),
+        child: Row(children: children),
+      );
+
+  Widget _styleBtn(String label, bool active, VoidCallback onTap,
+      TextStyle style) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: hasShadow
-              ? [
-                  BoxShadow(
-                      color: AppTheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
-                ]
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: active
+              ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
               : null,
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: foregroundColor, size: 22),
-            const SizedBox(height: 4),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: foregroundColor,
-                    letterSpacing: 0.5)),
-          ],
+        child: Center(
+          child: Text(label,
+              style: style.copyWith(
+                  color:
+                      active ? AppTheme.primary : Colors.black54)),
         ),
       ),
     );
   }
+
+  Widget _alignBtn(IconData icon, TextAlign align) {
+    final active = _textAlign == align;
+    return GestureDetector(
+      onTap: () => setState(() => _textAlign = align),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: active
+              ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
+              : null,
+        ),
+        child: Icon(icon,
+            size: 20,
+            color: active ? AppTheme.primary : Colors.black54),
+      ),
+    );
+  }
+
+  Widget _actionBtn({
+    required IconData icon,
+    required String label,
+    required Color bg,
+    required Color fg,
+    required bool shadow,
+    required VoidCallback onTap,
+  }) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: shadow
+                ? [
+                    BoxShadow(
+                        color: AppTheme.primary.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4))
+                  ]
+                : null,
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: fg, size: 22),
+              const SizedBox(height: 4),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: fg,
+                      letterSpacing: 0.5)),
+            ],
+          ),
+        ),
+      );
 }
