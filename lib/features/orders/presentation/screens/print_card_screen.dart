@@ -214,8 +214,15 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   }
 
   Future<Uint8List> _generatePdf(PdfPageFormat format) async {
-    final pdf = pw.Document(version: PdfVersion.pdf_1_5, compress: true);
-    final font = await _pdfFont();
+    // compress: false avoids zlib issues on Flutter Web
+    final pdf = pw.Document(version: PdfVersion.pdf_1_5, compress: false);
+    pw.Font font;
+    try {
+      font = await _pdfFont();
+    } catch (_) {
+      // Fallback to built-in PDF font if Google Font download/parse fails
+      font = _isBold ? pw.Font.helveticaBold() : pw.Font.helvetica();
+    }
     const cmPt = 28.3465;
 
     final pdfAlign = _textAlign == TextAlign.left
