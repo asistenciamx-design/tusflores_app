@@ -92,7 +92,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   // ── Font catalogue ──────────────────────────────────────────────────────────
   static const _sansFonts = ['Manrope', 'Montserrat', 'Poppins', 'Lato', 'Roboto'];
   static const _scriptFonts = [
-    'Dancing Script',
+    'Playfair',
     'Great Vibes',
     'Caveat',
     'Pacifico',
@@ -119,10 +119,6 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   /// blocked by CSP/CORS).
   Future<void> _loadBundledFonts() async {
     final families = {
-      'DancingScript': [
-        'assets/fonts/DancingScript-Regular.ttf',
-        'assets/fonts/DancingScript-Bold.ttf',
-      ],
       'GreatVibes':  ['assets/fonts/GreatVibes-Regular.ttf'],
       'Caveat':      ['assets/fonts/Caveat-Regular.ttf', 'assets/fonts/Caveat-Bold.ttf'],
       'Pacifico':    ['assets/fonts/Pacifico-Regular.ttf'],
@@ -228,10 +224,10 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         if (_isBold) return PdfGoogleFonts.robotoBold();
         return PdfGoogleFonts.robotoRegular();
       // ── Script / display: fetched via PdfGoogleFonts (proven static TTFs) ──
-      case 'Dancing Script':
+      case 'Playfair':
         return _isBold
-            ? PdfGoogleFonts.dancingScriptBold()
-            : PdfGoogleFonts.dancingScriptRegular();
+            ? PdfGoogleFonts.playfairBold()
+            : PdfGoogleFonts.playfairRegular();
       case 'Great Vibes':
         return PdfGoogleFonts.greatVibesRegular();
       case 'Caveat':
@@ -322,8 +318,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
       case 'Roboto':
         base = GoogleFonts.roboto();
         break;
-      case 'Dancing Script':
-        base = const TextStyle(fontFamily: 'DancingScript');
+      case 'Playfair':
+        base = GoogleFonts.playfairDisplay();
         break;
       case 'Great Vibes':
         base = const TextStyle(fontFamily: 'GreatVibes');
