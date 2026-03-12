@@ -87,6 +87,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
 
   List<ShippingRate> _shippingRates = [];
   List<DeliveryRange> _deliveryRanges = [];
+  final Set<int> _editingDeliveryRangeIndices = {};
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -227,7 +228,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
                 icon: _isSaving 
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Guardando...' : 'Guardar ubicación', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                label: Text(_isSaving ? 'Guardando...' : 'Guardar', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
@@ -751,6 +752,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
   }
 
   Widget _buildDeliveryRangeCard(int idx, DeliveryRange range) {
+    final isEditing = _editingDeliveryRangeIndices.contains(idx);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -766,10 +768,12 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
             children: [
               Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
               const SizedBox(width: 8),
-              // ── Editable label ──────────────────────────────────────
+              // ── Label (editable only when pencil pressed) ───────────
               Expanded(
                 child: TextFormField(
+                  key: ValueKey('dr_label_${idx}_$isEditing'),
                   initialValue: range.label,
+                  readOnly: !isEditing,
                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[800], fontSize: 14),
                   decoration: InputDecoration(
                     border: InputBorder.none,
@@ -777,9 +781,22 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
                     contentPadding: EdgeInsets.zero,
                     hintText: 'Ej. Matutino',
                     hintStyle: TextStyle(color: Colors.green[200], fontWeight: FontWeight.normal),
-                    suffixIcon: const Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.edit, size: 13, color: AppTheme.mutedLight),
+                    suffixIcon: GestureDetector(
+                      onTap: () => setState(() {
+                        if (isEditing) {
+                          _editingDeliveryRangeIndices.remove(idx);
+                        } else {
+                          _editingDeliveryRangeIndices.add(idx);
+                        }
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Icon(
+                          isEditing ? Icons.check : Icons.edit,
+                          size: 13,
+                          color: isEditing ? AppTheme.primary : AppTheme.mutedLight,
+                        ),
+                      ),
                     ),
                     suffixIconConstraints: const BoxConstraints(maxWidth: 22, maxHeight: 22),
                   ),
@@ -788,7 +805,10 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
               ),
               // ── Delete button ───────────────────────────────────────
               GestureDetector(
-                onTap: () => setState(() => _deliveryRanges.removeAt(idx)),
+                onTap: () => setState(() {
+                  _editingDeliveryRangeIndices.remove(idx);
+                  _deliveryRanges.removeAt(idx);
+                }),
                 child: const Icon(Icons.close, color: Colors.grey, size: 18),
               ),
             ],
