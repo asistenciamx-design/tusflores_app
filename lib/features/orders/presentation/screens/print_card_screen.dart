@@ -227,21 +227,21 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
       case 'Roboto':
         if (_isBold) return PdfGoogleFonts.robotoBold();
         return PdfGoogleFonts.robotoRegular();
-      // ── Script / display: loaded from bundled static TTF assets ──
+      // ── Script / display: fetched via PdfGoogleFonts (proven static TTFs) ──
       case 'Dancing Script':
-        return _assetFont(_isBold
-            ? 'assets/fonts/DancingScript-Bold.ttf'
-            : 'assets/fonts/DancingScript-Regular.ttf');
+        return _isBold
+            ? PdfGoogleFonts.dancingScriptBold()
+            : PdfGoogleFonts.dancingScriptRegular();
       case 'Great Vibes':
-        return _assetFont('assets/fonts/GreatVibes-Regular.ttf');
+        return PdfGoogleFonts.greatVibesRegular();
       case 'Caveat':
-        return _assetFont(_isBold
-            ? 'assets/fonts/Caveat-Bold.ttf'
-            : 'assets/fonts/Caveat-Regular.ttf');
+        return _isBold
+            ? PdfGoogleFonts.caveatBold()
+            : PdfGoogleFonts.caveatRegular();
       case 'Pacifico':
-        return _assetFont('assets/fonts/Pacifico-Regular.ttf');
+        return PdfGoogleFonts.pacificoRegular();
       case 'Sacramento':
-        return _assetFont('assets/fonts/Sacramento-Regular.ttf');
+        return PdfGoogleFonts.sacramentoRegular();
       case 'Manrope':
       default:
         if (_isBold) return PdfGoogleFonts.manropeBold();
