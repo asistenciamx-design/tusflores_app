@@ -24,6 +24,7 @@ import '../../features/customer/presentation/screens/customer_payment_methods_sc
 import '../../features/catalog/presentation/screens/catalog_message_screen.dart';
 import '../../features/catalog/presentation/screens/catalog_screen.dart' show ProductItem;
 import '../../features/orders/domain/models/order_model.dart';
+import '../../features/customer/presentation/screens/order_tracking_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -132,6 +133,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/shop/catalog-message',
       builder: (context, state) => const CatalogMessageScreen(),
+    ),
+    GoRoute(
+      path: '/seguimiento/:folio',
+      builder: (context, state) {
+        final folio = state.pathParameters['folio'] ?? '';
+        return OrderTrackingScreen(folio: folio);
+      },
     ),
   ],
 );
