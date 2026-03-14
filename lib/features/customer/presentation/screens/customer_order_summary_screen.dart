@@ -397,7 +397,10 @@ class _CustomerOrderSummaryScreenState
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      html.window.open(whatsappUrl!, '_blank');
+                      // Usamos location.href en lugar de window.open('_blank')
+                      // para evitar que quede una pestaña en blanco en el navegador.
+                      // WhatsApp se abre igual y el usuario puede presionar Atrás para regresar.
+                      html.window.location.href = whatsappUrl!;
                       Navigator.of(ctx).pop();
                       _navigateToCatalog();
                     },
