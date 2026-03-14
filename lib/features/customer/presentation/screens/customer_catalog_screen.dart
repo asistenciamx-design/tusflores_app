@@ -71,26 +71,35 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
       debugPrint('[CustomerCatalog] Loading store for shopId: $targetShopId');
 
-      // Cargar perfil + rating y settings en paralelo con tipos explícitos
-      final profile = await Supabase.instance.client
-          .from('profiles')
-          .select('shop_name, full_name, logo_url, biography, average_rating, review_count')
-          .eq('id', targetShopId)
-          .maybeSingle();
-      final settings = await _settingsRepo.getSettings(targetShopId);
-
-      if (profile != null && mounted) {
-        if (widget.shopName == null || widget.shopName!.isEmpty) {
-          _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
+      // Cargar perfil + rating (independiente: si falla no afecta productos)
+      try {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('shop_name, full_name, logo_url, biography, average_rating, review_count')
+            .eq('id', targetShopId)
+            .maybeSingle();
+        if (profile != null && mounted) {
+          if (widget.shopName == null || widget.shopName!.isEmpty) {
+            _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
+          }
+          _averageRating = (profile['average_rating'] as num?)?.toDouble() ?? 0;
+          _reviewCount = (profile['review_count'] as num?)?.toInt() ?? 0;
         }
-        _averageRating = (profile['average_rating'] as num?)?.toDouble() ?? 0;
-        _reviewCount = (profile['review_count'] as num?)?.toInt() ?? 0;
-      }
-      if (settings != null && mounted) {
-        _showReviews = settings.showReviews;
+      } catch (e) {
+        debugPrint('[CustomerCatalog] Error loading profile/rating: $e');
       }
 
-      // Cargar solo productos activos (public)
+      // Cargar settings de visibilidad (independiente)
+      try {
+        final settings = await _settingsRepo.getSettings(targetShopId);
+        if (settings != null && mounted) {
+          _showReviews = settings.showReviews;
+        }
+      } catch (e) {
+        debugPrint('[CustomerCatalog] Error loading settings: $e');
+      }
+
+      // Cargar solo productos activos (public) — siempre se intenta
       debugPrint('[CustomerCatalog] Loading public products...');
       final prodData = await _productRepo.getPublicProducts(targetShopId);
       debugPrint('[CustomerCatalog] Got ${prodData.length} products');
