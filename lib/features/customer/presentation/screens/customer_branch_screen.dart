@@ -125,35 +125,39 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
       backgroundColor: Colors.white,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : Stack(
-              children: [
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: MediaQuery.of(context).size.height * 0.35,
-                  child: _buildCoverHeader(),
-                ),
-                Positioned.fill(
-                  top: MediaQuery.of(context).size.height * 0.3,
-                  child: _buildMainContent(context),
-                ),
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 16,
-                  left: 16,
-                  child: Navigator.canPop(context)
-                      ? CircleAvatar(
-                          backgroundColor: Colors.white,
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                            onPressed: () => Navigator.maybePop(context),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
-      bottomNavigationBar: _isLoading ? null : _buildBottomActions(context),
+          : _buildScrollContent(context),
+    );
+  }
+
+  Widget _buildScrollContent(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          expandedHeight: MediaQuery.of(context).size.height * 0.35,
+          pinned: false,
+          floating: false,
+          backgroundColor: const Color(0xFFF3F0E6),
+          leading: Navigator.canPop(context)
+              ? Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                      onPressed: () => Navigator.maybePop(context),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                )
+              : null,
+          flexibleSpace: FlexibleSpaceBar(
+            background: _buildCoverHeader(),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: _buildMainContent(context),
+        ),
+      ],
     );
   }
 
@@ -205,6 +209,9 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
     final refs = _settings?.references;
     final showMap = (_settings?.showMapOnProfile ?? false) &&
         (_settings?.mapsUrl?.isNotEmpty ?? false);
+    final whatsapp = _settings?.whatsapp ?? '';
+    final phone = _settings?.phone ?? '';
+    final hasActions = whatsapp.isNotEmpty || phone.isNotEmpty;
 
     return Container(
       decoration: const BoxDecoration(
@@ -214,127 +221,164 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
           topRight: Radius.circular(32),
         ),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _shopName,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+      padding: EdgeInsets.fromLTRB(
+        24, 32, 24, MediaQuery.of(context).padding.bottom + 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _shopName,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isOpen
-                        ? Colors.greenAccent.withValues(alpha: 0.3)
-                        : Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle,
-                          size: 8, color: isOpen ? Colors.green : Colors.red),
-                      const SizedBox(width: 6),
-                      Text(
-                        isOpen ? 'Abierto ahora' : 'Cerrado',
-                        style: TextStyle(
-                          color: isOpen ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isOpen
+                      ? Colors.greenAccent.withValues(alpha: 0.3)
+                      : Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                if (isOpen && closing != null) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '• Cierra a las ${_fmt(closing)}',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  ),
-                ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle,
+                        size: 8, color: isOpen ? Colors.green : Colors.red),
+                    const SizedBox(width: 6),
+                    Text(
+                      isOpen ? 'Abierto ahora' : 'Cerrado',
+                      style: TextStyle(
+                        color: isOpen ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isOpen && closing != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '• Cierra a las ${_fmt(closing)}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+              ],
+            ],
+          ),
+
+          if (showMap) ...[
+            const SizedBox(height: 24),
+            _buildMapSection(),
+          ],
+
+          if (address.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            _buildDetailRow(
+              icon: Icons.location_on,
+              title: 'Dirección',
+              subtitle: address,
+            ),
+          ],
+
+          if (refs != null && refs.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildDetailRow(
+              icon: Icons.turn_right,
+              title: 'Referencias',
+              subtitle: refs,
+            ),
+          ],
+
+          if (_settings != null && _settings!.storeHours.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            const Row(
+              children: [
+                Icon(Icons.access_time, color: AppTheme.primary, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'HORARIOS',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      letterSpacing: 0.5),
+                ),
               ],
             ),
-
-            if (showMap) ...[
-              const SizedBox(height: 24),
-              _buildMapSection(),
-            ],
-
-            if (address.isNotEmpty) ...[
-              const SizedBox(height: 32),
-              _buildDetailRow(
-                icon: Icons.location_on,
-                title: 'Dirección',
-                subtitle: address,
-              ),
-            ],
-
-            if (refs != null && refs.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              _buildDetailRow(
-                icon: Icons.turn_right,
-                title: 'Referencias',
-                subtitle: refs,
-              ),
-            ],
-
-            if (_settings != null && _settings!.storeHours.isNotEmpty) ...[
-              const SizedBox(height: 32),
-              const Row(
-                children: [
-                  Icon(Icons.access_time, color: AppTheme.primary, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'HORARIOS',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        letterSpacing: 0.5),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSchedulesCard(
-                title: 'Atención en Tienda',
-                icon: Icons.storefront,
-                rows: _settings!.storeHours
-                    .map((e) => _ScheduleRow(
-                          days: _formatDays(e.days),
-                          time: '${_fmt(e.start)} – ${_fmt(e.end)}',
-                        ))
-                    .toList(),
-              ),
-            ],
-
-            if (_settings != null && _settings!.deliveryRanges.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _buildSchedulesCard(
-                title: 'Entregas a Domicilio',
-                icon: Icons.local_shipping,
-                rows: _settings!.deliveryRanges
-                    .map((e) => _ScheduleRow(
-                          days: e.label.isNotEmpty
-                              ? e.label
-                              : _formatDays(e.days),
-                          time: '${_fmt(e.start)} – ${_fmt(e.end)}',
-                        ))
-                    .toList(),
-              ),
-            ],
-
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            _buildSchedulesCard(
+              title: 'Atención en Tienda',
+              icon: Icons.storefront,
+              rows: _settings!.storeHours
+                  .map((e) => _ScheduleRow(
+                        days: _formatDays(e.days),
+                        time: '${_fmt(e.start)} – ${_fmt(e.end)}',
+                      ))
+                  .toList(),
+            ),
           ],
-        ),
+
+          if (_settings != null && _settings!.deliveryRanges.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildSchedulesCard(
+              title: 'Entregas a Domicilio',
+              icon: Icons.local_shipping,
+              rows: _settings!.deliveryRanges
+                  .map((e) => _ScheduleRow(
+                        days: e.label.isNotEmpty
+                            ? e.label
+                            : _formatDays(e.days),
+                        time: '${_fmt(e.start)} – ${_fmt(e.end)}',
+                      ))
+                  .toList(),
+            ),
+          ],
+
+          if (hasActions) ...[
+            const SizedBox(height: 40),
+            if (whatsapp.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () => _launchWhatsApp(whatsapp),
+                  icon: const Icon(Icons.chat, color: Colors.white),
+                  label: const Text('Contactar por WhatsApp',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1ECA65),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            if (whatsapp.isNotEmpty && phone.isNotEmpty) const SizedBox(height: 12),
+            if (phone.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () => _launchPhone(phone),
+                  icon: const Icon(Icons.phone, color: AppTheme.primary, size: 18),
+                  label: const Text('Llamar',
+                      style: TextStyle(
+                          color: Colors.black87, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24)),
+                    side: BorderSide(color: Colors.grey[300]!),
+                  ),
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }
@@ -499,58 +543,6 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
     );
   }
 
-  Widget _buildBottomActions(BuildContext context) {
-    final whatsapp = _settings?.whatsapp ?? '';
-    final phone = _settings?.phone ?? '';
-    if (whatsapp.isEmpty && phone.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.fromLTRB(
-          24, 16, 24, MediaQuery.of(context).padding.bottom + 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (whatsapp.isNotEmpty)
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: () => _launchWhatsApp(whatsapp),
-                icon: const Icon(Icons.chat, color: Colors.white),
-                label: const Text('Contactar por WhatsApp',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1ECA65),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26)),
-                  elevation: 0,
-                ),
-              ),
-            ),
-          if (whatsapp.isNotEmpty && phone.isNotEmpty) const SizedBox(height: 12),
-          if (phone.isNotEmpty)
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: () => _launchPhone(phone),
-                icon: const Icon(Icons.phone, color: AppTheme.primary, size: 18),
-                label: const Text('Llamar',
-                    style: TextStyle(
-                        color: Colors.black87, fontWeight: FontWeight.w600)),
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24)),
-                  side: BorderSide(color: Colors.grey[300]!),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ScheduleRow {
