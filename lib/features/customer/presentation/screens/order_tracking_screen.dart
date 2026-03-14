@@ -18,6 +18,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   String? _error;
   Map<String, dynamic>? _order;
 
+  // Decode URI-encoded folio (%23 -> #) so Supabase queries work correctly
+  String get _folio => Uri.decodeComponent(widget.folio);
+
   @override
   void dispose() {
     _phoneController.dispose();
@@ -46,7 +49,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           .from('orders')
           .select(
               'folio, status, product_name, quantity, delivery_method, delivery_info, delivery_address, delivery_city, price, shipping_cost, recipient_name, shop_id, created_at')
-          .eq('folio', widget.folio)
+          .eq('folio', _folio)
           .limit(5);
 
       if (results.isEmpty) {
@@ -64,7 +67,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         final full = await Supabase.instance.client
             .from('orders')
             .select('customer_phone')
-            .eq('folio', widget.folio)
+            .eq('folio', _folio)
             .limit(1)
             .single();
 
@@ -118,9 +121,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       backgroundColor: const Color(0xFFFDF6F0),
       body: SafeArea(
         child: _verified && _order != null
-            ? _TrackingView(order: _order!, folio: widget.folio)
+            ? _TrackingView(order: _order!, folio: _folio)
             : _VerifyView(
-                folio: widget.folio,
+                folio: _folio,
                 phoneController: _phoneController,
                 loading: _loading,
                 error: _error,
