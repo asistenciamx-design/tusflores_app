@@ -159,6 +159,7 @@ class ShopSettingsModel {
   final String? phone;
   final String? whatsapp;
   final bool showMapOnProfile;
+  final bool trackingLinkEnabled;
 
   // Extracted lists
   final List<ScheduleEntry> storeHours;
@@ -193,6 +194,7 @@ class ShopSettingsModel {
     this.phone,
     this.whatsapp,
     this.showMapOnProfile = false,
+    this.trackingLinkEnabled = true,
     this.catalogMessage,
     this.catalogImageUrl,
     this.rawData,
@@ -252,6 +254,7 @@ class ShopSettingsModel {
       phone: json['phone'],
       whatsapp: json['whatsapp'],
       showMapOnProfile: json['show_map_on_profile'] ?? false,
+      trackingLinkEnabled: json['tracking_link_enabled'] ?? true,
       catalogMessage: json['catalog_message'],
       catalogImageUrl: json['catalog_image_url'],
       rawData: json,
@@ -276,6 +279,7 @@ class ShopSettingsModel {
     'phone': phone,
     'whatsapp': whatsapp,
     'show_map_on_profile': showMapOnProfile,
+    'tracking_link_enabled': trackingLinkEnabled,
     'catalog_message': catalogMessage,
     'catalog_image_url': catalogImageUrl,
   };

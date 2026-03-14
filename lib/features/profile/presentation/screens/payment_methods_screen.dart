@@ -35,6 +35,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
   List<BankMethod> get bankMethods => _settings?.bankMethods ?? [];
   List<LinkMethod> get linkMethods => _settings?.linkMethods ?? [];
   List<String> get simplePayments => _settings?.simplePayments ?? ['Efectivo'];
+  bool get trackingLinkEnabled => _settings?.trackingLinkEnabled ?? true;
 
   @override
   void initState() {
@@ -222,8 +223,98 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
           );
         }),
         const SizedBox(height: 24),
+        // ── Seguimiento de pedido ──────────────────────────────────────────
+        const Divider(),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.pin_drop_outlined, size: 16, color: Color(0xFF888899)),
+            const SizedBox(width: 6),
+            const Text(
+              'Seguimiento de pedido',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF888899)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: trackingLinkEnabled
+                  ? AppTheme.primary.withValues(alpha: 0.6)
+                  : Colors.grey.shade200,
+              width: trackingLinkEnabled ? 1.5 : 1,
+            ),
+          ),
+          child: SwitchListTile(
+            value: trackingLinkEnabled,
+            onChanged: _toggleTrackingLink,
+            secondary: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: trackingLinkEnabled
+                    ? AppTheme.primary.withValues(alpha: 0.1)
+                    : Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.track_changes_rounded,
+                  color: trackingLinkEnabled ? AppTheme.primary : Colors.grey.shade400,
+                  size: 20),
+            ),
+            title: Text(
+              'Incluir link de seguimiento',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: trackingLinkEnabled ? AppTheme.textLight : Colors.grey.shade500,
+              ),
+            ),
+            subtitle: Text(
+              trackingLinkEnabled
+                  ? 'El comprador puede rastrear su pedido'
+                  : 'No se incluye en el mensaje de WhatsApp',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            ),
+            activeColor: AppTheme.primary,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+        const SizedBox(height: 24),
       ],
     );
+  }
+
+  Future<void> _toggleTrackingLink(bool value) async {
+    if (_settings == null) return;
+    setState(() {
+      _settings = ShopSettingsModel(
+        storeHours: _settings!.storeHours,
+        deliveryRanges: _settings!.deliveryRanges,
+        shippingRates: _settings!.shippingRates,
+        bankMethods: _settings!.bankMethods,
+        linkMethods: _settings!.linkMethods,
+        faqs: _settings!.faqs,
+        simplePayments: _settings!.simplePayments,
+        branchImagePath: _settings!.branchImagePath,
+        country: _settings!.country,
+        state: _settings!.state,
+        city: _settings!.city,
+        address: _settings!.address,
+        mapsUrl: _settings!.mapsUrl,
+        references: _settings!.references,
+        phone: _settings!.phone,
+        whatsapp: _settings!.whatsapp,
+        showMapOnProfile: _settings!.showMapOnProfile,
+        trackingLinkEnabled: value,
+        catalogMessage: _settings!.catalogMessage,
+        catalogImageUrl: _settings!.catalogImageUrl,
+      );
+    });
+    await _saveSettings();
   }
 
   Future<void> _toggleSimplePayment(String label, bool add) async {
@@ -253,6 +344,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
         phone: _settings!.phone,
         whatsapp: _settings!.whatsapp,
         showMapOnProfile: _settings!.showMapOnProfile,
+        trackingLinkEnabled: _settings!.trackingLinkEnabled,
+        catalogMessage: _settings!.catalogMessage,
+        catalogImageUrl: _settings!.catalogImageUrl,
       );
     });
     await _saveSettings();

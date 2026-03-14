@@ -216,11 +216,12 @@ class _CustomerOrderSummaryScreenState
     buffer.writeln(
         '\n\u2605 Ya tengo las formas de pago, en un momento envio el comprobante por este medio.');
 
-    // Tracking link — always added at the end
+    // Tracking link — only when the florist has it enabled (default: true)
     // The folio contains '#' (e.g. #0023) which must be encoded as %23 in the
     // URL path to avoid the browser treating it as a fragment identifier.
+    final trackingEnabled = _shopSettings?.trackingLinkEnabled ?? true;
     final trackingFolio = folioOverride ?? _assignedFolio;
-    if (trackingFolio != '#0000') {
+    if (trackingEnabled && trackingFolio != '#0000') {
       final encodedFolio = trackingFolio.replaceAll('#', '%23');
       buffer.writeln(
           '\n\u2605 *Seguimiento del pedido:* https://tusflores.app/seguimiento/$encodedFolio');
