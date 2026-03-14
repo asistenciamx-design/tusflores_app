@@ -89,6 +89,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
   List<DeliveryRange> _deliveryRanges = [];
   final Set<int> _editingDeliveryRangeIndices = {};
 
+  ShopSettingsModel? _cachedSettings;
   bool _isLoading = true;
   bool _isSaving = false;
   late final ShopSettingsRepository _settingsRepo;
@@ -113,6 +114,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
     if (!mounted) return;
 
     if (settings != null) {
+      _cachedSettings = settings;
       setState(() {
          _branchImagePath = settings.branchImagePath;
          _selectedCountry = settings.country ?? 'México';
@@ -265,6 +267,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
       }
     }
 
+    final c = _cachedSettings;
     final updatedModel = ShopSettingsModel(
       branchImagePath: finalImagePath,
       country: _selectedCountry,
@@ -287,12 +290,27 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
       ],
       deliveryRanges: _deliveryRanges,
       shippingRates: _shippingRates,
+      // Preserve fields managed by other screens
+      bankMethods: c?.bankMethods ?? const [],
+      linkMethods: c?.linkMethods ?? const [],
+      faqs: c?.faqs ?? const [],
+      simplePayments: c?.simplePayments ?? const ['Efectivo'],
+      showReviews: c?.showReviews ?? true,
+      isUnavailable: c?.isUnavailable ?? false,
+      unavailableMessage: c?.unavailableMessage,
+      trackingLinkEnabled: c?.trackingLinkEnabled ?? true,
+      catalogMessage: c?.catalogMessage,
+      catalogImageUrl: c?.catalogImageUrl,
+      rawData: c?.rawData,
     );
 
     final success = await _settingsRepo.updateSettings(_shopId!, updatedModel);
-    
+
     if (!mounted) return;
-    setState(() => _isSaving = false);
+    setState(() {
+      _isSaving = false;
+      if (success) _cachedSettings = updatedModel;
+    });
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
