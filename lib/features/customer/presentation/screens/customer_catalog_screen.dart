@@ -30,6 +30,8 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   double _averageRating = 0;
   int _reviewCount = 0;
   bool _showReviews = true;
+  bool _isUnavailable = false;
+  String? _unavailableMessage;
 
   final _productRepo = ProductRepository();
   final _settingsRepo = ShopSettingsRepository();
@@ -113,6 +115,8 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         final settings = await _settingsRepo.getSettings(targetShopId);
         if (settings != null && mounted) {
           _showReviews = settings.showReviews;
+          _isUnavailable = settings.isUnavailable;
+          _unavailableMessage = settings.unavailableMessage;
         }
       } catch (e) {
         debugPrint('[CustomerCatalog] Error loading settings: $e');
@@ -178,104 +182,138 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     );
   }
 
+  Widget _buildStatusChip() {
+    if (_isUnavailable) {
+      final label = (_unavailableMessage != null && _unavailableMessage!.isNotEmpty)
+          ? _unavailableMessage!
+          : 'No disponible';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.pause_circle_outline, size: 12, color: Colors.orange[700]),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.orange[800],
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.circle, size: 8, color: Colors.green),
+          const SizedBox(width: 6),
+          Text(
+            'Abierto',
+            style: TextStyle(
+              color: Colors.green[700],
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStoreInfoSection(BuildContext context) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.local_florist,
-                size: 40,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Badge de reseñas — solo visible si la florería lo tiene activado y hay reseñas
-            if (_showReviews && _reviewCount > 0) ...[
-              GestureDetector(
-                onTap: widget.onNavigateToNosotros,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            // Fila: logo + rating badge + chip de estado
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.star_rounded, color: Colors.amber[700], size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        _averageRating.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.amber[900],
-                        ),
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                      const SizedBox(width: 6),
-                      Text('·', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$_reviewCount ${_reviewCount == 1 ? "reseña" : "reseñas"}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(width: 2),
-                      Icon(Icons.chevron_right, size: 14, color: Colors.grey[400]),
                     ],
                   ),
+                  child: const Icon(Icons.local_florist, size: 28, color: Colors.green),
                 ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   Icon(Icons.circle, size: 8, color: Colors.green),
-                   SizedBox(width: 6),
-                   Text(
-                    'Abierto',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                if (_showReviews && _reviewCount > 0) ...[
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: widget.onNavigateToNosotros,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star_rounded, color: Colors.amber[700], size: 14),
+                          const SizedBox(width: 3),
+                          Text(
+                            _averageRating.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Colors.amber[900],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text('·', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$_reviewCount ${_reviewCount == 1 ? "reseña" : "reseñas"}',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(Icons.chevron_right, size: 13, color: Colors.grey[400]),
+                        ],
+                      ),
                     ),
                   ),
                 ],
-              ),
+                const SizedBox(width: 10),
+                _buildStatusChip(),
+              ],
             ),
-             const SizedBox(height: 16),
-             Text(
+            const SizedBox(height: 16),
+            Text(
               'Hermosos arreglos florales para toda ocasión. Envío a domicilio disponible.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                height: 1.4,
-              ),
-             ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.4),
+            ),
           ],
         ),
       ),

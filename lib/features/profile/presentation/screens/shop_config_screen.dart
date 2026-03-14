@@ -13,6 +13,7 @@ class ShopConfigScreen extends StatefulWidget {
 
 class _ShopConfigScreenState extends State<ShopConfigScreen> {
   final _repo = ShopSettingsRepository();
+  final _unavailableMsgController = TextEditingController();
   ShopSettingsModel? _settings;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -21,6 +22,12 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
   void initState() {
     super.initState();
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _unavailableMsgController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -33,44 +40,52 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
     if (mounted) {
       setState(() {
         _settings = settings;
+        _unavailableMsgController.text = settings?.unavailableMessage ?? '';
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _toggle(String field, bool value) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null || _settings == null) return;
-
-    setState(() => _isSaving = true);
-
-    // Construir nuevo modelo con el campo modificado
-    final current = _settings!;
-    final updated = ShopSettingsModel(
-      storeHours: current.storeHours,
-      deliveryRanges: current.deliveryRanges,
-      shippingRates: current.shippingRates,
-      bankMethods: current.bankMethods,
-      linkMethods: current.linkMethods,
-      faqs: current.faqs,
-      simplePayments: current.simplePayments,
-      branchImagePath: current.branchImagePath,
-      country: current.country,
-      state: current.state,
-      city: current.city,
-      address: current.address,
-      mapsUrl: current.mapsUrl,
-      references: current.references,
-      phone: current.phone,
-      whatsapp: current.whatsapp,
-      showMapOnProfile: field == 'showMapOnProfile' ? value : current.showMapOnProfile,
-      trackingLinkEnabled: field == 'trackingLinkEnabled' ? value : current.trackingLinkEnabled,
-      showReviews: field == 'showReviews' ? value : current.showReviews,
-      catalogMessage: current.catalogMessage,
-      catalogImageUrl: current.catalogImageUrl,
-      rawData: current.rawData,
+  ShopSettingsModel _buildUpdated({
+    bool? showMapOnProfile,
+    bool? trackingLinkEnabled,
+    bool? showReviews,
+    bool? isUnavailable,
+    String? unavailableMessage,
+  }) {
+    final c = _settings!;
+    return ShopSettingsModel(
+      storeHours: c.storeHours,
+      deliveryRanges: c.deliveryRanges,
+      shippingRates: c.shippingRates,
+      bankMethods: c.bankMethods,
+      linkMethods: c.linkMethods,
+      faqs: c.faqs,
+      simplePayments: c.simplePayments,
+      branchImagePath: c.branchImagePath,
+      country: c.country,
+      state: c.state,
+      city: c.city,
+      address: c.address,
+      mapsUrl: c.mapsUrl,
+      references: c.references,
+      phone: c.phone,
+      whatsapp: c.whatsapp,
+      showMapOnProfile: showMapOnProfile ?? c.showMapOnProfile,
+      trackingLinkEnabled: trackingLinkEnabled ?? c.trackingLinkEnabled,
+      showReviews: showReviews ?? c.showReviews,
+      isUnavailable: isUnavailable ?? c.isUnavailable,
+      unavailableMessage: unavailableMessage ?? c.unavailableMessage,
+      catalogMessage: c.catalogMessage,
+      catalogImageUrl: c.catalogImageUrl,
+      rawData: c.rawData,
     );
+  }
 
+  Future<void> _save(ShopSettingsModel updated) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    setState(() => _isSaving = true);
     final ok = await _repo.updateSettings(userId, updated);
     if (mounted) {
       setState(() {
@@ -83,6 +98,30 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
         );
       }
     }
+  }
+
+  Future<void> _toggle(String field, bool value) async {
+    if (_settings == null) return;
+    await _save(_buildUpdated(
+      showMapOnProfile: field == 'showMapOnProfile' ? value : null,
+      trackingLinkEnabled: field == 'trackingLinkEnabled' ? value : null,
+      showReviews: field == 'showReviews' ? value : null,
+    ));
+  }
+
+  Future<void> _toggleUnavailable(bool value) async {
+    if (_settings == null) return;
+    final msg = _unavailableMsgController.text.trim();
+    await _save(_buildUpdated(
+      isUnavailable: value,
+      unavailableMessage: msg.isEmpty ? null : msg,
+    ));
+  }
+
+  Future<void> _saveUnavailableMessage() async {
+    if (_settings == null) return;
+    final msg = _unavailableMsgController.text.trim();
+    await _save(_buildUpdated(unavailableMessage: msg.isEmpty ? null : msg));
   }
 
   @override
@@ -115,6 +154,70 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
               : ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
+                    _SectionHeader(title: 'DISPONIBILIDAD'),
+                    const SizedBox(height: 12),
+                    _buildCard(children: [
+                      _ConfigTile(
+                        icon: Icons.pause_circle_outline,
+                        iconColor: Colors.orange[700]!,
+                        iconBg: Colors.orange.withValues(alpha: 0.1),
+                        title: 'No disponible',
+                        subtitle: 'Marca la tienda como cerrada temporalmente con un aviso.',
+                        value: _settings!.isUnavailable,
+                        onChanged: _toggleUnavailable,
+                        enabled: !_isSaving,
+                      ),
+                      AnimatedCrossFade(
+                        duration: const Duration(milliseconds: 220),
+                        crossFadeState: _settings!.isUnavailable
+                            ? CrossFadeState.showFirst
+                            : CrossFadeState.showSecond,
+                        firstChild: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Motivo que verán tus clientes:',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _unavailableMsgController,
+                                enabled: !_isSaving,
+                                maxLength: 80,
+                                decoration: InputDecoration(
+                                  hintText: 'Ej: Vacaciones del 15 al 20 de marzo',
+                                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
+                                  counterStyle: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                ),
+                                onSubmitted: (_) => _saveUnavailableMessage(),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: _isSaving ? null : _saveUnavailableMessage,
+                                  child: const Text('Guardar mensaje'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        secondChild: const SizedBox.shrink(),
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
                     _SectionHeader(title: 'TIENDA PÚBLICA'),
                     const SizedBox(height: 12),
                     _buildCard(children: [

@@ -179,6 +179,10 @@ class ShopSettingsModel {
   // Visibility toggles
   final bool showReviews;
 
+  // Availability
+  final bool isUnavailable;
+  final String? unavailableMessage;
+
   ShopSettingsModel({
     required this.storeHours,
     required this.deliveryRanges,
@@ -199,6 +203,8 @@ class ShopSettingsModel {
     this.showMapOnProfile = false,
     this.trackingLinkEnabled = true,
     this.showReviews = true,
+    this.isUnavailable = false,
+    this.unavailableMessage,
     this.catalogMessage,
     this.catalogImageUrl,
     this.rawData,
@@ -260,6 +266,8 @@ class ShopSettingsModel {
       showMapOnProfile: json['show_map_on_profile'] ?? false,
       trackingLinkEnabled: json['tracking_link_enabled'] ?? true,
       showReviews: json['show_reviews'] ?? true,
+      isUnavailable: json['is_unavailable'] ?? false,
+      unavailableMessage: json['unavailable_message'],
       catalogMessage: json['catalog_message'],
       catalogImageUrl: json['catalog_image_url'],
       rawData: json,
@@ -286,6 +294,8 @@ class ShopSettingsModel {
     'show_map_on_profile': showMapOnProfile,
     'tracking_link_enabled': trackingLinkEnabled,
     'show_reviews': showReviews,
+    'is_unavailable': isUnavailable,
+    'unavailable_message': unavailableMessage,
     'catalog_message': catalogMessage,
     'catalog_image_url': catalogImageUrl,
   };
