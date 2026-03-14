@@ -71,22 +71,41 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
       debugPrint('[CustomerCatalog] Loading store for shopId: $targetShopId');
 
-      // Cargar perfil + rating (independiente: si falla no afecta productos)
+      // Cargar perfil (independiente: si falla no afecta productos)
       try {
         final profile = await Supabase.instance.client
             .from('profiles')
-            .select('shop_name, full_name, logo_url, biography, average_rating, review_count')
+            .select('shop_name, full_name, logo_url, biography')
             .eq('id', targetShopId)
             .maybeSingle();
         if (profile != null && mounted) {
           if (widget.shopName == null || widget.shopName!.isEmpty) {
             _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
           }
-          _averageRating = (profile['average_rating'] as num?)?.toDouble() ?? 0;
-          _reviewCount = (profile['review_count'] as num?)?.toInt() ?? 0;
         }
       } catch (e) {
-        debugPrint('[CustomerCatalog] Error loading profile/rating: $e');
+        debugPrint('[CustomerCatalog] Error loading profile: $e');
+      }
+
+      // Cargar rating directo de shop_reviews (más fiable que el caché en profiles)
+      try {
+        final reviews = await Supabase.instance.client
+            .from('shop_reviews')
+            .select('rating')
+            .eq('shop_id', targetShopId)
+            .eq('is_visible', true);
+        if (mounted) {
+          final list = reviews as List;
+          _reviewCount = list.length;
+          if (_reviewCount > 0) {
+            _averageRating = list
+                .map((r) => (r['rating'] as num).toDouble())
+                .reduce((a, b) => a + b) /
+                _reviewCount;
+          }
+        }
+      } catch (e) {
+        debugPrint('[CustomerCatalog] Error loading reviews: $e');
       }
 
       // Cargar settings de visibilidad (independiente)
@@ -186,15 +205,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              _shopName,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
             // Badge de reseñas — solo visible si la florería lo tiene activado y hay reseñas
             if (_showReviews && _reviewCount > 0) ...[
               GestureDetector(
