@@ -4,12 +4,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
 import '../../../catalog/domain/repositories/product_repository.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
+import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
   final String? shopId; // null = usar el florista autenticado
   final String? shopName; // nombre resuelto desde el slug
-  const CustomerCatalogScreen({super.key, this.shopId, this.shopName});
+  /// Callback para navegar al tab "Nosotros" desde el layout padre.
+  final VoidCallback? onNavigateToNosotros;
+  const CustomerCatalogScreen({
+    super.key,
+    this.shopId,
+    this.shopName,
+    this.onNavigateToNosotros,
+  });
 
   @override
   State<CustomerCatalogScreen> createState() => _CustomerCatalogScreenState();
@@ -19,8 +27,12 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   int _selectedCategoryIndex = 0;
   bool _isLoading = true;
   late String _shopName;
-  
+  double _averageRating = 0;
+  int _reviewCount = 0;
+  bool _showReviews = true;
+
   final _productRepo = ProductRepository();
+  final _settingsRepo = ShopSettingsRepository();
   List<ProductItem> _products = [];
   
   List<String> get _categories {
@@ -59,16 +71,26 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
       debugPrint('[CustomerCatalog] Loading store for shopId: $targetShopId');
 
-      // Cargar perfil de la florería (si no vino shopName ya resuelto)
-      if (widget.shopName == null || widget.shopName!.isEmpty) {
-        final profile = await Supabase.instance.client
-            .from('profiles')
-            .select('shop_name, full_name, logo_url, biography')
-            .eq('id', targetShopId)
-            .maybeSingle();
-        if (profile != null && mounted) {
+      // Cargar perfil + rating
+      final profileFuture = Supabase.instance.client
+          .from('profiles')
+          .select('shop_name, full_name, logo_url, biography, average_rating, review_count')
+          .eq('id', targetShopId)
+          .maybeSingle();
+      final settingsFuture = _settingsRepo.getSettings(targetShopId);
+      final results = await Future.wait([profileFuture, settingsFuture]);
+      final profile = results[0] as Map<String, dynamic>?;
+      final settings = results[1] as dynamic;
+
+      if (profile != null && mounted) {
+        if (widget.shopName == null || widget.shopName!.isEmpty) {
           _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
         }
+        _averageRating = (profile['average_rating'] as num?)?.toDouble() ?? 0;
+        _reviewCount = (profile['review_count'] as num?)?.toInt() ?? 0;
+      }
+      if (settings != null && mounted) {
+        _showReviews = settings.showReviews;
       }
 
       // Cargar solo productos activos (public)
@@ -167,6 +189,45 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            // Badge de reseñas — solo visible si la florería lo tiene activado y hay reseñas
+            if (_showReviews && _reviewCount > 0) ...[
+              GestureDetector(
+                onTap: widget.onNavigateToNosotros,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star_rounded, color: Colors.amber[700], size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        _averageRating.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.amber[900],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text('·', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$_reviewCount ${_reviewCount == 1 ? "reseña" : "reseñas"}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.chevron_right, size: 14, color: Colors.grey[400]),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(

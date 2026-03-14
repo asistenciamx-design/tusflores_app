@@ -9,6 +9,7 @@ import 'profile_contact_screen.dart'; // To navigate to "Datos de contacto"
 import 'profile_branch_edit_screen.dart'; // To navigate to "Sucursal"
 import 'payment_methods_screen.dart'; // To navigate to "Métodos de Pago"
 import 'profile_faq_edit_screen.dart'; // To navigate to "Preguntas Frecuentes"
+import 'shop_config_screen.dart'; // To navigate to "Configuración"
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
@@ -439,6 +440,19 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const ProfileFaqEditScreen()),
+                    );
+                  },
+                ),
+                _buildDivider(),
+                _MenuItem(
+                  icon: Icons.tune,
+                  iconColor: Colors.orange,
+                  iconBg: Colors.orange.withValues(alpha: 0.1),
+                  title: 'Configuración',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ShopConfigScreen()),
                     );
                   },
                 ),

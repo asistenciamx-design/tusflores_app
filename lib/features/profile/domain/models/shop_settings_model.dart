@@ -176,6 +176,9 @@ class ShopSettingsModel {
   final String? catalogMessage;
   final String? catalogImageUrl;
 
+  // Visibility toggles
+  final bool showReviews;
+
   ShopSettingsModel({
     required this.storeHours,
     required this.deliveryRanges,
@@ -195,6 +198,7 @@ class ShopSettingsModel {
     this.whatsapp,
     this.showMapOnProfile = false,
     this.trackingLinkEnabled = true,
+    this.showReviews = true,
     this.catalogMessage,
     this.catalogImageUrl,
     this.rawData,
@@ -255,6 +259,7 @@ class ShopSettingsModel {
       whatsapp: json['whatsapp'],
       showMapOnProfile: json['show_map_on_profile'] ?? false,
       trackingLinkEnabled: json['tracking_link_enabled'] ?? true,
+      showReviews: json['show_reviews'] ?? true,
       catalogMessage: json['catalog_message'],
       catalogImageUrl: json['catalog_image_url'],
       rawData: json,
@@ -280,6 +285,7 @@ class ShopSettingsModel {
     'whatsapp': whatsapp,
     'show_map_on_profile': showMapOnProfile,
     'tracking_link_enabled': trackingLinkEnabled,
+    'show_reviews': showReviews,
     'catalog_message': catalogMessage,
     'catalog_image_url': catalogImageUrl,
   };

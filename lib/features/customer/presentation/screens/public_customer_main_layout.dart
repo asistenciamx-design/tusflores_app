@@ -26,7 +26,11 @@ class _PublicCustomerMainLayoutState extends State<PublicCustomerMainLayout> {
     Widget child;
     switch (_currentIndex) {
       case 0:
-        child = CustomerCatalogScreen(shopId: widget.shopId, shopName: widget.shopName);
+        child = CustomerCatalogScreen(
+          shopId: widget.shopId,
+          shopName: widget.shopName,
+          onNavigateToNosotros: () => setState(() => _currentIndex = 2),
+        );
         break;
       case 1:
         child = CustomerBranchScreen(shopId: widget.shopId);
