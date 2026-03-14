@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -36,8 +36,20 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
   // ── Format options ───────────────────────────────────────────────────────
   bool _isHorizontal = false;
   bool _isMediaSize = false;
+  String _selectedFont = 'Manrope';
+  double _fontSize = 10.0;
 
   bool _isPrinting = false;
+
+  static const _sansFonts = [
+    'Manrope',
+    'Montserrat',
+    'Lato',
+    'Roboto',
+    'Poppins',
+  ];
+
+
 
   // ── Parsed product names ─────────────────────────────────────────────────
   List<Map<String, dynamic>> get _products {
@@ -74,35 +86,47 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
             ? PdfPageFormat.letter.landscape
             : PdfPageFormat.letter);
 
-    // Load font
+    // Load selected font via PdfGoogleFonts
     pw.Font? regularFont;
     pw.Font? boldFont;
     try {
-      final fontData =
-          await rootBundle.load('assets/fonts/Manrope-Regular.ttf');
-      regularFont = pw.Font.ttf(fontData);
-      final boldData =
-          await rootBundle.load('assets/fonts/Manrope-Bold.ttf');
-      boldFont = pw.Font.ttf(boldData);
+      switch (_selectedFont) {
+        case 'Montserrat':
+          regularFont = await PdfGoogleFonts.montserratRegular();
+          boldFont    = await PdfGoogleFonts.montserratBold();
+        case 'Lato':
+          regularFont = await PdfGoogleFonts.latoRegular();
+          boldFont    = await PdfGoogleFonts.latoBold();
+        case 'Roboto':
+          regularFont = await PdfGoogleFonts.robotoRegular();
+          boldFont    = await PdfGoogleFonts.robotoBold();
+        case 'Poppins':
+          regularFont = await PdfGoogleFonts.poppinsRegular();
+          boldFont    = await PdfGoogleFonts.poppinsBold();
+        default: // Manrope
+          regularFont = await PdfGoogleFonts.manropeRegular();
+          boldFont    = await PdfGoogleFonts.manropeBold();
+      }
     } catch (_) {
       // fall back to built-in font
     }
 
+    final fs = _fontSize;
     final baseStyle = pw.TextStyle(
-        font: regularFont, fontSize: 10, color: PdfColors.grey700);
+        font: regularFont, fontSize: fs, color: PdfColors.grey700);
     final labelStyle = pw.TextStyle(
         font: boldFont,
-        fontSize: 7,
+        fontSize: (fs * 0.7).clamp(6, 10).toDouble(),
         color: PdfColors.grey400,
         letterSpacing: 1.2);
     final titleStyle = pw.TextStyle(
         font: boldFont,
-        fontSize: 14,
+        fontSize: (fs * 1.3).clamp(10, 20).toDouble(),
         color: const PdfColor.fromInt(0xFF11d493));
     final boldStyle = pw.TextStyle(
-        font: boldFont, fontSize: 11, color: PdfColors.grey900);
+        font: boldFont, fontSize: (fs * 1.1).clamp(8, 16).toDouble(), color: PdfColors.grey900);
     final smallStyle = pw.TextStyle(
-        font: regularFont, fontSize: 9, color: PdfColors.grey600);
+        font: regularFont, fontSize: (fs * 0.85).clamp(6, 12).toDouble(), color: PdfColors.grey600);
 
     pdf.addPage(
       pw.Page(
@@ -339,9 +363,15 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
     );
   }
 
+  TextStyle _previewStyle(TextStyle base) {
+    return GoogleFonts.getFont(_selectedFont, textStyle: base);
+  }
+
   Widget _buildDocPreview() {
     final productList = _products;
-    return Padding(
+    return DefaultTextStyle(
+      style: _previewStyle(const TextStyle()),
+      child: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,7 +520,8 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
           ),
         ],
       ),
-    );
+    ),    // Padding (child of DefaultTextStyle)
+    );   // DefaultTextStyle
   }
 
   // ── Format Section ───────────────────────────────────────────────────────
@@ -546,6 +577,94 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                       selected: _isMediaSize ? 1 : 0,
                       onChanged: (i) =>
                           setState(() => _isMediaSize = i == 1),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // ── Font selector ────────────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('FUENTE',
+                        style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF94A3B8),
+                            letterSpacing: 0.8)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedFont,
+                          isExpanded: true,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A2E)),
+                          icon: const Icon(Icons.expand_more_rounded,
+                              size: 18, color: Color(0xFF94A3B8)),
+                          items: _sansFonts
+                              .map((f) => DropdownMenuItem(
+                                    value: f,
+                                    child: Text(f,
+                                        style: const TextStyle(fontSize: 12)),
+                                  ))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setState(() => _selectedFont = v);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('TAMAÑO  ${_fontSize.toInt()}px',
+                        style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF94A3B8),
+                            letterSpacing: 0.8)),
+                    const SizedBox(height: 2),
+                    SliderTheme(
+                      data: SliderThemeData(
+                        trackHeight: 3,
+                        thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 8),
+                        overlayShape: const RoundSliderOverlayShape(
+                            overlayRadius: 16),
+                        activeTrackColor: AppTheme.primary,
+                        inactiveTrackColor: const Color(0xFFE2E8F0),
+                        thumbColor: AppTheme.primary,
+                        overlayColor:
+                            AppTheme.primary.withValues(alpha: 0.15),
+                      ),
+                      child: Slider(
+                        value: _fontSize,
+                        min: 10,
+                        max: 30,
+                        divisions: 20,
+                        onChanged: (v) => setState(() => _fontSize = v),
+                      ),
                     ),
                   ],
                 ),
