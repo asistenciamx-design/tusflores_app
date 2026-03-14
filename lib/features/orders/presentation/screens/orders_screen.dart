@@ -7,6 +7,7 @@ import 'edit_order_screen.dart';
 import 'confirm_payment_screen.dart';
 import 'order_calendar_screen.dart';
 import 'print_card_screen.dart';
+import 'albaran_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/order_model.dart';
@@ -925,11 +926,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
-                      // TODO: navegar a pantalla de albarán (próximamente)
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Albarán próximamente'),
-                          behavior: SnackBarBehavior.floating,
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AlbaranScreen(
+                            order: order,
+                            shopName: _shopName,
+                          ),
                         ),
                       );
                     },
