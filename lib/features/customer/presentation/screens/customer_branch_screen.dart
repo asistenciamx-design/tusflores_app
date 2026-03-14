@@ -19,7 +19,8 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
   String _shopName = 'Sucursal Principal';
   bool _isLoading = true;
 
-  static const _dayNames = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  // 0-indexed: Mon=0 … Sun=6  (matches schedule editor storage)
+  static const _dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   @override
   void initState() {
@@ -55,7 +56,8 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
   bool _isOpenNow() {
     if (_settings == null || _settings!.storeHours.isEmpty) return false;
     final now = TimeOfDay.now();
-    final weekday = DateTime.now().weekday;
+    // DateTime.weekday is 1=Mon…7=Sun; stored days are 0=Mon…6=Sun
+    final weekday = DateTime.now().weekday - 1;
     for (final entry in _settings!.storeHours) {
       if (!entry.days.contains(weekday)) continue;
       final start = entry.start.hour * 60 + entry.start.minute;
@@ -69,7 +71,7 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
   TimeOfDay? _closingTime() {
     if (_settings == null) return null;
     final now = TimeOfDay.now();
-    final weekday = DateTime.now().weekday;
+    final weekday = DateTime.now().weekday - 1;
     for (final entry in _settings!.storeHours) {
       if (!entry.days.contains(weekday)) continue;
       final start = entry.start.hour * 60 + entry.start.minute;
@@ -329,12 +331,16 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
               title: 'Entregas a Domicilio',
               icon: Icons.local_shipping,
               rows: _settings!.deliveryRanges
-                  .map((e) => _ScheduleRow(
-                        days: e.label.isNotEmpty
-                            ? e.label
-                            : _formatDays(e.days),
-                        time: '${_fmt(e.start)} – ${_fmt(e.end)}',
-                      ))
+                  .map((e) {
+                        final dayStr = e.days.isNotEmpty ? _formatDays(e.days) : '';
+                        final label = e.label.isNotEmpty
+                            ? (dayStr.isNotEmpty ? '${e.label}  ·  $dayStr' : e.label)
+                            : dayStr;
+                        return _ScheduleRow(
+                          days: label,
+                          time: '${_fmt(e.start)} – ${_fmt(e.end)}',
+                        );
+                      })
                   .toList(),
             ),
           ],
