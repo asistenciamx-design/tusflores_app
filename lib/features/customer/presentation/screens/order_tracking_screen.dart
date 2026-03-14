@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../reviews/presentation/screens/review_form_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   final String folio;
@@ -423,6 +424,18 @@ class _TrackingView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
+          // CTA: calificar cuando entregado
+          if (isDelivered) ...[
+            const SizedBox(height: 8),
+            _RateOrderBanner(
+              shopId: order['shop_id'] as String? ?? '',
+              shopName: shopName,
+              orderId: order['id'] as String?,
+              customerName: order['recipient_name'] as String?,
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // Footer note
           const Center(
             child: Text(
@@ -543,6 +556,137 @@ class _TimelineItem extends StatelessWidget {
     );
   }
 }
+
+// ── Rate order banner ──────────────────────────────────────────────────────
+
+class _RateOrderBanner extends StatefulWidget {
+  final String shopId;
+  final String shopName;
+  final String? orderId;
+  final String? customerName;
+
+  const _RateOrderBanner({
+    required this.shopId,
+    required this.shopName,
+    this.orderId,
+    this.customerName,
+  });
+
+  @override
+  State<_RateOrderBanner> createState() => _RateOrderBannerState();
+}
+
+class _RateOrderBannerState extends State<_RateOrderBanner> {
+  bool _alreadyRated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAlreadyRated();
+  }
+
+  Future<void> _checkAlreadyRated() async {
+    if (widget.orderId == null) return;
+    try {
+      final rows = await Supabase.instance.client
+          .from('shop_reviews')
+          .select('id')
+          .eq('order_id', widget.orderId!)
+          .limit(1);
+      if (mounted && (rows as List).isNotEmpty) {
+        setState(() => _alreadyRated = true);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_alreadyRated) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: const Color(0xFF10B981).withValues(alpha: 0.25)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.star_rounded, color: Color(0xFF10B981), size: 22),
+            SizedBox(width: 10),
+            Text('¡Gracias por tu reseña!',
+                style: TextStyle(
+                    color: Color(0xFF10B981),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14)),
+          ],
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ReviewFormScreen(
+              shopId: widget.shopId,
+              shopName: widget.shopName,
+              orderId: widget.orderId,
+              customerName: widget.customerName,
+            ),
+          ),
+        );
+        _checkAlreadyRated();
+      },
+      child: Container(
+        width: double.infinity,
+        padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE91E8C), Color(0xFFFF6B9D)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE91E8C).withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.star_rounded, color: Colors.white, size: 24),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('¿Cómo fue tu experiencia?',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15)),
+                  SizedBox(height: 2),
+                  Text('Déjanos una reseña, ¡nos ayuda mucho!',
+                      style: TextStyle(
+                          color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded,
+                color: Colors.white70, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Detail row ──────────────────────────────────────────────────────────────
 
 class _DetailRow extends StatelessWidget {
   final IconData icon;

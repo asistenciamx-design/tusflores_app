@@ -15,6 +15,7 @@ import 'package:intl/intl.dart';
 import '../../../orders/presentation/screens/edit_order_screen.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart';
 import '../../../orders/presentation/screens/orders_screen.dart';
+import '../../../reviews/presentation/widgets/dashboard_rating_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
@@ -134,6 +135,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _buildActionButtons(context),
                     const SizedBox(height: 24),
                     _buildLatestOrder(context),
+                    const SizedBox(height: 16),
+                    DashboardRatingWidget(shopId: Supabase.instance.client.auth.currentUser?.id ?? ''),
                     const SizedBox(height: 24),
                   ],
                 ),

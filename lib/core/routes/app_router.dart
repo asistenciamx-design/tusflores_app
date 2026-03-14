@@ -25,6 +25,8 @@ import '../../features/catalog/presentation/screens/catalog_message_screen.dart'
 import '../../features/catalog/presentation/screens/catalog_screen.dart' show ProductItem;
 import '../../features/orders/domain/models/order_model.dart';
 import '../../features/customer/presentation/screens/order_tracking_screen.dart';
+import '../../features/reviews/presentation/screens/review_form_screen.dart';
+import '../services/seo_service.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -141,6 +143,18 @@ final appRouter = GoRouter(
         return OrderTrackingScreen(folio: folio);
       },
     ),
+    GoRoute(
+      path: '/resena',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return ReviewFormScreen(
+          shopId: extra?['shopId'] as String? ?? '',
+          shopName: extra?['shopName'] as String? ?? 'La florería',
+          orderId: extra?['orderId'] as String?,
+          customerName: extra?['customerName'] as String?,
+        );
+      },
+    ),
   ],
 );
 
@@ -163,6 +177,24 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   void initState() {
     super.initState();
     _resolveSlug();
+  }
+
+  Future<void> _updateSeo(String? shopId, String shopName) async {
+    if (shopId == null) return;
+    try {
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('average_rating, review_count')
+          .eq('id', shopId)
+          .maybeSingle();
+      final rating = (profile?['average_rating'] as num?)?.toDouble() ?? 0;
+      final count = profile?['review_count'] as int? ?? 0;
+      updateShopJsonLd(
+        shopName: shopName,
+        ratingValue: rating,
+        reviewCount: count,
+      );
+    } catch (_) {}
   }
 
   Future<void> _resolveSlug() async {
@@ -201,10 +233,14 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
 
       if (!mounted) return;
       if (match != null) {
+        final resolvedShopName =
+            (match!['shop_name'] ?? match!['full_name'] ?? '') as String;
         setState(() {
           _shopId = match!['id'] as String?;
-          _shopName = (match!['shop_name'] ?? match!['full_name'] ?? '') as String;
+          _shopName = resolvedShopName;
         });
+        // Update JSON-LD with real rating data for SEO
+        _updateSeo(match!['id'] as String?, resolvedShopName);
       } else {
         // Collect all available shop names to show on the debug screen
         final availableNames = profiles.map((p) => "'${p['shop_name']}'").join(', ');

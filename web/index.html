@@ -1,46 +1,110 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Default SEO -->
+  <title>TusFlores.app — Florerías en México</title>
+  <meta name="description" content="Descubre florerías cerca de ti. Arreglos florales, ramos, rosas y más. Ordena en línea con TusFlores.app">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TusFlores.app">
+  <meta property="og:title" content="TusFlores.app — Florerías en México">
+  <meta property="og:description" content="Descubre florerías cerca de ti y ordena en línea.">
+  <meta property="og:image" content="icons/Icon-512.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="TusFlores.app">
+  <meta name="twitter:description" content="Florerías en México. Ordena en línea.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="tusflores_app">
+  <meta name="apple-mobile-web-app-title" content="TusFlores">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>tusflores_app</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    SEO dinámico para páginas de tiendas (/mx/:slug).
+    Actualiza <title>, <meta> y JSON-LD de LocalBusiness antes de que Flutter arranque.
+    Google indexa el JSON-LD aunque sea inyectado por JS.
+    La app Flutter actualiza el nodo #shop-jsonld con el rating real una vez cargado.
+  -->
+  <script>
+    (function () {
+      const path = window.location.pathname;
+      const shopMatch = path.match(/^\/mx\/([^/]+)/);
+      if (!shopMatch) return;
+
+      const rawSlug = decodeURIComponent(shopMatch[1]);
+      const shopName = rawSlug
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+
+      document.title = shopName + ' | TusFlores.app';
+
+      function setMeta(sel, attr, val) {
+        var el = document.querySelector(sel);
+        if (el) el.setAttribute(attr, val);
+      }
+      setMeta('meta[name="description"]', 'content',
+        'Florería ' + shopName + ' en TusFlores.app. Ordena arreglos florales, ramos y más en línea.');
+      setMeta('meta[property="og:title"]', 'content', shopName + ' | TusFlores.app');
+      setMeta('meta[property="og:description"]', 'content',
+        'Florería ' + shopName + '. Ordena en línea con TusFlores.app');
+
+      // JSON-LD — Google lo usa para mostrar estrellas en resultados de búsqueda.
+      var script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.id = 'shop-jsonld';
+      script.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'LocalBusiness',
+        'name': shopName,
+        'url': window.location.origin + window.location.pathname,
+        'image': window.location.origin + '/icons/Icon-512.png',
+        'priceRange': '$$'
+      });
+      document.head.appendChild(script);
+    })();
+
+    // Función global llamada desde Flutter (dart:js) para actualizar
+    // el JSON-LD con el rating real y conteo de reseñas.
+    function updateShopJsonLd(shopName, ratingValue, reviewCount, city) {
+      var el = document.getElementById('shop-jsonld');
+      if (!el) return;
+      var data = {
+        '@context': 'https://schema.org',
+        '@type': 'LocalBusiness',
+        'name': shopName,
+        'url': window.location.origin + window.location.pathname,
+        'image': window.location.origin + '/icons/Icon-512.png',
+        'priceRange': '$$'
+      };
+      if (city) data['address'] = { '@type': 'PostalAddress', 'addressLocality': city };
+      if (reviewCount > 0) {
+        data['aggregateRating'] = {
+          '@type': 'AggregateRating',
+          'ratingValue': ratingValue.toFixed(1),
+          'reviewCount': reviewCount,
+          'bestRating': '5',
+          'worstRating': '1'
+        };
+      }
+      el.textContent = JSON.stringify(data);
+    }
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

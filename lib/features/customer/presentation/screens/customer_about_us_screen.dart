@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../reviews/presentation/widgets/shop_reviews_section.dart';
 
 class CustomerAboutUsScreen extends StatefulWidget {
   final String? shopId;
@@ -100,6 +101,13 @@ class _CustomerAboutUsScreenState extends State<CustomerAboutUsScreen> {
                     const SizedBox(height: 16),
                     _buildGalleryGrid(),
                   ],
+                  const SizedBox(height: 32),
+                  _buildDivider(),
+                  const SizedBox(height: 24),
+                  ShopReviewsSection(
+                    shopId: widget.shopId ?? Supabase.instance.client.auth.currentUser?.id ?? '',
+                    shopName: _shopName,
+                  ),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -424,6 +432,17 @@ class _CustomerAboutUsScreenState extends State<CustomerAboutUsScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: Colors.grey[200])),
         ],
       ),
     );
