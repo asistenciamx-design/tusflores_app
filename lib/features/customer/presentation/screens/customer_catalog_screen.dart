@@ -71,16 +71,13 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
       debugPrint('[CustomerCatalog] Loading store for shopId: $targetShopId');
 
-      // Cargar perfil + rating
-      final profileFuture = Supabase.instance.client
+      // Cargar perfil + rating y settings en paralelo con tipos explícitos
+      final profile = await Supabase.instance.client
           .from('profiles')
           .select('shop_name, full_name, logo_url, biography, average_rating, review_count')
           .eq('id', targetShopId)
           .maybeSingle();
-      final settingsFuture = _settingsRepo.getSettings(targetShopId);
-      final results = await Future.wait([profileFuture, settingsFuture]);
-      final profile = results[0] as Map<String, dynamic>?;
-      final settings = results[1] as dynamic;
+      final settings = await _settingsRepo.getSettings(targetShopId);
 
       if (profile != null && mounted) {
         if (widget.shopName == null || widget.shopName!.isEmpty) {
