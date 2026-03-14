@@ -393,72 +393,61 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
   }
 
   Widget _buildMapSection() {
-    return Column(
-      children: [
-        Container(
-          height: 160,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Stack(
-            children: [
-              const Center(
-                  child: Icon(Icons.map, size: 50, color: Colors.black12)),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8)),
-                  child: const Text('Ver mapa',
-                      style: TextStyle(color: Colors.blue, fontSize: 12)),
-                ),
-              ),
-            ],
-          ),
+    return GestureDetector(
+      onTap: () {
+        final url = _settings?.mapsUrl;
+        if (url != null && url.isNotEmpty) _launchMaps(url);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
         ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
           children: [
-            TextButton.icon(
-              onPressed: () {
-                final url = _settings?.mapsUrl;
-                if (url != null && url.isNotEmpty) _launchMaps(url);
-              },
-              icon: const Icon(Icons.open_in_new, size: 16, color: Colors.green),
-              label: const Text('Ver en Google Maps',
-                  style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-              style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 0),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.map_outlined, color: Colors.green, size: 22),
             ),
-            TextButton.icon(
-              onPressed: () {
-                final url = _settings?.mapsUrl;
-                if (url != null && url.isNotEmpty) _launchMaps(url);
-              },
-              icon: const Icon(Icons.near_me, size: 16, color: Colors.grey),
-              label: Text('Cómo llegar',
-                  style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-              style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 0),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ver ubicación',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Abrir en Google Maps',
+                    style: TextStyle(fontSize: 12, color: Colors.green),
+                  ),
+                ],
+              ),
             ),
+            const Icon(Icons.open_in_new, size: 18, color: Colors.green),
           ],
         ),
-      ],
+      ),
     );
   }
 
