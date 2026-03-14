@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/shop_settings_model.dart';
 
@@ -15,25 +16,28 @@ class ShopSettingsRepository {
           .maybeSingle();
 
       if (response == null || response['settings'] == null) {
-        // Return a model with empty lists if not found
         return ShopSettingsModel(storeHours: [], deliveryRanges: [], shippingRates: []);
       }
-      return ShopSettingsModel.fromJson(response['settings'] as Map<String, dynamic>);
+      final model = ShopSettingsModel.fromJson(response['settings'] as Map<String, dynamic>);
+      debugPrint('[ShopSettings] getSettings: storeHours=${model.storeHours.length}');
+      return model;
     } catch (e) {
-      print('Error en getSettings: \$e');
+      debugPrint('[ShopSettings] getSettings error: $e');
       return ShopSettingsModel(storeHours: [], deliveryRanges: [], shippingRates: []);
     }
   }
 
   Future<bool> updateSettings(String shopId, ShopSettingsModel settings) async {
     try {
-      await _client.from('shop_settings').upsert({
-        'shop_id': shopId,
-        'settings': settings.toJson(),
-      });
+      final json = settings.toJson();
+      debugPrint('[ShopSettings] updateSettings: storeHours=${(json['store_hours'] as List).length}');
+      await _client.from('shop_settings').upsert(
+        {'shop_id': shopId, 'settings': json},
+        onConflict: 'shop_id',
+      );
       return true;
     } catch (e) {
-      print('Error en updateSettings: \$e');
+      debugPrint('[ShopSettings] updateSettings error: $e');
       return false;
     }
   }
