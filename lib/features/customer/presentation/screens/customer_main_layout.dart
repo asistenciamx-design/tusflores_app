@@ -70,7 +70,7 @@ class CustomerMainLayout extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.help_outline),
             activeIcon: Icon(Icons.help),
-            label: 'Atención',
+            label: 'Ayuda',
           ),
         ],
       ),

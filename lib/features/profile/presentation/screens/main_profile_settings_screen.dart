@@ -435,7 +435,7 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
                   icon: Icons.help,
                   iconColor: Colors.lightBlue,
                   iconBg: Colors.lightBlue.withValues(alpha: 0.1),
-                  title: 'Preguntas',
+                  title: 'Ayuda',
                   onTap: () {
                     Navigator.push(
                       context,

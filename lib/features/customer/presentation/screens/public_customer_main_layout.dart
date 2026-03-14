@@ -74,7 +74,7 @@ class _PublicCustomerMainLayoutState extends State<PublicCustomerMainLayout> {
           BottomNavigationBarItem(
             icon: Icon(Icons.help_outline),
             activeIcon: Icon(Icons.help),
-            label: 'Atención',
+            label: 'Ayuda',
           ),
         ],
       ),

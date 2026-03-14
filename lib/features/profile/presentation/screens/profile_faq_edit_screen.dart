@@ -73,7 +73,7 @@ class _ProfileFaqEditScreenState extends State<ProfileFaqEditScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       appBar: AppBar(
-        title: const Text('Preguntas Frecuentes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('Ayuda e Información', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
