@@ -890,71 +890,55 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
             const SizedBox(height: 12),
 
-            // Print buttons row
+            // Action icons row — 5 quick-access buttons
             Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      final msg = order.dedicationMessage ?? '';
-                      Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => PrintCardScreen(initialMessage: msg)));
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.note_alt_outlined, color: AppTheme.primary, size: 15),
-                          const SizedBox(width: 5),
-                          Text('Dedicatoria',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primary)),
-                        ],
-                      ),
-                    ),
-                  ),
+                _cardAction(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'Chat',
+                  color: const Color(0xFF2E7D52),
+                  bgColor: const Color(0xFFE6F4ED),
+                  onTap: () => _openWhatsApp(order.customerPhone),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AlbaranScreen(
-                            order: order,
-                            shopName: _shopName,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.25)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.receipt_long_outlined, color: Colors.blueGrey[600], size: 15),
-                          const SizedBox(width: 5),
-                          Text('Albarán',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueGrey[600])),
-                        ],
-                      ),
+                const SizedBox(width: 7),
+                _cardAction(
+                  icon: Icons.ios_share_rounded,
+                  label: 'Enviar',
+                  color: const Color(0xFF6952A8),
+                  bgColor: const Color(0xFFF0EAFA),
+                  onTap: () => _shareOrder(order),
+                ),
+                const SizedBox(width: 7),
+                _cardAction(
+                  icon: Icons.edit_outlined,
+                  label: 'Editar',
+                  color: const Color(0xFF546E7A),
+                  bgColor: const Color(0xFFECF1F4),
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => EditOrderScreen(order: order))),
+                ),
+                const SizedBox(width: 7),
+                _cardAction(
+                  icon: Icons.note_alt_outlined,
+                  label: 'Tarjeta',
+                  color: const Color(0xFF2E7D52),
+                  bgColor: AppTheme.primary.withValues(alpha: 0.08),
+                  onTap: () {
+                    final msg = order.dedicationMessage ?? '';
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => PrintCardScreen(initialMessage: msg)));
+                  },
+                ),
+                const SizedBox(width: 7),
+                _cardAction(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'Albarán',
+                  color: const Color(0xFF1565C0),
+                  bgColor: const Color(0xFFE3F0FD),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AlbaranScreen(order: order, shopName: _shopName),
                     ),
                   ),
                 ),
@@ -962,37 +946,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ),
             const SizedBox(height: 10),
 
-            // Action row
+            // Payment + Status row
             Row(
               children: [
-                // WhatsApp
-                GestureDetector(
-                  onTap: () => _openWhatsApp(order.customerPhone),
-                  child: _iconBtn(Icons.chat, const Color(0xFF25D366)),
-                ),
-                const SizedBox(width: 8),
-                // Share order
-                GestureDetector(
-                  onTap: () => _shareOrder(order),
-                  child: _iconBtn(Icons.ios_share, AppTheme.primary),
-                ),
-                const SizedBox(width: 8),
-                // Edit
-                GestureDetector(
-                  onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => EditOrderScreen(order: order))),
-                  child: _iconBtn(Icons.edit, const Color(0xFF9E9E9E)),
-                ),
-                const SizedBox(width: 10),
                 // Pagado chip
                 GestureDetector(
                   onTap: () async {
                     if (order.id == null) return;
                     final result = await Navigator.push<String>(context,
-                      MaterialPageRoute(builder: (_) =>
-                        ConfirmPaymentScreen(
-                          order: order,
-                        )));
+                        MaterialPageRoute(builder: (_) => ConfirmPaymentScreen(order: order)));
                     if (result != null && mounted) {
                       final success = await _orderRepo.updatePaymentStatus(order.id!, true, result);
                       if (success) {
@@ -1004,11 +966,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     }
                   },
                   child: _statusChip(
-                    icon: Icons.account_balance_wallet,
+                    icon: Icons.account_balance_wallet_outlined,
                     label: order.isPaid
                         ? (order.paymentMethod != null ? '\u2713 ${order.paymentMethod}' : 'Pagado')
                         : '¿Pagado?',
-                    color: order.isPaid ? AppTheme.primary : Colors.orange,
+                    color: order.isPaid ? const Color(0xFF2E7D52) : const Color(0xFFD4790A),
                     outlined: true,
                   ),
                 ),
@@ -1017,8 +979,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 Expanded(
                   child: PopupMenuButton<OrderStatus>(
                     onSelected: (s) => _changeOrderStatus(order, s),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     itemBuilder: (ctx) => [
                       for (final s in [
                         OrderStatus.waiting,
@@ -1038,14 +999,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                     fontWeight: s == order.status
                                         ? FontWeight.bold
                                         : FontWeight.normal,
-                                    color: s == order.status
-                                        ? s.chipColor
-                                        : Colors.black87,
+                                    color: s == order.status ? s.chipColor : Colors.black87,
                                   )),
                               const Spacer(),
                               if (s == order.status)
-                                Icon(Icons.check,
-                                    color: s.chipColor, size: 14),
+                                Icon(Icons.check, color: s.chipColor, size: 14),
                             ],
                           ),
                         ),
@@ -1059,8 +1017,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(order.status.chipIcon,
-                              color: Colors.white, size: 15),
+                          Icon(order.status.chipIcon, color: Colors.white, size: 15),
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(order.status.label,
@@ -1071,8 +1028,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                     fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 3),
-                          const Icon(Icons.arrow_drop_down,
-                              color: Colors.white, size: 16),
+                          const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
                         ],
                       ),
                     ),
@@ -1081,6 +1037,46 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cardAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color bgColor,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 19),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.1,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
