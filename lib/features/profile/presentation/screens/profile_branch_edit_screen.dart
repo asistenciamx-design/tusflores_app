@@ -126,7 +126,14 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
          _showMapOnProfile = settings.showMapOnProfile;
 
          _specificSchedules.clear();
-         _specificSchedules.addAll(settings.storeHours);
+         if (settings.storeHours.isNotEmpty) {
+           final first = settings.storeHours.first;
+           _attendanceStart = first.start;
+           _attendanceEnd = first.end;
+           _attendanceDays.clear();
+           _attendanceDays.addAll(first.days);
+           _specificSchedules.addAll(settings.storeHours.skip(1));
+         }
          _deliveryRanges = List.from(settings.deliveryRanges);
          _shippingRates = List.from(settings.shippingRates);
       });
@@ -269,7 +276,15 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
       phone: _phoneCtrl.text.trim(),
       whatsapp: _whatsappCtrl.text.trim(),
       showMapOnProfile: _showMapOnProfile,
-      storeHours: _specificSchedules,
+      storeHours: [
+        if (_attendanceDays.isNotEmpty)
+          ScheduleEntry(
+            start: _attendanceStart,
+            end: _attendanceEnd,
+            days: Set<int>.from(_attendanceDays),
+          ),
+        ..._specificSchedules,
+      ],
       deliveryRanges: _deliveryRanges,
       shippingRates: _shippingRates,
     );
