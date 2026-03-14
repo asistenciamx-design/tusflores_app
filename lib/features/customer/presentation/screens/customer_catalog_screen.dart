@@ -61,78 +61,80 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
   Future<void> _loadStoreData() async {
     setState(() => _isLoading = true);
+    final targetShopId = widget.shopId ?? Supabase.instance.client.auth.currentUser?.id;
+    if (targetShopId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+    // Todas las consultas en paralelo — reduce el tiempo total a max(cada una)
+    await Future.wait<void>([
+      _fetchProfile(targetShopId),
+      _fetchReviews(targetShopId),
+      _fetchSettings(targetShopId),
+      _fetchProducts(targetShopId),
+    ]);
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _fetchProfile(String shopId) async {
     try {
-      // Si viene shopId del param de URL, utilízalo; si no, usa el usuario autenticado
-      final targetShopId = widget.shopId ?? Supabase.instance.client.auth.currentUser?.id;
-      
-      if (targetShopId == null) {
-        debugPrint('[CustomerCatalog] No shopId and no currentUser');
-        if (mounted) setState(() => _isLoading = false);
-        return;
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('shop_name, full_name')
+          .eq('id', shopId)
+          .maybeSingle();
+      if (profile != null && mounted &&
+          (widget.shopName == null || widget.shopName!.isEmpty)) {
+        _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
       }
+    } catch (e) {
+      debugPrint('[CustomerCatalog] Error loading profile: $e');
+    }
+  }
 
-      debugPrint('[CustomerCatalog] Loading store for shopId: $targetShopId');
-
-      // Cargar perfil (independiente: si falla no afecta productos)
-      try {
-        final profile = await Supabase.instance.client
-            .from('profiles')
-            .select('shop_name, full_name, logo_url, biography')
-            .eq('id', targetShopId)
-            .maybeSingle();
-        if (profile != null && mounted) {
-          if (widget.shopName == null || widget.shopName!.isEmpty) {
-            _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
-          }
+  Future<void> _fetchReviews(String shopId) async {
+    try {
+      final reviews = await Supabase.instance.client
+          .from('shop_reviews')
+          .select('rating')
+          .eq('shop_id', shopId)
+          .eq('is_visible', true);
+      if (mounted) {
+        final list = reviews as List;
+        _reviewCount = list.length;
+        if (_reviewCount > 0) {
+          _averageRating = list
+              .map((r) => (r['rating'] as num).toDouble())
+              .reduce((a, b) => a + b) /
+              _reviewCount;
         }
-      } catch (e) {
-        debugPrint('[CustomerCatalog] Error loading profile: $e');
       }
+    } catch (e) {
+      debugPrint('[CustomerCatalog] Error loading reviews: $e');
+    }
+  }
 
-      // Cargar rating directo de shop_reviews (más fiable que el caché en profiles)
-      try {
-        final reviews = await Supabase.instance.client
-            .from('shop_reviews')
-            .select('rating')
-            .eq('shop_id', targetShopId)
-            .eq('is_visible', true);
-        if (mounted) {
-          final list = reviews as List;
-          _reviewCount = list.length;
-          if (_reviewCount > 0) {
-            _averageRating = list
-                .map((r) => (r['rating'] as num).toDouble())
-                .reduce((a, b) => a + b) /
-                _reviewCount;
-          }
-        }
-      } catch (e) {
-        debugPrint('[CustomerCatalog] Error loading reviews: $e');
+  Future<void> _fetchSettings(String shopId) async {
+    try {
+      final settings = await _settingsRepo.getSettings(shopId);
+      if (settings != null && mounted) {
+        _showReviews = settings.showReviews;
+        _isUnavailable = settings.isUnavailable;
+        _unavailableMessage = settings.unavailableMessage;
       }
+    } catch (e) {
+      debugPrint('[CustomerCatalog] Error loading settings: $e');
+    }
+  }
 
-      // Cargar settings de visibilidad (independiente)
-      try {
-        final settings = await _settingsRepo.getSettings(targetShopId);
-        if (settings != null && mounted) {
-          _showReviews = settings.showReviews;
-          _isUnavailable = settings.isUnavailable;
-          _unavailableMessage = settings.unavailableMessage;
-        }
-      } catch (e) {
-        debugPrint('[CustomerCatalog] Error loading settings: $e');
-      }
-
-      // Cargar solo productos activos (public) — siempre se intenta
-      debugPrint('[CustomerCatalog] Loading public products...');
-      final prodData = await _productRepo.getPublicProducts(targetShopId);
-      debugPrint('[CustomerCatalog] Got ${prodData.length} products');
+  Future<void> _fetchProducts(String shopId) async {
+    try {
+      final prodData = await _productRepo.getPublicProducts(shopId);
       if (mounted) {
         _products = prodData.map((json) => ProductItem.fromJson(json)).toList();
       }
     } catch (e) {
-      debugPrint('[CustomerCatalog] Error loading catalog: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint('[CustomerCatalog] Error loading products: $e');
     }
   }
 
