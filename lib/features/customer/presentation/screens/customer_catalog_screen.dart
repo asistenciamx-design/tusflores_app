@@ -400,7 +400,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
           crossAxisCount: 2,
           mainAxisSpacing: 28.0,
           crossAxisSpacing: 16.0,
-          childAspectRatio: 0.52,
+          childAspectRatio: 0.45,
         ),
         delegate: SliverChildBuilderDelegate(
           (BuildContext context, int index) {
@@ -437,7 +437,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: Container(
                   color: Colors.grey[100],
                   width: double.infinity,
