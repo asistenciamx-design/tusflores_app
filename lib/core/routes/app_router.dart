@@ -26,6 +26,7 @@ import '../../features/catalog/presentation/screens/catalog_screen.dart' show Pr
 import '../../features/orders/domain/models/order_model.dart';
 import '../../features/customer/presentation/screens/order_tracking_screen.dart';
 import '../../features/reviews/presentation/screens/review_form_screen.dart';
+import '../../features/reviews/presentation/screens/shop_reviews_manage_screen.dart';
 import '../services/seo_service.dart';
 
 final appRouter = GoRouter(
@@ -142,6 +143,10 @@ final appRouter = GoRouter(
         final folio = state.pathParameters['folio'] ?? '';
         return OrderTrackingScreen(folio: folio);
       },
+    ),
+    GoRoute(
+      path: '/reviews/manage',
+      builder: (context, state) => const ShopReviewsManageScreen(),
     ),
     GoRoute(
       path: '/resena',

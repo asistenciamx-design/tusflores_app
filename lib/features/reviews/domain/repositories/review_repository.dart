@@ -69,6 +69,22 @@ class ReviewRepository {
     }
   }
 
+  /// Obtiene TODAS las reseñas de una florería (visibles e invisibles).
+  /// Solo debe llamarse desde la pantalla de gestión del dueño.
+  Future<List<ReviewModel>> getAllShopReviews(String shopId) async {
+    try {
+      final rows = await _client
+          .from('shop_reviews')
+          .select()
+          .eq('shop_id', shopId)
+          .order('created_at', ascending: false);
+      return (rows as List).map((r) => ReviewModel.fromJson(r)).toList();
+    } catch (e) {
+      debugPrint('ReviewRepository.getAllShopReviews error: $e');
+      return [];
+    }
+  }
+
   /// Oculta/muestra una reseña (solo la florería dueña).
   Future<bool> setReviewVisibility(String reviewId, bool visible) async {
     final uid = _client.auth.currentUser?.id;
