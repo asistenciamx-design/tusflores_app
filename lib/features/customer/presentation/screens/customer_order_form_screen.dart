@@ -32,9 +32,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   // Actual catalog data to pick from
   List<ProductItem> _catalogProducts = [];
 
-  // Date/Time state
-  String _selectedDate = 'Hoy';
-  String _selectedTime = 'Mañana';
+  // Date/Time state — empty means the user hasn't picked one yet
+  String _selectedDate = '';
+  String _selectedTime = '';
 
   // Delivery method state
   String _deliveryMethod = 'Envío a domicilio';
@@ -136,10 +136,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               .toList();
 
           _isLoadingSettings = false;
-
-          if (settings != null && settings.deliveryRanges.isNotEmpty) {
-            _selectedTime = settings.deliveryRanges.first.label;
-          }
+          // Do NOT pre-select a time — user must choose actively
         });
         // Restore saved draft AFTER settings are loaded so state/city dropdowns
         // have their available values and shipping cost can be re-calculated.
@@ -325,6 +322,29 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     _prefs?.remove(_draftKey);
   }
 
+  /// Returns true if all required fields are filled, otherwise shows a snackbar.
+  bool _validateForm() {
+    String? error;
+    if (_selectedDate.isEmpty) {
+      error = 'Selecciona una fecha de entrega';
+    } else if (_selectedTime.isEmpty) {
+      error = 'Selecciona un horario de entrega';
+    } else if (_nameCtrl.text.trim().isEmpty) {
+      error = 'Ingresa el nombre de quien recibe';
+    } else if (_phoneCtrl.text.trim().isEmpty) {
+      error = 'Ingresa el teléfono del destinatario';
+    } else if (_messageCtrl.text.trim().isEmpty) {
+      error = 'Escribe una dedicatoria';
+    }
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.redAccent),
+      );
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -403,7 +423,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   SafeArea(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Simulate save and continue
+                        if (!_validateForm()) return;
                         double basePrice = widget.product?.price ?? 700.0;
                         double subtotal = basePrice * _mainProductQty;
 
@@ -875,7 +895,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   }
 
   Widget _buildDateOptions() {
-    bool isCustomDate = _selectedDate != 'Hoy' && _selectedDate != 'Mañana';
+    bool isCustomDate =
+        _selectedDate.isNotEmpty && _selectedDate != 'Hoy' && _selectedDate != 'Mañana';
 
     return Row(
       children: [
@@ -1183,7 +1204,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildInputLabel('Dedicatoria (Opcional)'),
+            _buildInputLabel('Dedicatoria'),
             Text('0/150',
                 style: TextStyle(color: Colors.grey[400], fontSize: 10)),
           ],
