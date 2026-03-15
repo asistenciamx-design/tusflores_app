@@ -219,6 +219,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     _prefs!.setString(
       _draftKey,
       jsonEncode({
+        '_savedAt': DateTime.now().millisecondsSinceEpoch,
         'name': _nameCtrl.text,
         'phone': _phoneCtrl.text,
         'message': _messageCtrl.text,
@@ -249,6 +250,14 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     if (raw == null || raw.isEmpty) return;
     try {
       final Map<String, dynamic> d = jsonDecode(raw);
+      // Discard drafts older than 24 hours (VULN-10: limit PII retention)
+      final savedAt = d['_savedAt'] as int?;
+      if (savedAt == null ||
+          DateTime.now().millisecondsSinceEpoch - savedAt >
+              const Duration(hours: 24).inMilliseconds) {
+        _clearDraft();
+        return;
+      }
       // Temporarily null prefs so the setState override doesn't schedule a
       // redundant save while we are restoring.
       final savedPrefs = _prefs;
