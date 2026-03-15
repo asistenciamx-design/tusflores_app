@@ -563,76 +563,100 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
 
   Widget _buildShippingRatesCard() {
     final rates = _settings!.shippingRates;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Costo por zona',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-              Icon(Icons.local_shipping, color: Colors.grey[500], size: 20),
-            ],
+
+    // Group rates by estado; rates without estado go under key ''
+    final Map<String, List<ShippingRate>> byState = {};
+    for (final rate in rates) {
+      final key = rate.estado?.isNotEmpty == true ? rate.estado! : '';
+      byState.putIfAbsent(key, () => []).add(rate);
+    }
+
+    final stateGroups = byState.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: stateGroups.map((entry) {
+        final stateName = entry.key.isNotEmpty ? entry.key : 'Sin estado';
+        final stateRates = entry.value;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(height: 16),
-          ...rates.map((rate) {
-            final zone = rate.label?.isNotEmpty == true ? rate.label! : 'Envío';
-            final parts = <String>[];
-            if (rate.ciudad?.isNotEmpty == true) parts.add(rate.ciudad!);
-            if (rate.estado?.isNotEmpty == true) parts.add(rate.estado!);
-            final location = parts.join(', ');
-            final isFree = rate.costo == 0;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isFree
-                          ? Colors.green.withValues(alpha: 0.12)
-                          : AppTheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      zone,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isFree ? Colors.green[700] : AppTheme.primary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // State header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.08),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_city, color: AppTheme.primary, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      stateName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppTheme.primary,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      location.isNotEmpty ? location : 'Zona de entrega',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text(
-                    isFree ? 'Gratis' : '\$${rate.costo.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: isFree ? Colors.green[700] : Colors.black87,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            );
-          }),
-        ],
-      ),
+              // Cities rows
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  children: stateRates.asMap().entries.map((e) {
+                    final rate = e.value;
+                    final isLast = e.key == stateRates.length - 1;
+                    final city = rate.ciudad?.isNotEmpty == true
+                        ? rate.ciudad!
+                        : (rate.label?.isNotEmpty == true ? rate.label! : 'Zona de entrega');
+                    final isFree = rate.costo == 0;
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.place_outlined, size: 15, color: Colors.grey),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  city,
+                                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                                ),
+                              ),
+                              Text(
+                                isFree ? 'Gratis' : '\$${rate.costo.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: isFree ? Colors.green[700] : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!isLast)
+                          Divider(height: 1, color: Colors.grey[200]),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
