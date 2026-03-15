@@ -201,45 +201,26 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
       final decodedSlug = Uri.decodeComponent(widget.slug).toLowerCase().trim();
       debugPrint('[PublicStore] Looking for slug: "$decodedSlug"');
 
-      // Helper for bulletproof matching: removes ALL spaces, hyphens, and special chars.
-      // E.g., "Mercado Jamaica's" -> "mercadojamaicas"
-      // "Mercado Jamaican" -> "mercadojamaican"
-      // "tus-flores" -> "tusflores"
-      String normalize(String s) {
-        return s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-      }
+      // Normalize matches DB generated column: lower(regexp_replace(shop_name, '[^a-zA-Z0-9]', '', 'g'))
+      // Works for both hyphenated URLs (/mx/flores-del-campo) and stripped (/mx/floresdelcampo)
+      final normalizedSlug = decodedSlug.replaceAll(RegExp(r'[^a-z0-9]'), '');
 
-      final targetNormalized = normalize(decodedSlug);
-
-      final profiles = await Supabase.instance.client
+      final match = await Supabase.instance.client
           .from('profiles')
-          .select('id, shop_name');
-
-      Map<String, dynamic>? match;
-      for (final p in profiles) {
-        final name = (p['shop_name'] ?? '') as String;
-        
-        // Match against exact generated slug, or the heavily normalized string
-        final standardSlug = name.toLowerCase().replaceAll(' ', '-');
-        if (standardSlug == decodedSlug || 
-            normalize(name) == targetNormalized) {
-          match = p;
-          break;
-        }
-      }
+          .select('id, shop_name')
+          .eq('slug', normalizedSlug)
+          .maybeSingle();
 
       debugPrint('[PublicStore] Match: $match');
 
       if (!mounted) return;
       if (match != null) {
-        final resolvedShopName =
-            (match!['shop_name'] ?? match!['full_name'] ?? '') as String;
+        final resolvedShopName = (match['shop_name'] ?? '') as String;
         setState(() {
-          _shopId = match!['id'] as String?;
+          _shopId = match['id'] as String?;
           _shopName = resolvedShopName;
         });
-        // Update JSON-LD with real rating data for SEO
-        _updateSeo(match!['id'] as String?, resolvedShopName);
+        _updateSeo(match['id'] as String?, resolvedShopName);
       } else {
         setState(() => _notFound = true);
       }
