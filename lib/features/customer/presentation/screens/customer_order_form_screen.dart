@@ -329,11 +329,14 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
       error = 'Selecciona una fecha de entrega';
     } else if (_selectedTime.isEmpty) {
       error = 'Selecciona un horario de entrega';
-    } else if (_nameCtrl.text.trim().isEmpty) {
+    } else if (_deliveryMethod != 'Recoger en tienda' &&
+        _nameCtrl.text.trim().isEmpty) {
       error = 'Ingresa el nombre de quien recibe';
-    } else if (_phoneCtrl.text.trim().isEmpty) {
+    } else if (_deliveryMethod != 'Recoger en tienda' &&
+        _phoneCtrl.text.trim().isEmpty) {
       error = 'Ingresa el teléfono del destinatario';
-    } else if (_messageCtrl.text.trim().isEmpty) {
+    } else if (_deliveryMethod != 'Recoger en tienda' &&
+        _messageCtrl.text.trim().isEmpty) {
       error = 'Escribe una dedicatoria';
     }
     if (error != null) {
@@ -404,11 +407,11 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   const SizedBox(height: 12),
                   _buildDeliveryMethods(),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Datos de Envío'),
-                  const SizedBox(height: 12),
-                  _buildRecipientData(),
-                  const SizedBox(height: 24),
                   if (_deliveryMethod != 'Recoger en tienda') ...[
+                    _buildSectionTitle('Datos de Envío'),
+                    const SizedBox(height: 12),
+                    _buildRecipientData(),
+                    const SizedBox(height: 24),
                     _buildSectionTitle('Dirección de Entrega'),
                     const SizedBox(height: 12),
                     _buildDeliveryAddress(),
