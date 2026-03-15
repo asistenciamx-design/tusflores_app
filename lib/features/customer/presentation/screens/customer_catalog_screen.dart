@@ -413,7 +413,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   }
 
   Widget _buildProductCard(BuildContext context, ProductItem product) {
-      return GestureDetector(
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 15.0),
+        child: GestureDetector(
         onTap: () => context.push(
               '/shop/product',
               extra: {'product': product, 'shopId': widget.shopId, 'allProducts': _products},
@@ -497,6 +499,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               )
             ],
           ),
+        ),
         ),
       );
   }
