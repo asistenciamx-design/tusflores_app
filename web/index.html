@@ -103,6 +103,47 @@
       el.textContent = JSON.stringify(data);
     }
   </script>
+  <!-- ── Dynamic PWA manifest for shop pages (/mx/:slug) ──────────────────
+       When a customer is on a florist page, we replace the static manifest
+       link with an in-memory Blob manifest that has start_url set to the
+       current shop URL. This way the installed PWA opens directly to the
+       florist's page instead of the root landing/login.
+  ──────────────────────────────────────────────────────────────────────── -->
+  <script>
+    (function () {
+      var path = window.location.pathname;
+      var shopMatch = path.match(/^\/mx\/([^/]+)/);
+      if (!shopMatch) return; // florist dashboard — keep default manifest
+
+      var rawSlug = decodeURIComponent(shopMatch[1]);
+      var shopName = rawSlug
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+
+      var manifest = {
+        name: shopName + ' | TusFlores',
+        short_name: shopName,
+        start_url: shopMatch[0],   // e.g. /mx/mercado-jamaica
+        scope: '/',
+        display: 'standalone',
+        background_color: '#FFFFFF',
+        theme_color: '#C2185B',
+        orientation: 'portrait-primary',
+        prefer_related_applications: false,
+        icons: [
+          { src: '/icons/Icon-192.png',          sizes: '192x192', type: 'image/png' },
+          { src: '/icons/Icon-512.png',          sizes: '512x512', type: 'image/png' },
+          { src: '/icons/Icon-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: '/icons/Icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ]
+      };
+
+      var blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      var manifestEl = document.querySelector('link[rel="manifest"]');
+      if (manifestEl) manifestEl.href = URL.createObjectURL(blob);
+    })();
+  </script>
+
   <!-- ── PWA install banner ─────────────────────────────────────────────────
        Intercepts beforeinstallprompt to replace the native browser banner
        with a branded one. Shows on every visit unless already installed
