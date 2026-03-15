@@ -81,19 +81,9 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFAFDFA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFDFA),
-        elevation: 0,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                onPressed: () => context.pop(),
-              )
-            : null,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : SingleChildScrollView(
+          : SafeArea(child: SingleChildScrollView(
               child: Column(
                 children: [
                   _buildHeader(),
@@ -116,7 +106,7 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
                   const SizedBox(height: 40),
                 ],
               ),
-            ),
+            )),
     );
   }
 
@@ -139,12 +129,11 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
         ),
         const SizedBox(height: 4),
         const Text(
-          'CENTRO DE AYUDA',
+          'Ayuda e Información',
           style: TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             color: AppTheme.primary,
-            letterSpacing: 1.2,
           ),
         ),
       ],
