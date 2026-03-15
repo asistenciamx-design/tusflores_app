@@ -28,6 +28,11 @@ class ShopSettingsRepository {
   }
 
   Future<bool> updateSettings(String shopId, ShopSettingsModel settings) async {
+    final currentUserId = _client.auth.currentUser?.id;
+    if (currentUserId == null || currentUserId != shopId) {
+      debugPrint('[ShopSettings] updateSettings: unauthorized (shopId=$shopId, uid=$currentUserId)');
+      return false;
+    }
     try {
       final json = settings.toJson();
       debugPrint('[ShopSettings] updateSettings: storeHours=${(json['store_hours'] as List).length}');

@@ -57,11 +57,14 @@ class OrderRepository {
 
   // Update order status (pending/delivered/cancelled)
   Future<bool> updateOrderStatus(String orderId, OrderStatus newStatus) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return false;
     try {
       await _supabase
           .from('orders')
           .update({'status': newStatus.dbValue})
-          .eq('id', orderId);
+          .eq('id', orderId)
+          .eq('shop_id', uid);
       return true;
     } catch (e) {
       debugPrint('Error updating order status: $e');
@@ -71,6 +74,8 @@ class OrderRepository {
 
   // Update payment status
   Future<bool> updatePaymentStatus(String orderId, bool isPaid, String? paymentMethod) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return false;
     try {
       await _supabase
           .from('orders')
@@ -78,7 +83,8 @@ class OrderRepository {
             'is_paid': isPaid,
             'payment_method': paymentMethod
           })
-          .eq('id', orderId);
+          .eq('id', orderId)
+          .eq('shop_id', uid);
       return true;
     } catch (e) {
       debugPrint('Error updating payment status: $e');
@@ -88,12 +94,14 @@ class OrderRepository {
 
   // Update entire order (e.g. from the Edit Order screen)
   Future<bool> updateOrder(OrderModel order) async {
-    if (order.id == null) return false;
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null || order.id == null) return false;
     try {
       await _supabase
           .from('orders')
           .update(order.toJson())
-          .eq('id', order.id!);
+          .eq('id', order.id!)
+          .eq('shop_id', uid);
       return true;
     } catch (e) {
       debugPrint('Error updating order: $e');

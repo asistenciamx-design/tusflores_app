@@ -60,12 +60,16 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
   }
 
   Future<void> _launchPhone(String phone) async {
-    final uri = Uri.parse('tel:$phone');
+    final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (clean.isEmpty) return;
+    final uri = Uri.parse('tel:$clean');
     if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
   Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
+    if (!url.startsWith('https://') && !url.startsWith('http://')) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.isAbsolute) return;
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

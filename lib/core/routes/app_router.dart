@@ -171,7 +171,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   String? _shopId;
   String? _shopName;
   bool _notFound = false;
-  String _debugInfo = '';
 
   @override
   void initState() {
@@ -242,21 +241,11 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
         // Update JSON-LD with real rating data for SEO
         _updateSeo(match!['id'] as String?, resolvedShopName);
       } else {
-        // Collect all available shop names to show on the debug screen
-        final availableNames = profiles.map((p) => "'${p['shop_name']}'").join(', ');
-        setState(() {
-          _notFound = true;
-          _debugInfo = '❌ Sin coincidencias.\nSlug buscado: "$targetNormalized"\nDisponibles: [$availableNames]';
-        });
+        setState(() => _notFound = true);
       }
     } catch (e) {
       debugPrint('[PublicStore] ERROR: $e');
-      if (mounted) {
-        setState(() {
-          _notFound = true;
-          _debugInfo = '⚠️ Error Supabase: $e';
-        });
-      }
+      if (mounted) setState(() => _notFound = true);
     }
   }
 
@@ -281,20 +270,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
                   'Verifica que el enlace sea correcto.',
                   style: TextStyle(color: Colors.grey),
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    '--- INFO TÉCNICA (pantallazo para soporte) ---\n$_debugInfo',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54, fontFamily: 'monospace'),
-                    textAlign: TextAlign.left,
-                  ),
                 ),
               ],
             ),

@@ -47,8 +47,13 @@ class ProductRepository {
 
   Future<String?> uploadProductImage(String floristId, XFile file) async {
     try {
+      const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
+      final ext = file.name.split('.').last.toLowerCase();
+      if (!allowedExtensions.contains(ext)) {
+        throw Exception('Tipo de archivo no permitido: .$ext');
+      }
+
       final bytes = await file.readAsBytes();
-      final ext = file.name.split('.').last;
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
       final path = '$floristId/$fileName';
       

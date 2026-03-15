@@ -37,6 +37,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
+    if (password.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe tener al menos 8 caracteres.')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {

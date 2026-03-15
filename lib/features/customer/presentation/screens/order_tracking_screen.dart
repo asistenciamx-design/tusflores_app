@@ -38,6 +38,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     // Normalize: strip everything except digits
     final phone = rawPhone.replaceAll(RegExp(r'\D'), '');
 
+    // Require at least 7 digits to prevent single-digit brute-force bypass
+    if (phone.length < 7) {
+      setState(() => _error = 'Ingresa al menos 7 dígitos de tu número de WhatsApp.');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
