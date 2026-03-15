@@ -82,7 +82,7 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFAFDFA),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFFFAFDFA),
         elevation: 0,
         leading: Navigator.canPop(context)
             ? IconButton(
