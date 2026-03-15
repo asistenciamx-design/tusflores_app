@@ -1,8 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import '../models/order_model.dart';
-import 'dart:math';
-
 class OrderRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -36,17 +34,7 @@ class OrderRepository {
   Future<OrderModel> createOrder(OrderModel order) async {
     try {
       final orderData = order.toJson();
-      
-      // Auto-generate sequential folio based on shop's order count
-      if (orderData['folio'] == null || orderData['folio'] == '#0000') {
-        final countResponse = await _supabase
-            .from('orders')
-            .select('id')
-            .eq('shop_id', order.shopId);
-        final nextNumber = (countResponse as List).length + 1;
-        orderData['folio'] = '#${nextNumber.toString().padLeft(4, '0')}';
-      }
-      
+      // Folio assigned server-side by trg_assign_order_folio trigger (VULN-12 fix)
       final response = await _supabase.from('orders').insert(orderData).select().single();
       return OrderModel.fromJson(response);
     } catch (e) {
