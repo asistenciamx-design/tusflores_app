@@ -349,6 +349,25 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
             ),
           ],
 
+          if (_settings != null && _settings!.shippingRates.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            const Row(
+              children: [
+                Icon(Icons.monetization_on, color: AppTheme.primary, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'TARIFAS DE ENVÍO',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      letterSpacing: 0.5),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildShippingRatesCard(),
+          ],
+
           if (hasActions) ...[
             const SizedBox(height: 40),
             if (whatsapp.isNotEmpty)
@@ -537,6 +556,81 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
                   ],
                 ),
               )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShippingRatesCard() {
+    final rates = _settings!.shippingRates;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Costo por zona',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              Icon(Icons.local_shipping, color: Colors.grey[500], size: 20),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...rates.map((rate) {
+            final zone = rate.label?.isNotEmpty == true ? rate.label! : 'Envío';
+            final parts = <String>[];
+            if (rate.ciudad?.isNotEmpty == true) parts.add(rate.ciudad!);
+            if (rate.estado?.isNotEmpty == true) parts.add(rate.estado!);
+            final location = parts.join(', ');
+            final isFree = rate.costo == 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isFree
+                          ? Colors.green.withValues(alpha: 0.12)
+                          : AppTheme.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      zone,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isFree ? Colors.green[700] : AppTheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      location.isNotEmpty ? location : 'Zona de entrega',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    isFree ? 'Gratis' : '\$${rate.costo.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: isFree ? Colors.green[700] : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
