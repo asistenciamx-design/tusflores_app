@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -34,7 +35,8 @@ class _CustomerAboutUsScreenState extends State<CustomerAboutUsScreen> {
           .eq('id', shopId)
           .maybeSingle();
       if (mounted) setState(() { _profile = profile; _isLoading = false; });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('CustomerAboutUsScreen._loadData error (shopId=$shopId): $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
