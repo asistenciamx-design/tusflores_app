@@ -68,7 +68,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
                    child: currentImage.isNotEmpty
                     ? Image.network(
                        currentImage,
-                       height: 350,
+                       height: 450,
                        width: double.infinity,
                        fit: BoxFit.cover,
                        errorBuilder: (ctx, err, stack) => _buildPlaceholderImage(),
@@ -185,7 +185,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
 
   Widget _buildPlaceholderImage() {
     return Container(
-      height: 350,
+      height: 450,
       width: double.infinity,
       color: Colors.grey[200],
       child: const Icon(Icons.local_florist, size: 80, color: Colors.grey),
