@@ -36,7 +36,6 @@ class _CustomerAboutUsScreenState extends State<CustomerAboutUsScreen> {
           .maybeSingle();
       if (mounted) setState(() { _profile = profile; _isLoading = false; });
     } catch (e) {
-      debugPrint('CustomerAboutUsScreen._loadData error (shopId=$shopId): $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }

@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/currency_cache.dart';
 import 'edit_order_screen.dart';
 import 'confirm_payment_screen.dart';
 import 'order_calendar_screen.dart';
@@ -146,7 +149,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   type: _NotifType.newOrder,
                   title: '🛍️ Nuevo pedido ${newOrder.folio}',
                   subtitle:
-                      '${newOrder.customerName} — \$${newOrder.price.toStringAsFixed(0)}',
+                      '${newOrder.customerName} — ${CurrencyCache.symbol}${newOrder.price.toStringAsFixed(0)}',
                   createdAt: DateTime.now(),
                 );
                 setState(() {
@@ -156,7 +159,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 });
               }
             } catch (e) {
-              debugPrint('[Realtime] INSERT parse error: $e');
               _loadOrders();
             }
           },
@@ -180,7 +182,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 setState(() => _orders[idx] = updated);
               }
             } catch (e) {
-              debugPrint('[Realtime] UPDATE parse error: $e');
               _loadOrders();
             }
           },
@@ -866,7 +867,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       }(),
                       const SizedBox(height: 4),
                       Text(
-                        '\$${order.price.toStringAsFixed(0)} MXN',
+                        '${CurrencyCache.symbol}${order.price.toStringAsFixed(0)} ${CurrencyCache.code}',
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -890,7 +891,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
             const SizedBox(height: 12),
 
-            // Action icons row — 5 quick-access buttons
+            // Action icons row — 6 quick-access buttons (Foto is last)
             Row(
               children: [
                 _cardAction(
@@ -943,6 +944,43 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+
+            // Fotos del arreglo — botón full-width (no puede colapsar)
+            GestureDetector(
+              onTap: () => _showPhotoSheet(context, order),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE4F3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      order.completionPhotos.isEmpty
+                          ? Icons.camera_alt_outlined
+                          : Icons.camera_alt_rounded,
+                      color: const Color(0xFFE91E8C),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      order.completionPhotos.isEmpty
+                          ? 'Fotos del arreglo'
+                          : '${order.completionPhotos.length}/3 fotos',
+                      style: const TextStyle(
+                        color: Color(0xFFE91E8C),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 10),
 
@@ -1294,7 +1332,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       icon = Icons.local_shipping_outlined;
     } else {
       final total = all.fold(0.0, (sum, o) => sum + o.price);
-      text = '${all.length} registrados  ·  \$${total.toStringAsFixed(0)} MXN';
+      text = '${all.length} registrados  ·  ${CurrencyCache.symbol}${total.toStringAsFixed(0)} ${CurrencyCache.code}';
       color = AppTheme.primary;
       icon = Icons.receipt_long_outlined;
     }
@@ -1476,6 +1514,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
+  void _showPhotoSheet(BuildContext context, OrderModel order) {
+    if (order.id == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _OrderPhotoSheet(
+        order: order,
+        orderRepo: _orderRepo,
+        onPhotosUpdated: (urls) => setState(() => order.completionPhotos = urls),
+      ),
+    );
+  }
+
   Future<void> _changeOrderStatus(
       OrderModel order, OrderStatus newStatus) async {
     if (order.id == null || newStatus == order.status) return;
@@ -1618,15 +1670,15 @@ extension OrderShareExtension on OrderModel {
       buf.writeln('🌷 *Producto:* ${quantity}× $productName');
     }
     
-    buf.writeln('💰 *Precio u.:* \$${price.toStringAsFixed(2)} MXN');
-    buf.writeln('💵 *Subtotal:* \$${subtotal.toStringAsFixed(2)} MXN');
+    buf.writeln('💰 *Precio u.:* ${CurrencyCache.symbol}${price.toStringAsFixed(2)} ${CurrencyCache.code}');
+    buf.writeln('💵 *Subtotal:* ${CurrencyCache.symbol}${subtotal.toStringAsFixed(2)} ${CurrencyCache.code}');
     if (shippingCost > 0) {
-      buf.writeln('🛵 *Costo envío:* \$${shippingCost.toStringAsFixed(2)} MXN');
+      buf.writeln('🛵 *Costo envío:* ${CurrencyCache.symbol}${shippingCost.toStringAsFixed(2)} ${CurrencyCache.code}');
     }
     if (isReceipt) {
-      buf.writeln('💵 *Total pagado:* \$${total.toStringAsFixed(2)} MXN');
+      buf.writeln('💵 *Total pagado:* ${CurrencyCache.symbol}${total.toStringAsFixed(2)} ${CurrencyCache.code}');
     } else {
-      buf.writeln('💳 *Total:* \$${total.toStringAsFixed(2)} MXN');
+      buf.writeln('💳 *Total:* ${CurrencyCache.symbol}${total.toStringAsFixed(2)} ${CurrencyCache.code}');
     }
     buf.writeln();
     
@@ -1670,5 +1722,231 @@ extension OrderShareExtension on OrderModel {
     
     buf.write('¡Gracias por tu compra! 🌹\ntusflores.app/floreria-las-rosas');
     return buf.toString();
+  }
+}
+
+// ── Bottom sheet: fotos del arreglo terminado ─────────────────────────────────
+
+class _OrderPhotoSheet extends StatefulWidget {
+  final OrderModel order;
+  final OrderRepository orderRepo;
+  final ValueChanged<List<String>> onPhotosUpdated;
+
+  const _OrderPhotoSheet({
+    required this.order,
+    required this.orderRepo,
+    required this.onPhotosUpdated,
+  });
+
+  @override
+  State<_OrderPhotoSheet> createState() => _OrderPhotoSheetState();
+}
+
+class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
+  late final List<String?> _slots;
+  final _picker = ImagePicker();
+  final _uploading = [false, false, false];
+  static const _pink = Color(0xFFE91E8C);
+
+  @override
+  void initState() {
+    super.initState();
+    final photos = widget.order.completionPhotos;
+    _slots = List.generate(3, (i) => i < photos.length ? photos[i] : null);
+  }
+
+  Future<void> _pickPhoto(int index) async {
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Agregar foto'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: _pink),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: _pink),
+              title: const Text('Elegir de galería'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final picked = await _picker.pickImage(
+      source: source,
+      imageQuality: 75,
+      maxWidth: 1200,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploading[index] = true);
+
+    final Uint8List bytes = await picked.readAsBytes();
+    final url = await widget.orderRepo.uploadOrderPhoto(
+      widget.order.shopId,
+      widget.order.id!,
+      index + 1,
+      bytes,
+    );
+
+    if (url != null) {
+      _slots[index] = url;
+      final urls = _slots.whereType<String>().toList();
+      await widget.orderRepo.updateCompletionPhotos(widget.order.id!, urls);
+      widget.onPhotosUpdated(urls);
+    }
+
+    if (mounted) setState(() => _uploading[index] = false);
+  }
+
+  Future<void> _deletePhoto(int index) async {
+    setState(() => _slots[index] = null);
+    final urls = _slots.whereType<String>().toList();
+    await widget.orderRepo.updateCompletionPhotos(widget.order.id!, urls);
+    widget.onPhotosUpdated(urls);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFFDF6F0),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text('Fotos del arreglo terminado',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E))),
+          const SizedBox(height: 6),
+          const Text(
+            'Tus clientes verán estas fotos al consultar el estado de su pedido.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF888899)),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: List.generate(
+              3,
+              (i) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: i < 2 ? 12 : 0),
+                  child: _buildSlot(i),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _pink,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Listo',
+                  style:
+                      TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlot(int index) {
+    final url = _slots[index];
+    final uploading = _uploading[index];
+
+    return GestureDetector(
+      onTap: () => _pickPhoto(index),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: url != null
+                  ? _pink.withValues(alpha: 0.4)
+                  : Colors.grey.withValues(alpha: 0.25),
+              width: url != null ? 2 : 1,
+            ),
+          ),
+          child: uploading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: _pink))
+              : url != null
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(url, fit: BoxFit.cover),
+                        ),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: GestureDetector(
+                            onTap: () => _deletePhoto(index),
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEF4444),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close,
+                                  size: 13, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_outlined,
+                            size: 28, color: Colors.grey[400]),
+                        const SizedBox(height: 6),
+                        Text('Foto ${index + 1}',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[400],
+                                fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+        ),
+      ),
+    );
   }
 }

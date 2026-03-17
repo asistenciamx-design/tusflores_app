@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/currency_cache.dart';
 import '../../domain/repositories/product_repository.dart';
 import 'catalog_screen.dart' show ProductItem;
 
@@ -26,6 +28,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   List<String> _tags = [];
   List<dynamic> _images = []; // mixed: String (network url) or XFile
+  List<_RecipeRow> _recipeRows = [];
   bool _isLoading = false;
   final _repo = ProductRepository();
 
@@ -42,6 +45,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _tags = widget.product != null ? List.from(widget.product!.tags) : [];
     if (widget.product != null) {
       _images = List.from(widget.product!.imageUrls);
+      for (final item in widget.product!.recipe) {
+        _recipeRows.add(_RecipeRow(
+          initialQty: (item['qty'] as num?)?.toInt(),
+          initialName: item['name'] as String?,
+          initialColor: item['color'] as String?,
+          initialQuality: item['quality'] as String?,
+          initialType: item['type'] as String?,
+        ));
+      }
     }
   }
 
@@ -51,6 +63,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _priceCtrl.dispose();
     _tagCtrl.dispose();
     _descCtrl.dispose();
+    for (final row in _recipeRows) {
+      row.dispose();
+    }
     super.dispose();
   }
 
@@ -72,10 +87,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Future<void> _pickImages() async {
     if (_images.length >= 5) return;
-    
+
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage();
-    
+
     if (pickedFiles.isNotEmpty) {
       setState(() {
         for (var file in pickedFiles) {
@@ -93,6 +108,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     });
   }
 
+  void _addRecipeRow() {
+    setState(() {
+      _recipeRows.add(_RecipeRow());
+    });
+  }
+
+  void _removeRecipeRow(int index) {
+    setState(() {
+      _recipeRows[index].dispose();
+      _recipeRows.removeAt(index);
+    });
+  }
+
   Future<void> _saveProduct() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
@@ -104,8 +132,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         final name = _nameCtrl.text.trim();
         final price = double.parse(_priceCtrl.text.trim().replaceAll(',', ''));
         final desc = _descCtrl.text.trim();
-        
-        debugPrint('[SaveProduct] user=${user.id}, name=$name, price=$price, images=${_images.length}');
+        final recipe = _recipeRows
+            .where((r) => r.name.text.trim().isNotEmpty)
+            .map((r) => r.toJson())
+            .toList();
+
 
         List<String> finalImageUrls = [];
 
@@ -114,39 +145,43 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           if (item is String) {
             finalImageUrls.add(item);
           } else {
-            debugPrint('[SaveProduct] Uploading image $i ...');
             final uploadedUrl = await _repo.uploadProductImage(user.id, item as XFile);
             if (uploadedUrl != null) {
               finalImageUrls.add(uploadedUrl);
-              debugPrint('[SaveProduct] Image $i uploaded: $uploadedUrl');
             }
           }
         }
 
+        // Auto-assign SKU only for new products
+        String? autoSku;
+        if (!isEditing) {
+          autoSku = await _repo.getNextSku(user.id);
+        }
+
         final productData = {
           'name': name,
+          if (autoSku != null) 'sku': autoSku,
           'price': price,
           'description': desc.isNotEmpty ? desc : null,
+          'recipe': recipe.isNotEmpty ? recipe : null,
           'tags': _tags,
           'image_urls': finalImageUrls,
           'is_active': widget.product?.isVisible ?? true,
         };
 
-        debugPrint('[SaveProduct] productData=$productData');
 
         if (isEditing && widget.product!.id != null) {
-          await _repo.updateProduct(widget.product!.id!, productData);
+          await _repo.updateProduct(widget.product!.id!, user.id, productData);
         } else {
           await _repo.createProduct(user.id, productData);
         }
 
         if (mounted) Navigator.pop(context, true);
       } catch (e) {
-        debugPrint('[SaveProduct] ERROR: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: ${e.toString()}'),
+              content: const Text('No se pudo guardar el producto. Intenta de nuevo.'),
               backgroundColor: Colors.red.shade700,
               duration: const Duration(seconds: 6),
               action: SnackBarAction(
@@ -194,20 +229,56 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     children: [
                       _buildImageGallery(),
                       const SizedBox(height: 28),
-                      
+
                       // Nombre
                       _buildLabel('Nombre del arreglo'),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _nameCtrl,
                         decoration: _inputDeco('Ej. Ramo Primaveral'),
+                        maxLength: 100,
                         validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                       ),
-                      
+
+                      // SKU — solo lectura al editar; se auto-asigna al crear
+                      if (isEditing && widget.product!.sku != null && widget.product!.sku!.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildLabel('SKU'),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.qr_code, size: 18, color: AppTheme.primary),
+                              const SizedBox(width: 10),
+                              Text(
+                                widget.product!.sku!,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppTheme.primary,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '· asignado automáticamente',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
                       const SizedBox(height: 20),
-                      
+
                       // Precio
-                      _buildLabel('Precio (\$ MXN)'),
+                      _buildLabel('Precio (${CurrencyCache.symbol} ${CurrencyCache.code})'),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _priceCtrl,
@@ -221,13 +292,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Requerido';
-                          if (double.tryParse(v.replaceAll(',', '')) == null) return 'Inválido';
+                          final parsed = double.tryParse(v.replaceAll(',', ''));
+                          if (parsed == null) return 'Inválido';
+                          if (parsed <= 0) return 'El precio debe ser mayor a 0';
                           return null;
                         },
                       ),
 
                       const SizedBox(height: 20),
-                      
+
                       // Categorías
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -244,8 +317,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      
-                      // Custom tags input
+
                       if (_tags.length < 3)
                         TextField(
                           controller: _tagCtrl,
@@ -269,22 +341,33 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       ],
 
                       const SizedBox(height: 20),
-                      
-                      // Descripción
-                      _buildLabel('Descripción'),
+
+                      // Descripción Corta
+                      _buildLabel('Descripción Corta'),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Resumen breve visible en el catálogo.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _descCtrl,
-                        maxLines: 5,
-                        decoration: _inputDeco('Describe las flores y el follaje...'),
+                        maxLines: 3,
+                        maxLength: 300,
+                        decoration: _inputDeco('Ej. Ramo de 24 rosas rojas con follaje tropical...'),
                       ),
 
-                      const SizedBox(height: 40), // Padding before button
+                      const SizedBox(height: 8),
+
+                      // Descripción Detallada (Receta)
+                      _buildRecipeSection(),
+
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
               ),
-              
+
               // Bottom Button
               Container(
                 padding: const EdgeInsets.all(24),
@@ -309,7 +392,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                isEditing ? 'Guardar Cambios' : 'Crear Producto', 
+                                isEditing ? 'Guardar Cambios' : 'Crear Producto',
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(width: 8),
@@ -326,6 +409,196 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     );
   }
 
+  Widget _buildRecipeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildLabel('Descripción Detallada'),
+            if (_recipeRows.isNotEmpty)
+              Text(
+                '${_recipeRows.length} ${_recipeRows.length == 1 ? 'ingrediente' : 'ingredientes'}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Receta del arreglo: flores, follaje y materiales con cantidad, color y calidad.',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+        ),
+        const SizedBox(height: 12),
+
+        if (_recipeRows.isNotEmpty) ...[
+          // Recipe rows as cards
+          ...List.generate(_recipeRows.length, (i) {
+            final row = _recipeRows[i];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Type chips + delete button
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            for (final t in [
+                              ('flor',    '🌸', 'Flor'),
+                              ('follaje', '🌿', 'Follaje'),
+                              ('florero', '🏺', 'Florero'),
+                              ('extra',   '✨', 'Extra'),
+                            ])
+                              GestureDetector(
+                                onTap: () => setState(() => row.type = t.$1),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: row.type == t.$1
+                                        ? AppTheme.primary.withValues(alpha: 0.12)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: row.type == t.$1
+                                          ? AppTheme.primary.withValues(alpha: 0.4)
+                                          : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${t.$2} ${t.$3}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: row.type == t.$1 ? FontWeight.w600 : FontWeight.normal,
+                                      color: row.type == t.$1 ? AppTheme.primary : Colors.grey.shade500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, size: 18, color: Colors.grey.shade400),
+                        onPressed: () => _removeRecipeRow(i),
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Data fields
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 52,
+                        child: TextField(
+                          controller: row.qty,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          maxLength: 3,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          decoration: _inputDeco('Cant.').copyWith(
+                            counterText: '',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                          ),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          controller: row.name,
+                          maxLength: 60,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: _inputDeco('Rosa, Eucalipto...').copyWith(
+                            counterText: '',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: row.color,
+                          maxLength: 40,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: _inputDeco('Rojo...').copyWith(
+                            counterText: '',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: row.quality,
+                          maxLength: 40,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: _inputDeco('Premium...').copyWith(
+                            counterText: '',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 4),
+        ],
+
+        // Add row button
+        GestureDetector(
+          onTap: _addRecipeRow,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add, size: 18, color: AppTheme.primary.withValues(alpha: 0.8)),
+                const SizedBox(width: 8),
+                Text(
+                  'Agregar Flor / Material',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primary.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildImageGallery() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +608,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           children: [
             _buildLabel('Fotos del Producto (Máx 5)'),
             Text(
-              _images.length.toString() + '/5',
+              '${_images.length}/5',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -444,4 +717,41 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       ),
     );
   }
+}
+
+// ─── Recipe Row Helper ────────────────────────────────────────────────────────
+
+class _RecipeRow {
+  final TextEditingController qty;
+  final TextEditingController name;
+  final TextEditingController color;
+  final TextEditingController quality;
+  String type; // 'flor' | 'follaje' | 'florero' | 'extra'
+
+  _RecipeRow({
+    int? initialQty,
+    String? initialName,
+    String? initialColor,
+    String? initialQuality,
+    String? initialType,
+  })  : qty = TextEditingController(text: initialQty != null ? initialQty.toString() : ''),
+        name = TextEditingController(text: initialName ?? ''),
+        color = TextEditingController(text: initialColor ?? ''),
+        quality = TextEditingController(text: initialQuality ?? ''),
+        type = initialType ?? 'flor';
+
+  void dispose() {
+    qty.dispose();
+    name.dispose();
+    color.dispose();
+    quality.dispose();
+  }
+
+  Map<String, dynamic> toJson() => {
+    'qty': int.tryParse(qty.text.trim()) ?? 0,
+    'name': name.text.trim(),
+    'color': color.text.trim(),
+    'quality': quality.text.trim(),
+    'type': type,
+  };
 }

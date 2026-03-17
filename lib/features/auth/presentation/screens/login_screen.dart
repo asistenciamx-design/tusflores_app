@@ -47,8 +47,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
+        final msg = _authErrorMessage(e.message);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
@@ -62,6 +63,20 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  String _authErrorMessage(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('invalid login') || lower.contains('invalid credentials')) {
+      return 'Correo o contraseña incorrectos.';
+    }
+    if (lower.contains('email not confirmed')) {
+      return 'Tu correo aún no ha sido confirmado. Revisa tu bandeja de entrada.';
+    }
+    if (lower.contains('too many requests') || lower.contains('rate limit')) {
+      return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+    }
+    return 'No se pudo iniciar sesión. Intenta de nuevo.';
   }
 
   @override

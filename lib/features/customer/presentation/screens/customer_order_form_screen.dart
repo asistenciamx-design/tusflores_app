@@ -15,7 +15,9 @@ import '../../../catalog/presentation/screens/catalog_screen.dart'
 class CustomerOrderFormScreen extends StatefulWidget {
   final ProductItem? product;
   final String? shopId;
-  const CustomerOrderFormScreen({super.key, this.product, this.shopId});
+  final List<Map<String, dynamic>>? giftProducts;
+  const CustomerOrderFormScreen(
+      {super.key, this.product, this.shopId, this.giftProducts});
 
   @override
   State<CustomerOrderFormScreen> createState() =>
@@ -28,6 +30,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
 
   // Store additional products selected by the user
   final List<Map<String, dynamic>> _additionalProducts = [];
+
+  // Gift products selected before checkout (passed from product detail screen)
+  late final List<Map<String, dynamic>> _giftProducts;
 
   // Actual catalog data to pick from
   List<ProductItem> _catalogProducts = [];
@@ -90,6 +95,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   @override
   void initState() {
     super.initState();
+    _giftProducts = List<Map<String, dynamic>>.from(widget.giftProducts ?? []);
     // Init prefs first, then load data (which will restore the draft at the end)
     SharedPreferences.getInstance().then((prefs) {
       _prefs = prefs;
@@ -143,7 +149,6 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         _restoreDraft();
       }
     } catch (e) {
-      debugPrint('Error loading order form data: $e');
       if (mounted) {
         setState(() => _isLoadingSettings = false);
       }
@@ -313,7 +318,6 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
       _prefs = savedPrefs;
       _updateShippingCost();
     } catch (e) {
-      debugPrint('[Draft] Restore error: $e');
     }
   }
 
@@ -338,6 +342,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     } else if (_deliveryMethod != 'Recoger en tienda' &&
         _messageCtrl.text.trim().isEmpty) {
       error = 'Escribe una dedicatoria';
+    } else if (_buyerNameCtrl.text.trim().isEmpty) {
+      error = 'Ingresa tu nombre en "Tus Datos"';
+    } else if (_buyerWhatsappCtrl.text.trim().isEmpty) {
+      error = 'Ingresa tu WhatsApp en "Tus Datos"';
     }
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -381,6 +389,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   if (_additionalProducts.isNotEmpty) ...[
                     ..._additionalProducts
                         .map((p) => _buildAdditionalProductItem(p)),
+                  ],
+                  if (_giftProducts.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ..._giftProducts.map((g) => _buildGiftProductItem(g)),
                   ],
                   const SizedBox(height: 12),
                   Center(
@@ -433,6 +445,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                         List<Map<String, dynamic>> allProducts = [];
                         allProducts.add({
                           'name': widget.product?.name ?? 'Pedido',
+                          'sku': widget.product?.sku ?? '',
                           'qty': _mainProductQty > 0 ? _mainProductQty : 1,
                           'price': basePrice,
                         });
@@ -443,8 +456,21 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           subtotal += pPrice * pQty;
                           allProducts.add({
                             'name': p['name'] ?? 'Extra',
+                            'sku': p['sku'] ?? '',
                             'qty': pQty,
                             'price': pPrice,
+                          });
+                        }
+
+                        for (var g in _giftProducts) {
+                          double gPrice = (g['price'] as num).toDouble();
+                          int gQty = (g['quantity'] as num?)?.toInt() ?? 1;
+                          subtotal += gPrice * gQty;
+                          allProducts.add({
+                            'name': g['name'] ?? 'Regalo',
+                            'sku': g['sku'] ?? '',
+                            'qty': gQty,
+                            'price': gPrice,
                           });
                         }
 
@@ -570,12 +596,17 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (widget.product?.sku != null && widget.product!.sku!.isNotEmpty)
+                  Text(
+                    widget.product!.sku!,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500, letterSpacing: 0.5),
+                  ),
                 Text(name,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(
-                  '\$${total.toStringAsFixed(0)}',
+                  '${_settings?.currencySymbol ?? '\$'}${total.toStringAsFixed(0)}',
                   style: const TextStyle(
                       color: Color(0xFF00C853),
                       fontWeight: FontWeight.bold,
@@ -619,9 +650,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                         fontWeight: FontWeight.bold, fontSize: 15)),
                 GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _mainProductQty++;
-                    });
+                    if (_mainProductQty < 999) setState(() => _mainProductQty++);
                   },
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -671,12 +700,17 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (product['sku'] != null && (product['sku'] as String).isNotEmpty)
+                  Text(
+                    product['sku'] as String,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500, letterSpacing: 0.5),
+                  ),
                 Text(product['name'],
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(
-                  '\$${total.toStringAsFixed(0)}',
+                  '${_settings?.currencySymbol ?? '\$'}${total.toStringAsFixed(0)}',
                   style: const TextStyle(
                       color: Color(0xFF00C853),
                       fontWeight: FontWeight.bold,
@@ -731,6 +765,87 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGiftProductItem(Map<String, dynamic> gift) {
+    final double price = (gift['price'] as num).toDouble();
+    final int qty = (gift['quantity'] as num?)?.toInt() ?? 1;
+    final String imageUrl = gift['image'] as String? ?? '';
+    final String sku = gift['sku'] as String? ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.pink.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    height: 50,
+                    width: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildGiftThumb(),
+                  )
+                : _buildGiftThumb(),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (sku.isNotEmpty)
+                  Text(sku,
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                          letterSpacing: 0.5)),
+                Text(gift['name'] as String? ?? 'Regalo',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(
+                  '${_settings?.currencySymbol ?? '\$'}${(price * qty).toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      color: Color(0xFF00C853),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+          // Remove button
+          GestureDetector(
+            onTap: () => setState(() => _giftProducts.remove(gift)),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, size: 16, color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGiftThumb() {
+    return Container(
+      height: 50,
+      width: 50,
+      decoration: BoxDecoration(
+        color: Colors.pink.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(Icons.card_giftcard, size: 22, color: Colors.pinkAccent),
     );
   }
 
@@ -818,7 +933,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 15)),
                           subtitle: Text(
-                              '\$${productItem.price.toStringAsFixed(0)}',
+                              '${_settings?.currencySymbol ?? '\$'}${productItem.price.toStringAsFixed(0)}',
                               style: const TextStyle(
                                   color: Color(0xFF00C853),
                                   fontWeight: FontWeight.bold,
@@ -839,6 +954,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                                   _additionalProducts.add({
                                     'id': productItem.id,
                                     'name': productItem.name,
+                                    'sku': productItem.sku ?? '',
                                     'price': productItem.price,
                                     'image': productImage,
                                     'quantity': 1,
@@ -1195,13 +1311,16 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         _buildTextField(
             controller: _nameCtrl,
             hint: 'Ej. María Pérez',
+            maxLength: 100,
             autofillHints: const [AutofillHints.name]),
         const SizedBox(height: 16),
         _buildInputLabel('Teléfono destinatario'),
         _buildTextField(
             controller: _phoneCtrl,
             hint: 'Ej. 55 1234 5678',
+            maxLength: 15,
             keyboardType: TextInputType.phone,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             autofillHints: const [AutofillHints.telephoneNumber]),
         const SizedBox(height: 16),
         Row(
@@ -1216,6 +1335,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           controller: _messageCtrl,
           hint: 'Escribe un mensaje bonito aquí...',
           maxLines: 4,
+          maxLength: 150,
         ),
         const SizedBox(height: 16),
         Container(
@@ -1291,6 +1411,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           _buildTextField(
             controller: _buyerNameCtrl,
             hint: 'Ej. Ana García',
+            maxLength: 100,
             autofillHints: const [AutofillHints.name],
           ),
           const SizedBox(height: 16),
@@ -1298,7 +1419,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           _buildTextField(
             controller: _buyerWhatsappCtrl,
             hint: 'Ej. 5512345678',
+            maxLength: 15,
             keyboardType: TextInputType.phone,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             autofillHints: const [AutofillHints.telephoneNumber],
           ),
           const SizedBox(height: 16),
@@ -1306,6 +1429,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           _buildTextField(
             controller: _buyerEmailCtrl,
             hint: 'Ej. ana@correo.com',
+            maxLength: 254,
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
           ),
@@ -1342,6 +1466,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           _buildTextField(
               controller: _streetCtrl,
               hint: 'Av. Reforma 222',
+              maxLength: 200,
               autofillHints: const [AutofillHints.streetAddressLine1]),
           const SizedBox(height: 16),
           Row(
@@ -1354,6 +1479,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                     _buildTextField(
                         controller: _suburbCtrl,
                         hint: 'Col. Juárez',
+                        maxLength: 150,
                         autofillHints: const [AutofillHints.addressCity]),
                   ],
                 ),
@@ -1367,7 +1493,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                     _buildTextField(
                         controller: _zipCtrl,
                         hint: '06600',
+                        maxLength: 10,
                         keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         autofillHints: const [AutofillHints.postalCode]),
                   ],
                 ),
@@ -1396,7 +1524,8 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
           _buildTextField(
               controller: _refCtrl,
               hint: 'Ej. Edificio blanco, dejar en recepción',
-              maxLines: 2),
+              maxLines: 2,
+              maxLength: 500),
           const SizedBox(height: 24),
           _buildInputLabel('Lugar de entrega:', baseLabel: true),
           const SizedBox(height: 12),
@@ -1417,6 +1546,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             controller: _locationDetailsCtrl,
             hint: _locationHints[_deliveryLocationType] ?? '',
             maxLines: 3,
+            maxLength: 300,
           ),
         ],
       ),
@@ -1525,6 +1655,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     for (var p in _additionalProducts) {
       subtotal += (p['price'] as double) * (p['quantity'] as int);
     }
+    for (var g in _giftProducts) {
+      subtotal += (g['price'] as num).toDouble() *
+          ((g['quantity'] as num?)?.toInt() ?? 1);
+    }
 
     double effectiveShippingCost =
         _deliveryMethod == 'Recoger en tienda' ? 0.0 : _shippingCost;
@@ -1544,7 +1678,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             children: [
               const Text('Subtotal:',
                   style: TextStyle(color: Colors.grey, fontSize: 16)),
-              Text('\$${subtotal.toStringAsFixed(2)}',
+              Text('${_settings?.currencySymbol ?? '\$'}${subtotal.toStringAsFixed(2)}',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 16)),
             ],
@@ -1559,7 +1693,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                       ? 'Costo de envío $_selectedCity:'
                       : 'Costo de envío:',
                   style: const TextStyle(color: Colors.grey, fontSize: 16)),
-              Text('\$${effectiveShippingCost.toStringAsFixed(2)}',
+              Text('${_settings?.currencySymbol ?? '\$'}${effectiveShippingCost.toStringAsFixed(2)}',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 16)),
             ],
@@ -1573,7 +1707,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             children: [
               const Text('Total:',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              Text('\$${total.toStringAsFixed(2)}',
+              Text('${_settings?.currencySymbol ?? '\$'}${total.toStringAsFixed(2)}',
                   style: const TextStyle(
                       color: Color(0xFF00E676),
                       fontWeight: FontWeight.bold,
@@ -1609,15 +1743,19 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
     required TextEditingController controller,
     required String hint,
     int maxLines = 1,
+    int? maxLength,
     TextInputType? keyboardType,
     Widget? suffixIcon,
     Iterable<String>? autofillHints,
     TextInputAction? textInputAction,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
+      maxLength: maxLength,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       textInputAction: textInputAction ?? TextInputAction.next,
       autofillHints: autofillHints,
       style: const TextStyle(fontSize: 15),

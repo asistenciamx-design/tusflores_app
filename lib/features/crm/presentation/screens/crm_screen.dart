@@ -120,7 +120,6 @@ class _CrmScreenState extends State<CrmScreen> {
         });
       }
     } catch (e) {
-      debugPrint('CRM load error: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }

@@ -16,6 +16,5 @@ void updateShopJsonLd({
       [shopName, ratingValue, reviewCount, city ?? ''],
     );
   } catch (e) {
-    debugPrint('SeoService.updateShopJsonLd: $e');
   }
 }

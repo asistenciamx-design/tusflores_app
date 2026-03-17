@@ -267,17 +267,14 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
             .map((entry) => Padding(
                   padding: EdgeInsets.only(
                       bottom: entry.key < _visibleFaqs.length - 1 ? 12 : 0),
-                  child: _buildFaqItem(
-                    question: entry.value.question,
-                    answer: entry.value.answer,
-                  ),
+                  child: _buildFaqItem(entry.value),
                 ))
             .toList(),
       ),
     );
   }
 
-  Widget _buildFaqItem({required String question, required String answer}) {
+  Widget _buildFaqItem(FaqItem faq) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -304,7 +301,7 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
                 color: AppTheme.primary, size: 20),
           ),
           title: Text(
-            question,
+            faq.question,
             style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
@@ -315,13 +312,86 @@ class _CustomerFaqScreenState extends State<CustomerFaqScreen> {
           childrenPadding: const EdgeInsets.fromLTRB(64, 0, 24, 20),
           expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(answer,
-                style: TextStyle(
-                    color: Colors.grey[600], height: 1.5, fontSize: 13)),
+            _buildFaqAnswerContent(faq),
           ],
         ),
       ),
     );
+  }
+
+  /// Renders the answer section. Auto-answered keys use live shop data;
+  /// the `faq.answer` field is treated as an optional extra note.
+  Widget _buildFaqAnswerContent(FaqItem faq) {
+    final key  = faq.defaultKey;
+    final note = faq.answer.trim();
+
+    if (key == 'delivery_cost') {
+      final rates = _settings?.shippingRates ?? [];
+
+      if (rates.isEmpty && note.isEmpty) {
+        return Text(
+          'Consulta el costo de envío a tu zona contactándonos directamente.',
+          style: TextStyle(color: Colors.grey[600], height: 1.5, fontSize: 13),
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (rates.isNotEmpty) ...[
+            const Text(
+              'Tarifas de envío:',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87),
+            ),
+            const SizedBox(height: 8),
+            ...rates.map((r) {
+              final label = (r.label != null && r.label!.isNotEmpty)
+                  ? r.label!
+                  : [r.ciudad, r.estado]
+                      .where((s) => s != null && s!.isNotEmpty)
+                      .join(', ');
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Text('• ',
+                        style: TextStyle(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                    Expanded(
+                      child: Text(label,
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.black87)),
+                    ),
+                    Text(
+                      '${_settings?.currencySymbol ?? '\$'}${r.costo.toStringAsFixed(2)} ${_settings?.currencyCode ?? 'MXN'}',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primary),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+          if (note.isNotEmpty) ...[
+            if (rates.isNotEmpty) const SizedBox(height: 10),
+            Text(note,
+                style: TextStyle(
+                    color: Colors.grey[600], height: 1.5, fontSize: 13)),
+          ],
+        ],
+      );
+    }
+
+    // Default: plain text answer
+    return Text(faq.answer,
+        style: TextStyle(color: Colors.grey[600], height: 1.5, fontSize: 13));
   }
 
   Widget _buildSocialLinks() {

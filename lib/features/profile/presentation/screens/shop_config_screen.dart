@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/currency_cache.dart';
 import '../../domain/models/shop_settings_model.dart';
 import '../../domain/repositories/shop_settings_repository.dart';
 
@@ -38,6 +39,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
     }
     final settings = await _repo.getSettings(userId);
     if (mounted) {
+      CurrencyCache.update(settings);
       setState(() {
         _settings = settings;
         _unavailableMsgController.text = settings?.unavailableMessage ?? '';
@@ -52,6 +54,9 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
     bool? showReviews,
     bool? isUnavailable,
     String? unavailableMessage,
+    bool? sellGiftsStandalone,
+    String? currencyCode,
+    String? currencySymbol,
   }) {
     final c = _settings!;
     return ShopSettingsModel(
@@ -76,8 +81,11 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
       showReviews: showReviews ?? c.showReviews,
       isUnavailable: isUnavailable ?? c.isUnavailable,
       unavailableMessage: unavailableMessage ?? c.unavailableMessage,
+      sellGiftsStandalone: sellGiftsStandalone ?? c.sellGiftsStandalone,
       catalogMessage: c.catalogMessage,
       catalogImageUrl: c.catalogImageUrl,
+      currencyCode: currencyCode ?? c.currencyCode,
+      currencySymbol: currencySymbol ?? c.currencySymbol,
       rawData: c.rawData,
     );
   }
@@ -106,6 +114,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
       showMapOnProfile: field == 'showMapOnProfile' ? value : null,
       trackingLinkEnabled: field == 'trackingLinkEnabled' ? value : null,
       showReviews: field == 'showReviews' ? value : null,
+      sellGiftsStandalone: field == 'sellGiftsStandalone' ? value : null,
     ));
   }
 
@@ -252,6 +261,97 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
                         value: _settings!.trackingLinkEnabled,
                         onChanged: (v) => _toggle('trackingLinkEnabled', v),
                         enabled: !_isSaving,
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                    _SectionHeader(title: 'REGALOS'),
+                    const SizedBox(height: 12),
+                    _buildCard(children: [
+                      _ConfigTile(
+                        icon: Icons.card_giftcard_outlined,
+                        iconColor: Colors.pink.shade400,
+                        iconBg: Colors.pink.withValues(alpha: 0.08),
+                        title: 'Vender regalos individualmente',
+                        subtitle: 'Permite que los clientes compren regalos sin incluir un arreglo floral.',
+                        value: _settings!.sellGiftsStandalone,
+                        onChanged: (v) => _toggle('sellGiftsStandalone', v),
+                        enabled: !_isSaving,
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                    _SectionHeader(title: 'MONEDA Y REGIÓN'),
+                    const SizedBox(height: 12),
+                    _buildCard(children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.currency_exchange, color: Colors.blue, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Moneda',
+                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Divisa que verán tus clientes en precios.',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[500], height: 1.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            DropdownButton<String>(
+                              value: _settings!.currencyCode,
+                              underline: const SizedBox.shrink(),
+                              borderRadius: BorderRadius.circular(12),
+                              items: const [
+                                DropdownMenuItem(value: 'MXN', child: Text('🇲🇽  MXN \$')),
+                                DropdownMenuItem(value: 'USD', child: Text('🇺🇸  USD \$')),
+                                DropdownMenuItem(value: 'COP', child: Text('🇨🇴  COP \$')),
+                                DropdownMenuItem(value: 'ARS', child: Text('🇦🇷  ARS \$')),
+                                DropdownMenuItem(value: 'PEN', child: Text('🇵🇪  PEN S/')),
+                                DropdownMenuItem(value: 'VES', child: Text('🇻🇪  VES Bs.')),
+                                DropdownMenuItem(value: 'CLP', child: Text('🇨🇱  CLP \$')),
+                                DropdownMenuItem(value: 'GTQ', child: Text('🇬🇹  GTQ Q')),
+                                DropdownMenuItem(value: 'BOB', child: Text('🇧🇴  BOB Bs.')),
+                                DropdownMenuItem(value: 'HNL', child: Text('🇭🇳  HNL L')),
+                                DropdownMenuItem(value: 'PYG', child: Text('🇵🇾  PYG ₲')),
+                                DropdownMenuItem(value: 'NIO', child: Text('🇳🇮  NIO C\$')),
+                                DropdownMenuItem(value: 'CRC', child: Text('🇨🇷  CRC ₡')),
+                                DropdownMenuItem(value: 'BZD', child: Text('🇧🇿  BZD BZ\$')),
+                              ],
+                              onChanged: _isSaving ? null : (code) async {
+                                if (code == null) return;
+                                const symbolMap = {
+                                  'MXN': r'$',  'USD': r'$',  'COP': r'$',
+                                  'ARS': r'$',  'PEN': 'S/',  'VES': 'Bs.',
+                                  'CLP': r'$',  'GTQ': 'Q',   'BOB': 'Bs.',
+                                  'HNL': 'L',   'PYG': '₲',  'NIO': r'C$',
+                                  'CRC': '₡',   'BZD': r'BZ$',
+                                };
+                                final updated = _buildUpdated(
+                                  currencyCode: code,
+                                  currencySymbol: symbolMap[code] ?? r'$',
+                                );
+                                await _save(updated);
+                                CurrencyCache.update(_settings);
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ]),
                     const SizedBox(height: 32),

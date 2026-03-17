@@ -129,19 +129,22 @@ class FaqItem {
   String question;
   String answer;
   bool isVisible;
+  String? defaultKey;
 
-  FaqItem({required this.question, required this.answer, this.isVisible = true});
+  FaqItem({required this.question, required this.answer, this.isVisible = true, this.defaultKey});
 
   Map<String, dynamic> toJson() => {
     'question': question,
     'answer': answer,
     'is_visible': isVisible,
+    if (defaultKey != null) 'default_key': defaultKey,
   };
 
   factory FaqItem.fromJson(Map<String, dynamic> json) => FaqItem(
     question: json['question'] ?? '',
     answer: json['answer'] ?? '',
     isVisible: json['is_visible'] ?? true,
+    defaultKey: json['default_key'],
   );
 }
 
@@ -183,6 +186,13 @@ class ShopSettingsModel {
   final bool isUnavailable;
   final String? unavailableMessage;
 
+  // Gifts
+  final bool sellGiftsStandalone;
+
+  // Currency / Region
+  final String currencyCode;
+  final String currencySymbol;
+
   ShopSettingsModel({
     required this.storeHours,
     required this.deliveryRanges,
@@ -205,8 +215,11 @@ class ShopSettingsModel {
     this.showReviews = true,
     this.isUnavailable = false,
     this.unavailableMessage,
+    this.sellGiftsStandalone = false,
     this.catalogMessage,
     this.catalogImageUrl,
+    this.currencyCode = 'MXN',
+    this.currencySymbol = r'$',
     this.rawData,
   });
 
@@ -268,8 +281,11 @@ class ShopSettingsModel {
       showReviews: json['show_reviews'] ?? true,
       isUnavailable: json['is_unavailable'] ?? false,
       unavailableMessage: json['unavailable_message'],
+      sellGiftsStandalone: json['sell_gifts_standalone'] ?? false,
       catalogMessage: json['catalog_message'],
       catalogImageUrl: json['catalog_image_url'],
+      currencyCode: json['currency_code'] ?? 'MXN',
+      currencySymbol: json['currency_symbol'] ?? r'$',
       rawData: json,
     );
   }
@@ -296,7 +312,10 @@ class ShopSettingsModel {
     'show_reviews': showReviews,
     'is_unavailable': isUnavailable,
     'unavailable_message': unavailableMessage,
+    'sell_gifts_standalone': sellGiftsStandalone,
     'catalog_message': catalogMessage,
     'catalog_image_url': catalogImageUrl,
+    'currency_code': currencyCode,
+    'currency_symbol': currencySymbol,
   };
 }

@@ -82,6 +82,8 @@ class _CustomerPaymentMethodsScreenState extends State<CustomerPaymentMethodsScr
     if (_settings!.linkMethods.isNotEmpty) {
       buffer.writeln('LINKS DE PAGO');
       for (final l in _settings!.linkMethods) {
+        final uri = Uri.tryParse(l.url);
+        if (uri == null || !uri.isAbsolute || uri.scheme != 'https') continue;
         buffer.writeln('${l.serviceName}');
         buffer.writeln('${l.url}\n');
       }

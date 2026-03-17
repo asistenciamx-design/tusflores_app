@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/currency_cache.dart';
 import '../../domain/models/order_model.dart';
 
 class AlbaranScreen extends StatefulWidget {
@@ -199,7 +200,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                               style: boldStyle),
                           if (_showPrecio)
                             pw.Text(
-                                '\$${_total.toStringAsFixed(2)} MXN',
+                                '${CurrencyCache.symbol}${_total.toStringAsFixed(2)} ${CurrencyCache.code}',
                                 style: pw.TextStyle(
                                     font: boldFont,
                                     fontSize: 11,
@@ -254,7 +255,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('No se pudo completar la operación.'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -273,7 +274,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('No se pudo completar la operación.'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -487,7 +488,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                                   fontWeight: FontWeight.bold)),
                           if (_showPrecio)
                             Text(
-                                '\$${_total.toStringAsFixed(0)}',
+                                '${CurrencyCache.symbol}${_total.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                     fontSize: 7,
                                     color: Color(0xFF11d493),

@@ -66,6 +66,7 @@ class OrderModel {
 
   bool isPaid;
   String? paymentMethod;
+  List<String> completionPhotos;
   
   final double shippingCost;
   final String deliveryMethod;
@@ -100,6 +101,7 @@ class OrderModel {
     this.icon,
     this.isPaid = false,
     this.paymentMethod,
+    this.completionPhotos = const [],
     this.shippingCost = 0.0,
     this.deliveryMethod = 'Envío a domicilio',
     this.isAnonymous = false,
@@ -132,6 +134,11 @@ class OrderModel {
       deliveryInfo: json['delivery_info'] as String? ?? '',
       isPaid: json['is_paid'] as bool? ?? false,
       paymentMethod: json['payment_method'] as String?,
+      completionPhotos: (json['completion_photos'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .where((s) => s.isNotEmpty)
+              .toList() ??
+          [],
       shippingCost: (json['shipping_cost'] as num?)?.toDouble() ?? 0.0,
       deliveryMethod: json['delivery_method'] as String? ?? 'Envío a domicilio',
       isAnonymous: json['is_anonymous'] as bool? ?? false,
@@ -219,6 +226,7 @@ class OrderModel {
     IconData? icon,
     bool? isPaid,
     String? paymentMethod,
+    List<String>? completionPhotos,
     double? shippingCost,
     String? deliveryMethod,
     bool? isAnonymous,
@@ -252,6 +260,7 @@ class OrderModel {
       icon: icon ?? this.icon,
       isPaid: isPaid ?? this.isPaid,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      completionPhotos: completionPhotos ?? this.completionPhotos,
       shippingCost: shippingCost ?? this.shippingCost,
       deliveryMethod: deliveryMethod ?? this.deliveryMethod,
       isAnonymous: isAnonymous ?? this.isAnonymous,

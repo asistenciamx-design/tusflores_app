@@ -39,7 +39,6 @@ class _CatalogMessageScreenState extends State<CatalogMessageScreen> {
         _descriptionController.text = settings.catalogMessage ?? '';
       }
     } catch (e) {
-      debugPrint('Error loading catalog message: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -74,7 +73,6 @@ class _CatalogMessageScreenState extends State<CatalogMessageScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      debugPrint('Error saving catalog message: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

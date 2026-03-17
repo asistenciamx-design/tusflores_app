@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
 import '../../../catalog/domain/repositories/product_repository.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
+import '../../../profile/domain/models/shop_settings_model.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -35,6 +36,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
   final _productRepo = ProductRepository();
   final _settingsRepo = ShopSettingsRepository();
+  ShopSettingsModel? _settings;
   List<ProductItem> _products = [];
   
   List<String> get _categories {
@@ -88,7 +90,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         _shopName = profile['shop_name'] ?? profile['full_name'] ?? 'Mi Florería';
       }
     } catch (e) {
-      debugPrint('[CustomerCatalog] Error loading profile: $e');
     }
   }
 
@@ -110,7 +111,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         }
       }
     } catch (e) {
-      debugPrint('[CustomerCatalog] Error loading reviews: $e');
     }
   }
 
@@ -118,12 +118,12 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     try {
       final settings = await _settingsRepo.getSettings(shopId);
       if (settings != null && mounted) {
+        _settings = settings;
         _showReviews = settings.showReviews;
         _isUnavailable = settings.isUnavailable;
         _unavailableMessage = settings.unavailableMessage;
       }
     } catch (e) {
-      debugPrint('[CustomerCatalog] Error loading settings: $e');
     }
   }
 
@@ -134,7 +134,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         _products = prodData.map((json) => ProductItem.fromJson(json)).toList();
       }
     } catch (e) {
-      debugPrint('[CustomerCatalog] Error loading products: $e');
     }
   }
 
@@ -458,6 +457,19 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      if (product.sku != null && product.sku!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            product.sku!,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade500,
+                              letterSpacing: 0.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       Text(
                         product.name,
                         style: const TextStyle(
@@ -472,7 +484,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '\$${product.price.toStringAsFixed(0)}',
+                            '${_settings?.currencySymbol ?? '\$'}${product.price.toStringAsFixed(0)}',
                             style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,

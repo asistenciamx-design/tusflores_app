@@ -48,7 +48,6 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error loading profile: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

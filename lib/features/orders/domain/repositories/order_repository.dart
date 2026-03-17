@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import '../models/order_model.dart';
@@ -25,7 +26,6 @@ class OrderRepository {
       
       return response.map((json) => OrderModel.fromJson(json)).toList();
     } catch (e) {
-      debugPrint('Error getting orders: $e');
       return [];
     }
   }
@@ -38,7 +38,6 @@ class OrderRepository {
       final response = await _supabase.from('orders').insert(orderData).select().single();
       return OrderModel.fromJson(response);
     } catch (e) {
-      debugPrint('Error creating order: $e');
       throw e;
     }
   }
@@ -55,7 +54,6 @@ class OrderRepository {
           .eq('shop_id', uid);
       return true;
     } catch (e) {
-      debugPrint('Error updating order status: $e');
       return false;
     }
   }
@@ -75,7 +73,43 @@ class OrderRepository {
           .eq('shop_id', uid);
       return true;
     } catch (e) {
-      debugPrint('Error updating payment status: $e');
+      return false;
+    }
+  }
+
+  // Upload a single order photo to Storage and return the public URL.
+  // path: order-photos/{shopId}/{orderId}/{index}.jpg
+  Future<String?> uploadOrderPhoto(
+      String shopId, String orderId, int index, Uint8List bytes) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return null;
+    try {
+      final path = '$shopId/$orderId/$index.jpg';
+      await _supabase.storage.from('order-photos').uploadBinary(
+            path,
+            bytes,
+            fileOptions:
+                const FileOptions(upsert: true, contentType: 'image/jpeg'),
+          );
+      return _supabase.storage.from('order-photos').getPublicUrl(path);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Persist the list of completion photo URLs to the orders table.
+  Future<bool> updateCompletionPhotos(
+      String orderId, List<String> photoUrls) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return false;
+    try {
+      await _supabase
+          .from('orders')
+          .update({'completion_photos': photoUrls})
+          .eq('id', orderId)
+          .eq('shop_id', uid);
+      return true;
+    } catch (e) {
       return false;
     }
   }
@@ -92,7 +126,6 @@ class OrderRepository {
           .eq('shop_id', uid);
       return true;
     } catch (e) {
-      debugPrint('Error updating order: $e');
       return false;
     }
   }

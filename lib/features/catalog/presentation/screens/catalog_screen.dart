@@ -2,27 +2,33 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/currency_cache.dart';
 import '../../domain/repositories/product_repository.dart';
 import 'add_edit_product_screen.dart';
+import 'gifts_screen.dart';
 
 // ─── Data Model ───────────────────────────────────────────────────────────────
 
 class ProductItem {
   String? id;
   String name;
+  String? sku;
   double price;
   List<String> tags;
   List<String> imageUrls;
   String? description;
+  List<Map<String, dynamic>> recipe;
   bool isVisible;
 
   ProductItem({
     this.id,
     required this.name,
+    this.sku,
     required this.price,
     this.tags = const [],
     this.imageUrls = const [],
     this.description,
+    this.recipe = const [],
     this.isVisible = true,
   });
 
@@ -46,14 +52,24 @@ class ProductItem {
     } else if (json['image_url'] != null) {
       parseUrls = [json['image_url'].toString()];
     }
-    
+
+    List<Map<String, dynamic>> parseRecipe = [];
+    if (json['recipe'] is List) {
+      parseRecipe = (json['recipe'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
     return ProductItem(
       id: json['id'],
       name: json['name'] ?? '',
+      sku: json['sku'] as String?,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       tags: List<String>.from(json['tags'] ?? []),
       imageUrls: parseUrls,
       description: json['description'],
+      recipe: parseRecipe,
       isVisible: json['is_active'] ?? true,
     );
   }
@@ -115,7 +131,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading products: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -185,9 +200,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     color: Colors.black87, size: 20),
               ),
             ),
-          Text(
-            widget.showPausedOnly ? 'Productos en Pausa' : 'Mi Catálogo',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                widget.showPausedOnly ? 'Productos en Pausa' : 'Mi Catálogo',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              if (!widget.showPausedOnly)
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GiftsScreen()),
+                  ),
+                  icon: const Text('🎁', style: TextStyle(fontSize: 16)),
+                  label: const Text('Regalos',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.pink.shade400,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           // Search bar
@@ -315,7 +350,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text('\$${product.price.toStringAsFixed(0)}',
+                      Text('${CurrencyCache.symbol}${product.price.toStringAsFixed(0)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 17,
                           color: product.isVisible ? AppTheme.primary : Colors.grey,
@@ -356,9 +391,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           onChanged: (val) async {
                             final id = _products[originalIdx].id;
                             if (id == null) return;
+                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            if (uid == null) return;
                             // Optimistic UI update
                             setState(() => _products[originalIdx].isVisible = val);
-                            await _repo.updateProduct(id, {'is_active': val});
+                            await _repo.updateProduct(id, uid, {'is_active': val});
                           },
                           activeThumbColor: Colors.white,
                           activeTrackColor: AppTheme.primary,
@@ -444,10 +481,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar', style: TextStyle(color: AppTheme.mutedLight))),
           ElevatedButton(
-            onPressed: () async { 
-              Navigator.pop(ctx); 
+            onPressed: () async {
+              Navigator.pop(ctx);
               setState(() => _isLoading = true);
-              await _repo.deleteProduct(id);
+              final uid = Supabase.instance.client.auth.currentUser?.id;
+              if (uid != null) await _repo.deleteProduct(id, uid);
               _loadProducts();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../reviews/presentation/screens/review_form_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
@@ -18,6 +19,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   bool _loading = false;
   String? _error;
   Map<String, dynamic>? _order;
+  String _currencySymbol = '\$';
+  String _currencyCode = 'MXN';
+  bool _isBlocked = false;
+  int _remaining = 5;
 
   // Decode URI-encoded folio (%23 -> #) so Supabase queries work correctly
   String get _folio => Uri.decodeComponent(widget.folio);
@@ -29,6 +34,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _verify() async {
+    if (_isBlocked) {
+      setState(() => _error = 'Demasiados intentos fallidos. Contacta a la florería directamente.');
+      return;
+    }
+
     final rawPhone = _phoneController.text.trim();
     if (rawPhone.isEmpty) {
       setState(() => _error = 'Ingresa tu número de WhatsApp');
@@ -38,9 +48,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     // Normalize: strip everything except digits
     final phone = rawPhone.replaceAll(RegExp(r'\D'), '');
 
-    // Require at least 7 digits to prevent single-digit brute-force bypass
-    if (phone.length < 7) {
-      setState(() => _error = 'Ingresa al menos 7 dígitos de tu número de WhatsApp.');
+    // Require at least 10 digits for a valid phone number
+    if (phone.length < 10) {
+      setState(() => _error = 'Ingresa al menos 10 dígitos de tu número de WhatsApp.');
       return;
     }
 
@@ -50,12 +60,30 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     });
 
     try {
-      // Query order by folio; we'll match phone client-side to handle
+      // 1. Check server-side rate limit before querying
+      try {
+        final limitResult = await Supabase.instance.client
+            .rpc('check_tracking_rate_limit', params: {'p_folio': _folio});
+        final allowed = limitResult['allowed'] as bool? ?? true;
+        _remaining = limitResult['remaining'] as int? ?? 0;
+        if (!allowed) {
+          setState(() {
+            _isBlocked = true;
+            _error = 'Demasiados intentos fallidos. Contacta a la florería directamente.';
+            _loading = false;
+          });
+          return;
+        }
+      } catch (_) {
+        // Fail open: if rate limit check fails, allow the attempt
+      }
+
+      // 2. Query order by folio; we'll match phone client-side to handle
       // stored numbers with/without country code.
       final results = await Supabase.instance.client
           .from('orders')
           .select(
-              'folio, status, product_name, quantity, delivery_method, delivery_info, delivery_address, delivery_city, price, shipping_cost, recipient_name, shop_id, created_at')
+              'id, folio, status, product_name, quantity, delivery_method, delivery_info, delivery_address, delivery_city, price, shipping_cost, recipient_name, shop_id, created_at, completion_photos')
           .eq('folio', _folio)
           .limit(5);
 
@@ -81,16 +109,28 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         final storedPhone =
             ((full['customer_phone'] ?? '') as String).replaceAll(RegExp(r'\D'), '');
 
-        // Accept if entered digits are a suffix of stored (handles country code diff)
-        if (storedPhone.endsWith(phone) || phone.endsWith(storedPhone)) {
+        // Exact match on last 10 digits to handle country-code differences
+        final stored10 = storedPhone.length >= 10 ? storedPhone.substring(storedPhone.length - 10) : storedPhone;
+        final entered10 = phone.length >= 10 ? phone.substring(phone.length - 10) : phone;
+        if (stored10 == entered10) {
           matched = row;
           break;
         }
       }
 
       if (matched == null) {
+        // Record failed attempt on server
+        try {
+          await Supabase.instance.client
+              .rpc('record_tracking_attempt', params: {'p_folio': _folio});
+        } catch (_) {}
+        final newRemaining = _remaining - 1;
         setState(() {
-          _error = 'El número no coincide con el registrado en el pedido.';
+          if (newRemaining <= 0) _isBlocked = true;
+          _remaining = newRemaining;
+          _error = newRemaining > 0
+              ? 'El número no coincide. Te quedan $newRemaining intento${newRemaining == 1 ? '' : 's'}.'
+              : 'Demasiados intentos fallidos. Contacta a la florería directamente.';
           _loading = false;
         });
         return;
@@ -108,6 +148,17 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         shopName = (profile?['shop_name'] ?? 'Tu florería') as String;
       }
       matched['_shop_name'] = shopName;
+
+      // Load shop currency settings
+      if (shopId != null) {
+        try {
+          final settings = await ShopSettingsRepository().getSettings(shopId);
+          if (settings != null) {
+            _currencySymbol = settings.currencySymbol;
+            _currencyCode = settings.currencyCode;
+          }
+        } catch (_) {}
+      }
 
       setState(() {
         _order = matched;
@@ -128,13 +179,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       backgroundColor: const Color(0xFFFDF6F0),
       body: SafeArea(
         child: _verified && _order != null
-            ? _TrackingView(order: _order!, folio: _folio)
+            ? _TrackingView(order: _order!, folio: _folio, currencySymbol: _currencySymbol, currencyCode: _currencyCode)
             : _VerifyView(
                 folio: _folio,
                 phoneController: _phoneController,
                 loading: _loading,
                 error: _error,
                 onVerify: _verify,
+                blocked: _isBlocked,
               ),
       ),
     );
@@ -149,6 +201,7 @@ class _VerifyView extends StatelessWidget {
   final bool loading;
   final String? error;
   final VoidCallback onVerify;
+  final bool blocked;
 
   const _VerifyView({
     required this.folio,
@@ -156,6 +209,7 @@ class _VerifyView extends StatelessWidget {
     required this.loading,
     required this.error,
     required this.onVerify,
+    this.blocked = false,
   });
 
   @override
@@ -220,7 +274,7 @@ class _VerifyView extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: loading ? null : onVerify,
+                onPressed: (loading || blocked) ? null : onVerify,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE91E8C),
                   foregroundColor: Colors.white,
@@ -252,8 +306,10 @@ class _VerifyView extends StatelessWidget {
 class _TrackingView extends StatelessWidget {
   final Map<String, dynamic> order;
   final String folio;
+  final String currencySymbol;
+  final String currencyCode;
 
-  const _TrackingView({required this.order, required this.folio});
+  const _TrackingView({required this.order, required this.folio, this.currencySymbol = '\$', this.currencyCode = 'MXN'});
 
   static const _stages = [
     _Stage('En espera', Icons.schedule_rounded, Color(0xFFF59E0B)),
@@ -299,6 +355,11 @@ class _TrackingView extends StatelessWidget {
     final shipping = (order['shipping_cost'] as num?)?.toDouble() ?? 0;
     final total = price + shipping;
     final recipientName = order['recipient_name'] as String? ?? '';
+    final completionPhotos = (order['completion_photos'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        [];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -382,6 +443,43 @@ class _TrackingView extends StatelessWidget {
             const SizedBox(height: 28),
           ],
 
+          // Fotos del arreglo terminado
+          if (completionPhotos.isNotEmpty) ...[
+            const Text('Tu arreglo',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Color(0xFF1A1A2E))),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: completionPhotos.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (ctx, i) => GestureDetector(
+                  onTap: () => _showPhotoFullscreen(ctx, completionPhotos, i),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.network(
+                      completionPhotos[i],
+                      width: 180,
+                      height: 180,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 180,
+                        color: const Color(0xFFF0F0F0),
+                        child: const Icon(Icons.broken_image_outlined,
+                            color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+          ],
+
           // Order details card
           Container(
             padding: const EdgeInsets.all(16),
@@ -424,7 +522,7 @@ class _TrackingView extends StatelessWidget {
                 _DetailRow(
                     icon: Icons.attach_money_rounded,
                     label: 'Total',
-                    value: '\$${total.toStringAsFixed(2)} MXN'),
+                    value: '$currencySymbol${total.toStringAsFixed(2)} $currencyCode'),
               ],
             ),
           ),
@@ -450,6 +548,75 @@ class _TrackingView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+void _showPhotoFullscreen(
+    BuildContext context, List<String> photos, int initialIndex) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => _PhotoViewer(photos: photos, initialIndex: initialIndex),
+    ),
+  );
+}
+
+// ── Photo fullscreen viewer ─────────────────────────────────────────────────
+
+class _PhotoViewer extends StatefulWidget {
+  final List<String> photos;
+  final int initialIndex;
+  const _PhotoViewer({required this.photos, required this.initialIndex});
+
+  @override
+  State<_PhotoViewer> createState() => _PhotoViewerState();
+}
+
+class _PhotoViewerState extends State<_PhotoViewer> {
+  late final PageController _pageCtrl;
+  late int _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _pageCtrl = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text('${_current + 1} / ${widget.photos.length}',
+            style: const TextStyle(color: Colors.white, fontSize: 15)),
+      ),
+      body: PageView.builder(
+        controller: _pageCtrl,
+        itemCount: widget.photos.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (ctx, i) => InteractiveViewer(
+          child: Center(
+            child: Image.network(
+              widget.photos[i],
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white54,
+                  size: 64),
+            ),
+          ),
+        ),
       ),
     );
   }

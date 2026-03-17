@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'profile_about_us_edit_screen.dart'; // To navigate to interactive "Nosotros" form
@@ -57,7 +58,6 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
         _rating = 0.0; // To be implemented with real reviews system, default to 0.0
       }
     } catch (e) {
-      debugPrint('Error loading profile: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -79,7 +79,7 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error al subir: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ Error al subir la imagen. Intenta de nuevo.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -509,10 +509,10 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(ctx);
-                // Cierra la sesión y redirige al login
-                context.go('/login');
+                await Supabase.instance.client.auth.signOut();
+                if (context.mounted) context.go('/login');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

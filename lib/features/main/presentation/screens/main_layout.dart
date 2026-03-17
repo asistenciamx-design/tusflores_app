@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/utils/currency_cache.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart';
 import '../../../orders/presentation/screens/orders_screen.dart';
@@ -88,7 +89,6 @@ class _MainLayoutState extends State<MainLayout>
                 _showNewOrderBanner(newOrder);
               }
             } catch (e) {
-              debugPrint('[MainLayout Realtime] Error: $e');
             }
           },
         )
@@ -283,7 +283,7 @@ class _NewOrderBanner extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$buyerLabel · \$${order.price.toStringAsFixed(0)} MXN',
+                        '$buyerLabel · ${CurrencyCache.symbol}${order.price.toStringAsFixed(0)} ${CurrencyCache.code}',
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 12),
                         maxLines: 1,

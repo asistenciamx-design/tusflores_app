@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/currency_cache.dart';
 import '../../../orders/domain/models/order_model.dart';
 import '../../../orders/domain/repositories/order_repository.dart';
 
@@ -369,7 +370,7 @@ class _WeeklyStatsScreenState extends State<WeeklyStatsScreen> {
                   letterSpacing: 1.2)),
           const SizedBox(height: 6),
           Text(
-            '\$${_totalSales.toStringAsFixed(2)} MXN',
+            '${CurrencyCache.symbol}${_totalSales.toStringAsFixed(2)} ${CurrencyCache.code}',
             style: const TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.bold,

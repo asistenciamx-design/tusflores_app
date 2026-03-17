@@ -1,7 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../catalog/domain/models/gift_model.dart';
+import '../../../catalog/domain/repositories/gift_repository.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart' show ProductItem;
+import '../../../profile/domain/models/shop_settings_model.dart';
+import '../../../profile/domain/repositories/shop_settings_repository.dart';
 
 class CustomerProductDetailScreen extends StatefulWidget {
   final ProductItem? product;
@@ -16,6 +20,14 @@ class CustomerProductDetailScreen extends StatefulWidget {
 class _CustomerProductDetailScreenState extends State<CustomerProductDetailScreen> {
   int _selectedImageIndex = 0;
   late int _currentProductIndex;
+
+  // Settings
+  ShopSettingsModel? _shopSettings;
+
+  // Gifts
+  final _giftRepo = GiftRepository();
+  List<GiftItem> _gifts = [];
+  final Set<String> _selectedGiftIds = {};
 
   List<ProductItem> get _all => widget.allProducts ?? [];
 
@@ -35,6 +47,37 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
     super.initState();
     final idx = _all.indexWhere((p) => p.id == widget.product?.id);
     _currentProductIndex = idx >= 0 ? idx : 0;
+    if (widget.shopId != null) _loadGifts();
+    if (widget.shopId != null) _loadShopSettings();
+  }
+
+  Future<void> _loadShopSettings() async {
+    try {
+      final s = await ShopSettingsRepository().getSettings(widget.shopId!);
+      if (mounted) setState(() => _shopSettings = s);
+    } catch (_) {}
+  }
+
+  Future<void> _loadGifts() async {
+    try {
+      final data = await _giftRepo.getPublicGifts(widget.shopId!);
+      if (mounted) {
+        setState(() {
+          _gifts = data.map((j) => GiftItem.fromJson(j)).take(20).toList();
+        });
+      }
+    } catch (e) {
+    }
+  }
+
+  void _toggleGift(String giftId) {
+    setState(() {
+      if (_selectedGiftIds.contains(giftId)) {
+        _selectedGiftIds.remove(giftId);
+      } else {
+        _selectedGiftIds.add(giftId);
+      }
+    });
   }
 
   void _goToProduct(int index) {
@@ -162,6 +205,21 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
                   ),
                 const SizedBox(height: 24),
 
+                // SKU
+                if (product.sku != null && product.sku!.isNotEmpty) ...[
+                  Text(
+                    product.sku!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                ],
+
                 // Title
                 Text(
                   product.name,
@@ -176,7 +234,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
 
                 // Price
                 Text(
-                  '\$${product.price.toStringAsFixed(2)} MXN',
+                  '${_shopSettings?.currencySymbol ?? '\$'}${product.price.toStringAsFixed(2)} ${_shopSettings?.currencyCode ?? 'MXN'}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -197,21 +255,40 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
                 if (product.tags.isNotEmpty)
                   const SizedBox(height: 24),
 
-                // Description
-                Text(
-                  product.description?.isNotEmpty == true ? product.description! : 'Sin descripción detallada.',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[700],
-                    height: 1.5,
+                // Descripción Corta
+                if (product.description?.isNotEmpty == true) ...[
+                  Text(
+                    product.description!,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
+                  const SizedBox(height: 20),
+                ],
+
+                // Composición del arreglo (recipe)
+                if (product.recipe.isNotEmpty) ...[
+                  _buildRecipeWidget(product.recipe),
+                  const SizedBox(height: 20),
+                ],
+
+                if (product.description?.isNotEmpty != true && product.recipe.isEmpty)
+                  const SizedBox(height: 12),
+
+                const SizedBox(height: 12),
 
                 // ── Productos similares ────────────────────────────────
                 _buildRelatedProducts(),
                 const SizedBox(height: 16),
+
+                // ── Regalos ─────────────────────────────────────────────
+                if (_gifts.isNotEmpty) ...[
+                  _buildGiftsSection(),
+                  const SizedBox(height: 16),
+                ],
               ],
             ),
           ),
@@ -235,7 +312,22 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  context.push('/shop/checkout', extra: {'product': product, 'shopId': widget.shopId});
+                  final selectedGifts = _selectedGiftIds.map((id) {
+                    final g = _gifts.firstWhere((g) => g.id == id);
+                    return {
+                      'id': g.id,
+                      'name': g.name,
+                      'sku': g.sku ?? '',
+                      'price': g.price,
+                      'quantity': 1,
+                      'image': g.imageUrl ?? '',
+                    };
+                  }).toList();
+                  context.push('/shop/checkout', extra: {
+                    'product': product,
+                    'shopId': widget.shopId,
+                    'giftProducts': selectedGifts,
+                  });
                 },
                 icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 22),
                 label: const Text(
@@ -302,6 +394,98 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
      );
   }
 
+  Widget _buildRecipeWidget(List<Map<String, dynamic>> recipe) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FFF4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_florist, size: 16, color: Color(0xFF00C853)),
+              const SizedBox(width: 6),
+              const Text(
+                'Composición del arreglo',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF00A040),
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...recipe.map((item) {
+            final qty = item['qty'];
+            final name = (item['name'] as String? ?? '').trim();
+            final color = (item['color'] as String? ?? '').trim();
+            final quality = (item['quality'] as String? ?? '').trim();
+            final type = (item['type'] as String? ?? 'flor').trim();
+            final typeEmoji = switch (type) {
+              'follaje' => '🌿',
+              'florero' => '🏺',
+              'extra'   => '✨',
+              _         => '🌸',
+            };
+            if (name.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        qty != null ? '$qty' : '—',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF00A040),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '$typeEmoji ${[name, if (color.isNotEmpty) color].join(' · ')}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  if (quality.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        quality,
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF00A040), fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   List<ProductItem> get _relatedProducts {
     final others = _all.where((p) => p.id != _currentProduct.id).toList();
     others.shuffle(Random());
@@ -333,6 +517,173 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
     );
   }
 
+  // ── Gifts section ─────────────────────────────────────────────────────────
+
+  Widget _buildGiftsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            const Text('🎁', style: TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
+            const Text(
+              'Agregar un regalo',
+              style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Selecciona uno o más para complementar tu arreglo',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+        ),
+        const SizedBox(height: 14),
+        GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          itemCount: _gifts.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.70,
+          ),
+          itemBuilder: (_, i) => _buildGiftCard(_gifts[i]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGiftCard(GiftItem gift) {
+    final isSelected = _selectedGiftIds.contains(gift.id);
+    return GestureDetector(
+      onTap: () => _toggleGift(gift.id!),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF00E676)
+                : Colors.grey.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image — LayoutBuilder garantiza que sea cuadrada (1:1) sin importar el tamaño de celda
+                LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    final side = constraints.maxWidth;
+                    return ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+                      child: SizedBox(
+                        width: side,
+                        height: side,
+                        child: gift.imageUrl != null && gift.imageUrl!.isNotEmpty
+                            ? Image.network(
+                                gift.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _buildGiftPlaceholderSized(side),
+                              )
+                            : _buildGiftPlaceholderSized(side),
+                      ),
+                    );
+                  },
+                ),
+                // Info
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (gift.sku != null && gift.sku!.isNotEmpty)
+                        Text(
+                          gift.sku!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade400,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      Text(
+                        gift.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Colors.black87),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_shopSettings?.currencySymbol ?? '\$'}${gift.price.toStringAsFixed(0)} ${_shopSettings?.currencyCode ?? 'MXN'}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Color(0xFF00C853),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Check badge when selected
+            if (isSelected)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF00E676),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check, size: 16, color: Colors.white),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGiftPlaceholder() {
+    return Container(
+      width: double.infinity,
+      color: Colors.pink.withValues(alpha: 0.06),
+      child: const Icon(Icons.card_giftcard, size: 36, color: Colors.pinkAccent),
+    );
+  }
+
+  Widget _buildGiftPlaceholderSized(double side) {
+    return Container(
+      width: side,
+      height: side,
+      color: Colors.pink.withValues(alpha: 0.06),
+      child: const Icon(Icons.card_giftcard, size: 36, color: Colors.pinkAccent),
+    );
+  }
+
   Widget _buildRelatedCard(ProductItem p) {
     final imageUrl = p.imageUrls.isNotEmpty ? p.imageUrls.first : '';
     final targetIndex = _all.indexWhere((a) => a.id == p.id);
@@ -353,15 +704,17 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: imageUrl.isNotEmpty
-                ? Image.network(
-                    imageUrl,
-                    height: 100,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildSmallPlaceholder(),
-                  )
-                : _buildSmallPlaceholder(),
+            child: AspectRatio(
+              aspectRatio: 4 / 5,
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildSmallPlaceholder(),
+                    )
+                  : _buildSmallPlaceholder(),
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -372,7 +725,7 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
           ),
           const SizedBox(height: 2),
           Text(
-            '\$${p.price.toStringAsFixed(0)}',
+            '${_shopSettings?.currencySymbol ?? '\$'}${p.price.toStringAsFixed(0)}',
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF00C853)),
           ),
         ],
@@ -381,14 +734,16 @@ class _CustomerProductDetailScreenState extends State<CustomerProductDetailScree
   }
 
   Widget _buildSmallPlaceholder() {
-    return Container(
-      height: 100,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
+    return AspectRatio(
+      aspectRatio: 4 / 5,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.local_florist, size: 36, color: Colors.grey),
       ),
-      child: const Icon(Icons.local_florist, size: 36, color: Colors.grey),
     );
   }
 

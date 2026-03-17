@@ -69,7 +69,6 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading profile: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -179,7 +178,7 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                       Navigator.pop(context);
                     }
                   } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar: $e'), backgroundColor: Colors.red));
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.'), backgroundColor: Colors.red));
                   } finally {
                     if (mounted) setState(() => _isSaving = false);
                   }
@@ -249,7 +248,7 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                 }
               } catch (e) {
                 setState(() => _isUploadingLogo = false);
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error subiendo imagen: $e')));
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo subir la imagen.')));
               }
             },
             child: Container(
@@ -305,6 +304,8 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
             TextFormField(
               controller: _bioController,
               maxLines: 5,
+              maxLength: 500,
+              onChanged: (_) => setState(() {}),
               style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
               decoration: InputDecoration(
                 hintText: 'Cuéntanos la historia de tu florería, tus orígenes y lo que te hace único en el mercado...',
@@ -312,6 +313,7 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.all(16),
+                counterText: '',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
@@ -326,10 +328,10 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                 ),
               ),
             ),
-            const Positioned(
+            Positioned(
               bottom: 12,
               right: 16,
-              child: Text('0/500', style: TextStyle(color: AppTheme.mutedLight, fontSize: 12, fontWeight: FontWeight.bold)),
+              child: Text('${_bioController.text.length}/500', style: const TextStyle(color: AppTheme.mutedLight, fontSize: 12, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -378,9 +380,7 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
             child: IconButton(
               icon: const Icon(Icons.add, color: Colors.purple),
               onPressed: () {
-                setState(() {
-                  yearsOfExperience++;
-                });
+                if (yearsOfExperience < 80) setState(() => yearsOfExperience++);
               },
             ),
           ),
@@ -625,6 +625,17 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                       );
                       return;
                     }
+                    final yearInt = int.tryParse(year);
+                    if (yearInt == null || year.length != 4 || yearInt < 1900 || yearInt > 2100) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('El año debe ser un número de 4 dígitos válido (ej. 2020).'),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      return;
+                    }
                     setState(() {
                       // Insert at the beginning so newest is on top
                       _milestones.insert(0, MilestoneData(
@@ -753,7 +764,7 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                }
             } catch (e) {
                setState(() => _isUploadingGallery = false);
-               if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo subir la imagen.')));
             }
           },
           child: Container(

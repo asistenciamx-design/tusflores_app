@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/currency_cache.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../domain/models/order_model.dart';
 import 'orders_screen.dart';
@@ -218,7 +219,7 @@ class _ConfirmPaymentScreenState extends State<ConfirmPaymentScreen> {
               const Text('TOTAL A PAGAR',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.mutedLight, letterSpacing: 1.2)),
               const SizedBox(height: 8),
-              Text('\$${((widget.order.price * widget.order.quantity) + widget.order.shippingCost).toStringAsFixed(2)}',
+              Text('${CurrencyCache.symbol}${((widget.order.price * widget.order.quantity) + widget.order.shippingCost).toStringAsFixed(2)}',
                   style: const TextStyle(fontSize: 44, fontWeight: FontWeight.bold, color: AppTheme.primary)),
               const SizedBox(height: 10),
               Container(

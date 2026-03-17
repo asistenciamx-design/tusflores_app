@@ -43,6 +43,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       );
       return;
     }
+    if (!RegExp(r'\d').hasMatch(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe incluir al menos un número.')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -61,7 +67,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             'shop_name': name,
           });
         } catch (dbError) {
-          debugPrint('Error inserting initial profile: $dbError');
           // Proceed anyway as they are signed up. They can update profile later.
         }
 
@@ -69,8 +74,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
+        final msg = _authErrorMessage(e.message);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
@@ -84,6 +90,23 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  String _authErrorMessage(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('already registered') || lower.contains('user already exists')) {
+      return 'Ya existe una cuenta con este correo.';
+    }
+    if (lower.contains('invalid email')) {
+      return 'El correo no tiene un formato válido.';
+    }
+    if (lower.contains('password') && lower.contains('characters')) {
+      return 'La contraseña es demasiado corta.';
+    }
+    if (lower.contains('signup') && lower.contains('disabled')) {
+      return 'El registro está deshabilitado temporalmente.';
+    }
+    return 'No se pudo crear la cuenta. Intenta de nuevo.';
   }
 
   @override

@@ -59,7 +59,7 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
       shopId: widget.shopId,
       orderId: widget.orderId,
       reviewerName: name,
-      rating: _rating,
+      rating: _rating.clamp(1, 5),
       comment: _commentController.text.trim().isEmpty
           ? null
           : _commentController.text.trim(),
@@ -193,6 +193,7 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
           TextField(
             controller: _commentController,
             maxLines: 4,
+            maxLength: 500,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText:

@@ -22,7 +22,6 @@ class ReviewRepository {
           .limit(limit);
       return (rows as List).map((r) => ReviewModel.fromJson(r)).toList();
     } catch (e) {
-      debugPrint('ReviewRepository.getShopReviews error: $e');
       return [];
     }
   }
@@ -33,7 +32,6 @@ class ReviewRepository {
       await _client.from('shop_reviews').insert(review.toJson());
       return true;
     } catch (e) {
-      debugPrint('ReviewRepository.createReview error: $e');
       return false;
     }
   }
@@ -64,7 +62,6 @@ class ReviewRepository {
           .eq('shop_id', uid);
       return true;
     } catch (e) {
-      debugPrint('ReviewRepository.replyToReview error: $e');
       return false;
     }
   }
@@ -80,7 +77,6 @@ class ReviewRepository {
           .order('created_at', ascending: false);
       return (rows as List).map((r) => ReviewModel.fromJson(r)).toList();
     } catch (e) {
-      debugPrint('ReviewRepository.getAllShopReviews error: $e');
       return [];
     }
   }

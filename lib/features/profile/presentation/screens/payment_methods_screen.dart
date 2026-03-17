@@ -401,7 +401,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
             buffer.writeln('💳 *Formas de pago — $_shopName*\n');
             buffer.writeln('🔗 *Links de pago*');
             for (final l in linkMethods) {
-              buffer.writeln('• ${l.serviceName}: https://${l.url}');
+              buffer.writeln('• ${l.serviceName}: ${l.url}');
             }
             buffer.writeln('\n¡Gracias por tu compra! 🌸');
             message = buffer.toString().trim();
@@ -493,9 +493,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
               Text(method.url, style: const TextStyle(color: AppTheme.mutedLight, fontSize: 12)),
             ],
           )),
-          _buildIconAction(Icons.copy, () => Clipboard.setData(ClipboardData(text: 'https://${method.url}'))),
+          _buildIconAction(Icons.copy, () => Clipboard.setData(ClipboardData(text: method.url))),
           const SizedBox(width: 4),
-          _buildIconAction(Icons.ios_share, () => Share.share('${method.serviceName}: https://${method.url}', subject: 'Link de pago — $_shopName')),
+          _buildIconAction(Icons.ios_share, () => Share.share('${method.serviceName}: ${method.url}', subject: 'Link de pago — $_shopName')),
         ],
       ),
     );

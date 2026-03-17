@@ -103,7 +103,6 @@ class _CustomerOrderSummaryScreenState
         });
       }
     } catch (e) {
-      debugPrint('Error loading shop details: $e');
       if (mounted) {
         setState(() {
           _shopName = 'Tu Florería';
@@ -131,8 +130,10 @@ class _CustomerOrderSummaryScreenState
       final List<dynamic> productsData = jsonDecode(widget.order.productName);
       for (var p in productsData) {
         final name = p['name'] as String? ?? 'Producto';
+        final sku = (p['sku'] as String?) ?? '';
         final qty = p['qty'] as int? ?? 1;
-        buffer.writeln('- $qty x $name');
+        final skuTag = sku.isNotEmpty ? ' [$sku]' : '';
+        buffer.writeln('- $qty x $name$skuTag');
       }
     } catch (e) {
       buffer
@@ -140,12 +141,12 @@ class _CustomerOrderSummaryScreenState
     }
 
     final total = widget.order.price + widget.order.shippingCost;
-    buffer.writeln('\n\u2605 *Total:* \$${total.toStringAsFixed(2)} MXN');
+    buffer.writeln('\n\u2605 *Total:* ${_shopSettings?.currencySymbol ?? '\$'}${total.toStringAsFixed(2)} ${_shopSettings?.currencyCode ?? 'MXN'}');
     final cityLabel = widget.order.deliveryCity?.isNotEmpty == true
         ? ' (${widget.order.deliveryCity})'
         : '';
     buffer.writeln(
-        '\u2605 *Envio$cityLabel:* ${widget.order.shippingCost == 0.0 ? 'GRATIS' : '\$${widget.order.shippingCost.toStringAsFixed(2)}'}');
+        '\u2605 *Envio$cityLabel:* ${widget.order.shippingCost == 0.0 ? 'GRATIS' : '${_shopSettings?.currencySymbol ?? '\$'}${widget.order.shippingCost.toStringAsFixed(2)}'}');
 
     // Datos del destinatario (quien recibe)
     final recipientName = widget.order.recipientName?.isNotEmpty == true
@@ -265,11 +266,10 @@ class _CustomerOrderSummaryScreenState
         }
       }
     } catch (e) {
-      debugPrint('Error capturing screenshot: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar la imagen: $e'),
+            content: const Text('No se pudo guardar la imagen.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -314,7 +314,7 @@ class _CustomerOrderSummaryScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error inesperado: $e'),
+            content: const Text('No se pudo guardar el pedido. Intenta de nuevo.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -651,6 +651,7 @@ class _CustomerOrderSummaryScreenState
                           jsonDecode(widget.order.productName);
                       return productsData.map((p) {
                         final name = p['name'] as String? ?? 'Producto';
+                        final sku = (p['sku'] as String?) ?? '';
                         final qty = p['qty'] as int? ?? 1;
                         final price = p['price'] as double? ?? 0.0;
                         return Padding(
@@ -664,12 +665,23 @@ class _CustomerOrderSummaryScreenState
                                       fontSize: 14)),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: Text(name,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14)),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (sku.isNotEmpty)
+                                      Text(sku,
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade500,
+                                              letterSpacing: 0.5)),
+                                    Text(name,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14)),
+                                  ],
+                                ),
                               ),
-                              Text('\$${price.toStringAsFixed(2)}',
+                              Text('${_shopSettings?.currencySymbol ?? '\$'}${price.toStringAsFixed(2)}',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14)),
@@ -698,7 +710,7 @@ class _CustomerOrderSummaryScreenState
                                 ],
                               ),
                             ),
-                            Text('\$${widget.order.price.toStringAsFixed(2)}',
+                            Text('${_shopSettings?.currencySymbol ?? '\$'}${widget.order.price.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 14)),
                           ],
@@ -718,7 +730,7 @@ class _CustomerOrderSummaryScreenState
                       Text(
                           widget.order.shippingCost == 0.0
                               ? 'GRATIS'
-                              : '\$${widget.order.shippingCost.toStringAsFixed(2)}',
+                              : '${_shopSettings?.currencySymbol ?? '\$'}${widget.order.shippingCost.toStringAsFixed(2)}',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
@@ -741,7 +753,7 @@ class _CustomerOrderSummaryScreenState
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                              '\$${(widget.order.price + widget.order.shippingCost).toStringAsFixed(2)} MXN',
+                              '${_shopSettings?.currencySymbol ?? '\$'}${(widget.order.price + widget.order.shippingCost).toStringAsFixed(2)} ${_shopSettings?.currencyCode ?? 'MXN'}',
                               style: const TextStyle(
                                   color: Color(0xFF00E676),
                                   fontSize: 24,

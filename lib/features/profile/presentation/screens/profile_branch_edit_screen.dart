@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -463,7 +464,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
         ),
         const SizedBox(height: 16),
 
-        _buildTextInputField('Dirección Completa', _addressCtrl, hint: 'Av. Reforma 250, Col. Juárez, 06600'),
+        _buildTextInputField('Dirección Completa', _addressCtrl, hint: 'Av. Reforma 250, Col. Juárez, 06600', maxLength: 150),
         const SizedBox(height: 16),
 
         _buildTextInputField('Enlace de Google Maps', _mapsCtrl,
@@ -501,7 +502,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
     );
   }
 
-  Widget _buildTextInputField(String label, TextEditingController? ctrl, {String? hint, IconData? icon, Color? iconColor, int maxLines = 1, Color? textColor}) {
+  Widget _buildTextInputField(String label, TextEditingController? ctrl, {String? hint, IconData? icon, Color? iconColor, int maxLines = 1, Color? textColor, int? maxLength, List<TextInputFormatter>? inputFormatters}) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: maxLines > 1 ? 12 : 8),
       decoration: BoxDecoration(
@@ -520,6 +521,8 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
                 TextFormField(
                   controller: ctrl,
                   maxLines: maxLines,
+                  maxLength: maxLength,
+                  inputFormatters: inputFormatters,
                   style: TextStyle(fontSize: 14, color: textColor ?? AppTheme.textLight, fontWeight: FontWeight.w500),
                   decoration: InputDecoration(
                     hintText: hint,
@@ -527,6 +530,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.only(top: 4, bottom: 4),
+                    counterText: '',
                   ),
                 ),
               ],
@@ -545,7 +549,7 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTextInputField('Indicaciones adicionales', _referencesCtrl,
-            hint: 'Ej. Local 4B, frente a la fuente, portón negro...', maxLines: 3),
+            hint: 'Ej. Local 4B, frente a la fuente, portón negro...', maxLines: 3, maxLength: 200),
         const SizedBox(height: 8),
         const Padding(
           padding: EdgeInsets.only(left: 4.0),
@@ -561,9 +565,9 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
   Widget _buildBranchDataForm() {
     return Column(
       children: [
-        _buildTextInputField('Teléfono', _phoneCtrl, hint: '55 1234 5678', icon: Icons.phone, iconColor: AppTheme.mutedLight),
+        _buildTextInputField('Teléfono', _phoneCtrl, hint: '55 1234 5678', icon: Icons.phone, iconColor: AppTheme.mutedLight, maxLength: 20, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
         const SizedBox(height: 16),
-        _buildTextInputField('WhatsApp', _whatsappCtrl, hint: '55 1234 5678', icon: Icons.chat, iconColor: Colors.green),
+        _buildTextInputField('WhatsApp', _whatsappCtrl, hint: '55 1234 5678', icon: Icons.chat, iconColor: Colors.green, maxLength: 20, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

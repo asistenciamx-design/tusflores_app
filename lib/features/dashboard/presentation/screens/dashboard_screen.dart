@@ -4,7 +4,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../catalog/presentation/screens/add_edit_product_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
 import '../../../catalog/domain/repositories/product_repository.dart';
@@ -29,7 +28,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _shopName = 'Cargando...';
   String _userName = '...';
-  
+
   bool _isLoadingData = true;
   int _pendingCount = 0;
   int _deliveredCount = 0;
@@ -48,35 +47,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadDashboardData() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
-    
+
     try {
-      // Load products count (all, including paused)
       final products = await ProductRepository().getProducts(user.id);
       final activeCount = products.where((p) => p['is_active'] == true).length;
       final pausedCount = products.where((p) => p['is_active'] == false).length;
 
-      // Load orders
       final orders = await OrderRepository().getOrders(user.id);
-      
+
       int pending = 0;
       int delivered = 0;
       double sales = 0;
       OrderModel? latest;
-      
+
       final today = DateTime.now();
-      
+
       for (var order in orders) {
         if (order.status == OrderStatus.waiting) pending++;
         if (order.status == OrderStatus.delivered) delivered++;
-        
-        // Sales today
+
         if (order.createdAt.year == today.year &&
             order.createdAt.month == today.month &&
             order.createdAt.day == today.day) {
           sales += order.total;
         }
       }
-      
+
       if (orders.isNotEmpty) {
         latest = orders.first;
       }
@@ -93,7 +89,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading dashboard data: $e');
       if (mounted) {
         setState(() => _isLoadingData = false);
       }
@@ -125,15 +120,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _buildHeader(context),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
                   children: [
                     _buildSalesCard(context),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     _buildStatsGrid(context),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     _buildActionButtons(context),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     _buildLatestOrder(context),
                     const SizedBox(height: 16),
                     DashboardRatingWidget(shopId: Supabase.instance.client.auth.currentUser?.id ?? ''),
@@ -149,47 +144,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24.0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      margin: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 _shopName,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                ),
               ),
-              const CircleAvatar(
-                radius: 16,
-                backgroundColor: AppTheme.secondaryBg,
-                backgroundImage: NetworkImage(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuAeIkOPO00Vkudeg_UpRc9dQunoSmMdv2yNQm47qwypGvvdnBgR5YfMKynfn1HT7z9crfg7OPvzkKzun3DFwR0TFos1l2VDD6hl8-mnbM2OzHiGCExkw-e_ZQfnsmsIrH46CsCBzL6m9h3aR1ZL33CJPuJ6srcoXwHzAMTcXa6KJArq3NCxPIJFm0CKg3QTy8l3gYLe0ocBUxSXeLOHLKnZq0Unl43_Mgglw1IkBLbQwymxQymKslAaVbI0WO7PlcsCLCLd-12vrrE-',
+              const SizedBox(height: 2),
+              Text(
+                'Hola $_userName 👋',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.mutedLight,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Hola $_userName 👋',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.mutedLight,
-                ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(10),
+              child: Icon(Icons.notifications_outlined, color: AppTheme.primary, size: 22),
+            ),
           ),
         ],
       ),
@@ -200,106 +189,111 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.primary, Color(0xFF0D9488)],
+        ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.40),
+            blurRadius: 28,
+            spreadRadius: 0,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Positioned(
+            top: -8,
+            right: -8,
+            child: Icon(
+              Icons.local_florist,
+              size: 80,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Ventas de hoy',
+              const Text(
+                'VENTAS DE HOY',
                 style: TextStyle(
-                  color: AppTheme.mutedLight,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  letterSpacing: 1.2,
                 ),
               ),
-              Icon(Icons.more_horiz, color: AppTheme.mutedLight, size: 20),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _isLoadingData
-                  ? const SizedBox(
-                      height: 36,
-                      width: 100,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : Text(
-                      NumberFormat.currency(locale: 'es_MX', symbol: '\$').format(_todaySales),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                    ),
-              const SizedBox(width: 12),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  _isLoadingData
+                      ? const SizedBox(
+                          height: 40,
+                          width: 100,
+                          child: Center(child: CircularProgressIndicator(color: Colors.white)),
+                        )
+                      : Text(
+                          NumberFormat.currency(locale: 'es_MX', symbol: '\$').format(_todaySales),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                  const SizedBox(width: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.trending_up, color: Colors.green, size: 12),
+                        Icon(Icons.trending_up, color: Colors.white, size: 13),
                         SizedBox(width: 4),
                         Text(
-                          '+15%',
+                          '+15% vs ayer',
                           style: TextStyle(
-                            color: Colors.green,
-                            fontSize: 12,
+                            color: Colors.white,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'vs ayer',
-                    style: TextStyle(color: AppTheme.mutedLight, fontSize: 12),
-                  ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
-          Center(
-            child: InkWell(
-              onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const WeeklyStatsScreen())),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Ver Estadísticas',
+              const SizedBox(height: 20),
+              InkWell(
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const WeeklyStatsScreen())),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                  ),
+                  child: const Text(
+                    'Ver detalles del día',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_forward,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 16,
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -315,7 +309,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     return Column(
       children: [
-        // Fila 1: Pendientes | Entregados
         Row(
           children: [
             Expanded(
@@ -324,8 +317,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     MaterialPageRoute(builder: (_) => const OrdersScreen(initialTab: 0))),
                 child: _StatCard(
                   icon: Icons.pending_actions,
-                  iconColor: Colors.orange,
-                  iconBg: Colors.orange.withValues(alpha: 0.1),
+                  iconColor: const Color(0xFFF59E0B),
+                  iconBg: const Color(0xFFFFF8E6),
+                  glowColor: const Color(0xFFF59E0B),
                   value: _pendingCount.toString(),
                   label: 'Pendientes',
                 ),
@@ -337,9 +331,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onTap: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const OrdersScreen(initialTab: 1))),
                 child: _StatCard(
-                  icon: Icons.local_shipping,
-                  iconColor: Colors.blue,
-                  iconBg: Colors.blue.withValues(alpha: 0.1),
+                  icon: Icons.check_circle_outline,
+                  iconColor: AppTheme.primary,
+                  iconBg: const Color(0xFFECFDF5),
+                  glowColor: AppTheme.primary,
                   value: _deliveredCount.toString(),
                   label: 'Entregados',
                 ),
@@ -348,16 +343,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        // Fila 2: Catálogo | En Pausa
         Row(
           children: [
             Expanded(
               child: GestureDetector(
                 onTap: () => widget.onNavigateToCatalog?.call(),
                 child: _StatCard(
-                  icon: Icons.inventory_2,
-                  iconColor: Colors.purple,
-                  iconBg: Colors.purple.withValues(alpha: 0.1),
+                  icon: Icons.menu_book_outlined,
+                  iconColor: const Color(0xFF3B82F6),
+                  iconBg: const Color(0xFFEFF6FF),
+                  glowColor: const Color(0xFF3B82F6),
                   value: _catalogCount.toString(),
                   label: 'Catálogo',
                 ),
@@ -370,8 +365,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     MaterialPageRoute(builder: (_) => const CatalogScreen(showPausedOnly: true))),
                 child: _StatCard(
                   icon: Icons.pause_circle_outline,
-                  iconColor: Colors.grey.shade600,
-                  iconBg: Colors.grey.shade200,
+                  iconColor: const Color(0xFF94A3B8),
+                  iconBg: const Color(0xFFF1F5F9),
+                  glowColor: const Color(0xFF94A3B8),
                   value: _pausedCount.toString(),
                   label: 'En Pausa',
                 ),
@@ -390,30 +386,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
              Expanded(
                child: _OutlineActionButton(
-                 icon: Icons.share,
+                 icon: Icons.share_outlined,
                  label: 'Compartir catálogo',
                  onTap: () async {
                    final userId = Supabase.instance.client.auth.currentUser?.id;
                    if (userId == null) return;
 
-                   // Leer settings (mensaje personalizado + imagen) y perfil (slug para URL)
                    final settings = await ShopSettingsRepository().getSettings(userId);
                    final profile = await ProfileRepository().getProfile();
 
-                   // Nombre para encabezado: del campo catalog_shop_name guardado
                    final catalogName = (settings?.rawData?['catalog_shop_name'] as String?)?.trim() ?? '';
                    final displayName = catalogName.isNotEmpty ? catalogName : _shopName;
 
-                   // URL real de la tienda usando el slug (shop_name del perfil)
                    final slug = (profile?['shop_name'] as String?)?.trim() ?? '';
                    final storeUrl = slug.isNotEmpty
                        ? 'https://tusflores.app/mx/$slug'
                        : 'https://tusflores.app';
 
-                   // Mensaje personalizado
                    final customMsg = (settings?.catalogMessage as String?)?.trim() ?? '';
 
-                   // Construir mensaje final
                    final buffer = StringBuffer();
                    buffer.writeln('🌸 *$displayName*');
                    buffer.writeln();
@@ -435,7 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
              const SizedBox(width: 12),
              Expanded(
                child: _OutlineActionButton(
-                 icon: Icons.payments,
+                 icon: Icons.payments_outlined,
                  label: 'Compartir formas de pago',
                  onTap: () async {
                    final String shopId = Supabase.instance.client.auth.currentUser!.id;
@@ -469,38 +460,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
              ),
           ],
         ),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AddEditProductScreen()),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 2,
-            minimumSize: const Size(double.infinity, 0),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'AGREGAR NUEVO PRODUCTO',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  letterSpacing: 0.5,
-                ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withValues(alpha: 0.45),
+                blurRadius: 22,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
               ),
             ],
+          ),
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddEditProductScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              elevation: 0,
+              minimumSize: const Size(double.infinity, 0),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_circle_outline, size: 22),
+                SizedBox(width: 10),
+                Text(
+                  'AGREGAR NUEVO PRODUCTO',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -511,7 +515,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_isLoadingData) {
       return const SizedBox.shrink();
     }
-    
+
     if (_latestOrder == null) {
       return Column(
         children: [
@@ -545,8 +549,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.08)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: const Center(
               child: Text(
@@ -558,7 +569,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       );
     }
-    
+
     final order = _latestOrder!;
     final timeDiff = DateTime.now().difference(order.createdAt);
     String timeAgo = '';
@@ -569,11 +580,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else {
       timeAgo = 'Hace ${timeDiff.inDays} días';
     }
-    
+
     String statusText = 'PENDIENTE';
     Color statusColor = AppTheme.accentYellowText;
     Color statusBg = AppTheme.accentYellow;
-    
+
     if (order.status == OrderStatus.delivered) {
       statusText = 'ENTREGADO';
       statusColor = Colors.green.shade700;
@@ -615,89 +626,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
         InkWell(
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => EditOrderScreen(order: order))),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.secondaryBg,
-                  border: Border.all(color: AppTheme.secondaryBg, width: 2),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.08)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 4),
                 ),
-                child: const Icon(Icons.shopping_bag, color: AppTheme.mutedLight),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                             crossAxisAlignment: CrossAxisAlignment.start,
-                             children: [
-                               Text(
-                                 'Folio ${order.folio}',
-                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                       fontWeight: FontWeight.bold,
-                                     ),
-                               ),
-                               Text(
-                                 order.customerName,
-                                 style: const TextStyle(
-                                   color: AppTheme.mutedLight,
-                                   fontSize: 14,
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: AppTheme.primary.withValues(alpha: 0.10),
+                  ),
+                  child: const Icon(Icons.local_florist, color: AppTheme.primary, size: 26),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text(
+                                   'Folio ${order.folio}',
+                                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                         fontWeight: FontWeight.bold,
+                                       ),
                                  ),
-                                 maxLines: 1,
-                                 overflow: TextOverflow.ellipsis,
-                               ),
-                             ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusBg,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            statusText,
-                            style: TextStyle(
-                              color: statusColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                                 Text(
+                                   order.customerName,
+                                   style: const TextStyle(
+                                     color: AppTheme.mutedLight,
+                                     fontSize: 14,
+                                   ),
+                                   maxLines: 1,
+                                   overflow: TextOverflow.ellipsis,
+                                 ),
+                               ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      timeAgo,
-                      style: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 12,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              statusText,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        timeAgo,
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ],
     );
@@ -708,6 +727,7 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
+  final Color glowColor;
   final String value;
   final String label;
 
@@ -715,6 +735,7 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.iconBg,
+    required this.glowColor,
     required this.value,
     required this.label,
   });
@@ -722,34 +743,45 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: glowColor.withValues(alpha: 0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: glowColor.withValues(alpha: 0.14),
+            blurRadius: 18,
+            spreadRadius: 0,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
               color: iconBg,
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 20),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
+          const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
-              color: AppTheme.mutedLight,
-              fontSize: 12,
+            style: TextStyle(
+              color: iconColor.withValues(alpha: 0.8),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -774,13 +806,13 @@ class _OutlineActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget content = Container(
-      height: 100,
+      height: 96,
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
+        color: AppTheme.primary.withValues(alpha: 0.06),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary,
-          width: 2,
+          color: AppTheme.primary.withValues(alpha: 0.20),
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -789,17 +821,17 @@ class _OutlineActionButton extends StatelessWidget {
         children: [
             Icon(
               icon,
-              color: Theme.of(context).colorScheme.primary,
-              size: 28,
+              color: AppTheme.primary,
+              size: 26,
             ),
             const SizedBox(height: 8),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
+              style: const TextStyle(
+                color: AppTheme.primary,
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: 11,
                 height: 1.2,
               ),
             ),
@@ -821,8 +853,8 @@ class _OutlineActionButton extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: IconButton(
-                icon: const Icon(Icons.edit, size: 20),
-                color: Theme.of(context).colorScheme.primary,
+                icon: const Icon(Icons.edit, size: 18),
+                color: AppTheme.primary,
                 onPressed: onEdit,
                 splashRadius: 20,
               ),

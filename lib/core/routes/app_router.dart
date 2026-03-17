@@ -31,6 +31,13 @@ import '../services/seo_service.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
+  redirect: (context, state) {
+    final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
+    final path = state.uri.path;
+    const protectedPaths = ['/', '/reviews/manage'];
+    if (protectedPaths.contains(path) && !isLoggedIn) return '/login';
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/login',
@@ -113,7 +120,11 @@ final appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
         final product = extra?['product'] as ProductItem?;
         final shopId = extra?['shopId'] as String?;
-        return CustomerOrderFormScreen(product: product, shopId: shopId);
+        final giftProducts = (extra?['giftProducts'] as List?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        return CustomerOrderFormScreen(
+            product: product, shopId: shopId, giftProducts: giftProducts);
       },
     ),
     GoRoute(
@@ -204,7 +215,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   Future<void> _resolveSlug() async {
     try {
       final decodedSlug = Uri.decodeComponent(widget.slug).toLowerCase().trim();
-      debugPrint('[PublicStore] Looking for slug: "$decodedSlug"');
 
       // Normalize matches DB generated column: lower(regexp_replace(shop_name, '[^a-zA-Z0-9]', '', 'g'))
       // Works for both hyphenated URLs (/mx/flores-del-campo) and stripped (/mx/floresdelcampo)
@@ -216,7 +226,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
           .eq('slug', normalizedSlug)
           .maybeSingle();
 
-      debugPrint('[PublicStore] Match: $match');
 
       if (!mounted) return;
       if (match != null) {
@@ -230,7 +239,6 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
         setState(() => _notFound = true);
       }
     } catch (e) {
-      debugPrint('[PublicStore] ERROR: $e');
       if (mounted) setState(() => _notFound = true);
     }
   }

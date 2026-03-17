@@ -196,8 +196,19 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
 
   Future<void> _saveChanges() async {
     if (_formKey.currentState!.validate()) {
+      // Validar que todos los precios sean > 0
+      for (final item in _productItems) {
+        final p = double.tryParse(item.priceCtrl.text) ?? 0.0;
+        if (p <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('El precio de cada producto debe ser mayor a 0')),
+          );
+          return;
+        }
+      }
+
       setState(() => _isSaving = true);
-      
+
       String finalProductName;
       double finalPrice = 0.0;
       int finalQty = 1;
@@ -341,10 +352,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 _buildAnonymousCheckbox(),
                 const SizedBox(height: 16),
                 _buildInputLabel('Para:'),
-                _buildTextField(_cardToCtrl, 'Nombre destinatario'),
+                _buildTextField(_cardToCtrl, 'Nombre destinatario', maxLength: 100),
                 const SizedBox(height: 16),
                 _buildInputLabel('Teléfono destinatario'),
-                _buildTextField(_cardPhoneCtrl, '55...'),
+                _buildTextField(_cardPhoneCtrl, '55...', maxLength: 15,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -369,7 +382,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                _buildTextField(_cardMessageCtrl, 'Mensaje...', maxLines: 4),
+                _buildTextField(_cardMessageCtrl, 'Mensaje...', maxLines: 4, maxLength: 500),
 
                 const SizedBox(height: 32),
                 const Text('Dirección de Entrega', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textLight)),
@@ -396,7 +409,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                       ),
                       const SizedBox(height: 20),
                       _buildInputLabel('CALLE Y NÚMERO', uppercase: true),
-                      _buildTextField(_streetCtrl, 'Av. Reforma 222'),
+                      _buildTextField(_streetCtrl, 'Av. Reforma 222', maxLength: 200),
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -405,7 +418,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildInputLabel('COLONIA / BARRIO', uppercase: true),
-                                _buildTextField(_neighborhoodCtrl, 'Col. Juárez'),
+                                _buildTextField(_neighborhoodCtrl, 'Col. Juárez', maxLength: 150),
                               ],
                             ),
                           ),
@@ -415,7 +428,9 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildInputLabel('CÓDIGO POSTAL', uppercase: true),
-                                _buildTextField(_zipCtrl, '06600'),
+                                _buildTextField(_zipCtrl, '06600', maxLength: 10,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
                               ],
                             ),
                           ),
@@ -425,7 +440,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                       _buildLocationField(),
                       const SizedBox(height: 16),
                       _buildInputLabel('REFERENCIAS ADICIONALES', uppercase: true),
-                      _buildTextField(_referenceCtrl, 'Ej. Edificio blanco...', maxLines: 2),
+                      _buildTextField(_referenceCtrl, 'Ej. Edificio blanco...', maxLines: 2, maxLength: 500),
                       const SizedBox(height: 16),
                       _buildInputLabel('URL GOOGLE MAPS', uppercase: true),
                       _buildTextField(
@@ -612,7 +627,8 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInputLabel('Cantidad', uppercase: false),
-                  _buildTextField(item.qtyCtrl, '1', centerAlign: true, keyboardType: TextInputType.number),
+                  _buildTextField(item.qtyCtrl, '1', centerAlign: true, keyboardType: TextInputType.number, maxLength: 4,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
                 ],
               ),
             ),
@@ -623,7 +639,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInputLabel('Nombre', uppercase: false),
-                  _buildTextField(item.nameCtrl, 'Ramo...'),
+                  _buildTextField(item.nameCtrl, 'Ramo...', maxLength: 200),
                 ],
               ),
             ),
@@ -634,7 +650,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInputLabel('Precio', uppercase: false),
-                  _buildTextField(item.priceCtrl, '0.00', keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+                  _buildTextField(item.priceCtrl, '0.00', keyboardType: const TextInputType.numberWithOptions(decimal: true), maxLength: 10),
                 ],
               ),
             ),
@@ -672,14 +688,18 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     TextEditingController controller,
     String hint, {
     int maxLines = 1,
+    int? maxLength,
     TextInputType? keyboardType,
     Widget? suffixIcon,
     bool centerAlign = false,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
+      maxLength: maxLength,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       textAlign: centerAlign ? TextAlign.center : TextAlign.start,
       decoration: InputDecoration(
         hintText: hint,

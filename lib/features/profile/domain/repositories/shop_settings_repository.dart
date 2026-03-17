@@ -11,18 +11,20 @@ class ShopSettingsRepository {
     try {
       final response = await _client
           .from('shop_settings')
-          .select('settings')
+          .select('settings, currency_code, currency_symbol')
           .eq('shop_id', shopId)
           .maybeSingle();
 
       if (response == null || response['settings'] == null) {
         return ShopSettingsModel(storeHours: [], deliveryRanges: [], shippingRates: []);
       }
-      final model = ShopSettingsModel.fromJson(response['settings'] as Map<String, dynamic>);
-      debugPrint('[ShopSettings] getSettings: storeHours=${model.storeHours.length}');
+      final settingsJson = Map<String, dynamic>.from(response['settings'] as Map<String, dynamic>);
+      // Merge top-level currency columns into the JSON so fromJson picks them up
+      if (response['currency_code'] != null) settingsJson['currency_code'] = response['currency_code'];
+      if (response['currency_symbol'] != null) settingsJson['currency_symbol'] = response['currency_symbol'];
+      final model = ShopSettingsModel.fromJson(settingsJson);
       return model;
     } catch (e) {
-      debugPrint('[ShopSettings] getSettings error: $e');
       return ShopSettingsModel(storeHours: [], deliveryRanges: [], shippingRates: []);
     }
   }
@@ -30,19 +32,21 @@ class ShopSettingsRepository {
   Future<bool> updateSettings(String shopId, ShopSettingsModel settings) async {
     final currentUserId = _client.auth.currentUser?.id;
     if (currentUserId == null || currentUserId != shopId) {
-      debugPrint('[ShopSettings] updateSettings: unauthorized (shopId=$shopId, uid=$currentUserId)');
       return false;
     }
     try {
       final json = settings.toJson();
-      debugPrint('[ShopSettings] updateSettings: storeHours=${(json['store_hours'] as List).length}');
       await _client.from('shop_settings').upsert(
-        {'shop_id': shopId, 'settings': json},
+        {
+          'shop_id': shopId,
+          'settings': json,
+          'currency_code': settings.currencyCode,
+          'currency_symbol': settings.currencySymbol,
+        },
         onConflict: 'shop_id',
       );
       return true;
     } catch (e) {
-      debugPrint('[ShopSettings] updateSettings error: $e');
       return false;
     }
   }

@@ -354,7 +354,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: $e'),
+          content: const Text('No se pudo completar la operación.'),
           backgroundColor: Colors.red[700],
           behavior: SnackBarBehavior.floating,
         ));
@@ -672,6 +672,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             controller: _messageCtrl,
             maxLines: 4,
             minLines: 3,
+            maxLength: 500,
             onChanged: (_) => setState(() {}),
             style: const TextStyle(fontSize: 14, color: Colors.black87),
             decoration: const InputDecoration(

@@ -32,7 +32,6 @@ class ProfileRepository {
           .maybeSingle();
       return response;
     } catch (e) {
-      debugPrint('Error getProfileBySlug: $e');
       return null;
     }
   }
@@ -82,9 +81,16 @@ class ProfileRepository {
       }
 
       final bytes = await file.readAsBytes();
+      const maxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
+      if (bytes.length > maxFileSizeBytes) {
+        throw Exception('El archivo es demasiado grande. Máximo: 10 MB');
+      }
+      if (!_isValidImageBytes(bytes, ext)) {
+        throw Exception('El archivo no es una imagen válida.');
+      }
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
       final path = '${user.id}/$folder/$fileName';
-      
+
       await _client.storage.from('shop_assets').uploadBinary(
         path, 
         bytes,
@@ -93,6 +99,26 @@ class ProfileRepository {
       return _client.storage.from('shop_assets').getPublicUrl(path);
     } catch (e) {
       throw Exception('Error al subir imagen: $e');
+    }
+  }
+
+  bool _isValidImageBytes(List<int> bytes, String ext) {
+    if (bytes.length < 4) return false;
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
+      case 'png':
+        return bytes[0] == 0x89 && bytes[1] == 0x50 &&
+               bytes[2] == 0x4E && bytes[3] == 0x47;
+      case 'webp':
+        return bytes.length >= 12 &&
+               bytes[0] == 0x52 && bytes[1] == 0x49 &&
+               bytes[2] == 0x46 && bytes[3] == 0x46;
+      case 'gif':
+        return bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46;
+      default:
+        return false;
     }
   }
 }

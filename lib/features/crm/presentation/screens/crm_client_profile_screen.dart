@@ -36,8 +36,12 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
   List<String> _extraPhones = [];
 
   // Clave única del cliente para las tablas crm_*
-  String get _clientKey =>
-      widget.phone.isNotEmpty ? widget.phone : widget.name;
+  // Prioridad: teléfono > email > nombre (el nombre puede no ser único)
+  String get _clientKey {
+    if (widget.phone.isNotEmpty) return widget.phone;
+    if (widget.email.isNotEmpty) return widget.email;
+    return widget.name;
+  }
 
   // Valores mostrados: editados > originales de la orden
   String get _displayName => (_editedName?.isNotEmpty == true) ? _editedName! : widget.name;
@@ -86,7 +90,6 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint('CRM notes load error: $e');
       if (mounted) setState(() => _isLoadingNotes = false);
     }
   }
@@ -133,7 +136,6 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint('CRM note save error: $e');
       if (mounted) {
         setState(() {
           _notes.remove(optimistic);
@@ -170,7 +172,6 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint('CRM client load error: $e');
     }
   }
 
@@ -604,6 +605,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
                       child: TextField(
                         controller: _noteCtrl,
                         style: const TextStyle(fontSize: 13),
+                        maxLength: 500,
                         onSubmitted: (_) => _addNote(),
                         decoration: InputDecoration(
                           hintText: 'Agregar una nota...',
@@ -879,7 +881,6 @@ class _EditClientSheetState extends State<_EditClientSheet> {
       await widget.onSave(_nameCtrl.text, _emailCtrl.text, extras);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      debugPrint('Edit client save error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.')),

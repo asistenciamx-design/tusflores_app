@@ -636,7 +636,7 @@ class _CustomerBranchScreenState extends State<CustomerBranchScreen> {
                                 ),
                               ),
                               Text(
-                                isFree ? 'Gratis' : '\$${rate.costo.toStringAsFixed(0)}',
+                                isFree ? 'Gratis' : '${_settings?.currencySymbol ?? '\$'}${rate.costo.toStringAsFixed(0)}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
