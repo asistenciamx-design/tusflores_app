@@ -56,7 +56,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     } on AuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+          SnackBar(content: Text(_authErrorMessage(e.message)), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
@@ -70,6 +70,17 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  String _authErrorMessage(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('invalid') || lower.contains('otp') || lower.contains('token')) {
+      return 'El código es inválido o ha expirado. Intenta de nuevo.';
+    }
+    if (lower.contains('too many') || lower.contains('rate limit')) {
+      return 'Demasiados intentos. Espera unos minutos e intenta de nuevo.';
+    }
+    return 'No se pudo verificar el código. Intenta de nuevo.';
   }
 
   bool _isComplete() => _controllers.every((c) => c.text.isNotEmpty);
