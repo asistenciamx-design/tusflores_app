@@ -5,7 +5,7 @@ import '../../../orders/domain/models/order_model.dart';
 import '../../../orders/domain/repositories/order_repository.dart';
 import 'crm_client_profile_screen.dart';
 
-enum _SortMode { az, mostOrders, recent }
+enum _SortMode { az, mostOrders, mostSpent, recent }
 
 class CrmScreen extends StatefulWidget {
   const CrmScreen({super.key});
@@ -64,12 +64,21 @@ class _CrmScreenState extends State<CrmScreen> {
         copy.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       case _SortMode.mostOrders:
         copy.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+      case _SortMode.mostSpent:
+        copy.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
       case _SortMode.recent:
         copy.sort((a, b) => (b.lastInteraction ?? DateTime(0))
             .compareTo(a.lastInteraction ?? DateTime(0)));
     }
     return copy;
   }
+
+  double get _maxTotalSpent => _interactions.isEmpty
+      ? 1.0
+      : _interactions
+          .map((c) => c.totalSpent)
+          .reduce((a, b) => a > b ? a : b)
+          .clamp(1.0, double.infinity);
 
   Future<void> _loadData() async {
     final user = Supabase.instance.client.auth.currentUser;
@@ -104,6 +113,7 @@ class _CrmScreenState extends State<CrmScreen> {
           phone: phone,
           email: email,
           orderCount: clientOrders.length,
+          totalSpent: clientOrders.fold(0.0, (s, o) => s + o.total),
           lastInteraction: lastInteraction,
           orders: clientOrders,
         );
@@ -320,32 +330,43 @@ class _CrmScreenState extends State<CrmScreen> {
   }
 
   Widget _buildInteractionsList() {
+    final maxSpent = _maxTotalSpent;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            _SortChip(
-              label: 'A-Z',
-              icon: Icons.sort_by_alpha,
-              selected: _sortMode == _SortMode.az,
-              onTap: () => _onSortChanged(_SortMode.az),
-            ),
-            const SizedBox(width: 8),
-            _SortChip(
-              label: 'Más pedidos',
-              icon: Icons.trending_up,
-              selected: _sortMode == _SortMode.mostOrders,
-              onTap: () => _onSortChanged(_SortMode.mostOrders),
-            ),
-            const SizedBox(width: 8),
-            _SortChip(
-              label: 'Recientes',
-              icon: Icons.calendar_today_outlined,
-              selected: _sortMode == _SortMode.recent,
-              onTap: () => _onSortChanged(_SortMode.recent),
-            ),
-          ],
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _SortChip(
+                label: 'A-Z',
+                icon: Icons.sort_by_alpha,
+                selected: _sortMode == _SortMode.az,
+                onTap: () => _onSortChanged(_SortMode.az),
+              ),
+              const SizedBox(width: 8),
+              _SortChip(
+                label: 'Más pedidos',
+                icon: Icons.trending_up,
+                selected: _sortMode == _SortMode.mostOrders,
+                onTap: () => _onSortChanged(_SortMode.mostOrders),
+              ),
+              const SizedBox(width: 8),
+              _SortChip(
+                label: 'Mayor gasto',
+                icon: Icons.attach_money,
+                selected: _sortMode == _SortMode.mostSpent,
+                onTap: () => _onSortChanged(_SortMode.mostSpent),
+              ),
+              const SizedBox(width: 8),
+              _SortChip(
+                label: 'Recientes',
+                icon: Icons.calendar_today_outlined,
+                selected: _sortMode == _SortMode.recent,
+                onTap: () => _onSortChanged(_SortMode.recent),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         if (_filtered.isEmpty)
@@ -361,7 +382,7 @@ class _CrmScreenState extends State<CrmScreen> {
             ),
           )
         else
-          ...(_filtered.take(20).map((c) => _InteractionTile(client: c))),
+          ...(_filtered.take(20).map((c) => _InteractionTile(client: c, maxSpent: maxSpent))),
       ],
     );
   }
@@ -374,6 +395,7 @@ class _ClientInteraction {
   final String phone;
   final String email;
   final int orderCount;
+  final double totalSpent;
   final DateTime? lastInteraction;
   final List<OrderModel> orders;
 
@@ -382,6 +404,7 @@ class _ClientInteraction {
     required this.phone,
     this.email = '',
     required this.orderCount,
+    this.totalSpent = 0.0,
     this.lastInteraction,
     this.orders = const [],
   });
@@ -512,32 +535,60 @@ class _SortChip extends StatelessWidget {
 
 class _InteractionTile extends StatelessWidget {
   final _ClientInteraction client;
+  final double maxSpent;
 
-  const _InteractionTile({required this.client});
+  const _InteractionTile({required this.client, required this.maxSpent});
+
+  static const _palette = [
+    Color(0xFFEC4899),
+    Color(0xFF8B5CF6),
+    Color(0xFF3B82F6),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFF6366F1),
+    Color(0xFF0EA5E9),
+    Color(0xFFDB2777),
+    Color(0xFF7C3AED),
+    Color(0xFFF43F5E),
+  ];
+
+  Color get _avatarColor {
+    final code = client.name.isNotEmpty ? client.name.codeUnitAt(0) : 0;
+    return _palette[code % _palette.length];
+  }
 
   String _formatDate(DateTime? dt) {
     if (dt == null) return '';
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inDays == 0) {
-      return 'Hoy, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } else if (diff.inDays == 1) {
-      return 'Ayer, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } else {
-      return '${dt.day} ${_month(dt.month)}, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    }
+    if (diff.inDays == 0) return 'Hoy';
+    if (diff.inDays == 1) return 'Ayer';
+    if (diff.inDays < 7) return 'Hace ${diff.inDays} días';
+    if (diff.inDays < 14) return 'Hace 1 semana';
+    if (diff.inDays < 30) return 'Hace ${(diff.inDays / 7).floor()} semanas';
+    if (diff.inDays < 60) return 'Hace 1 mes';
+    return 'Hace ${(diff.inDays / 30).floor()} meses';
   }
 
-  String _month(int m) {
-    const months = [
-      '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
-    return months[m];
+  String _formatMoney(double v) {
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      final buf = StringBuffer();
+      for (int i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+        buf.write(s[i]);
+      }
+      return '\$${buf.toString()}';
+    }
+    return '\$${v.toStringAsFixed(0)}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final barFraction = maxSpent > 0 ? (client.totalSpent / maxSpent).clamp(0.04, 1.0) : 0.04;
+    final initial = client.name.isNotEmpty ? client.name[0].toUpperCase() : '?';
+    final color = _avatarColor;
+
     return GestureDetector(
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => CrmClientProfileScreen(
@@ -548,78 +599,120 @@ class _InteractionTile extends StatelessWidget {
         ),
       )),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: AppTheme.primary.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              shape: BoxShape.circle,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Avatar con letra e color
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 17,
+                ),
+              ),
             ),
-            child: const Icon(Icons.person,
-                color: AppTheme.mutedLight, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(client.name,
+            const SizedBox(width: 12),
+            // Info central
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    client.name,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.black87)),
-                const SizedBox(height: 2),
-                Text(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
                     client.phone.isNotEmpty
                         ? client.phone
                         : client.email.isNotEmpty
                             ? client.email
-                            : _formatDate(client.lastInteraction),
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.mutedLight)),
+                            : 'Sin contacto',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (client.lastInteraction != null) ...[
+                    const SizedBox(height: 1),
+                    Text(
+                      'Último pedido: ${_formatDate(client.lastInteraction)}',
+                      style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  // Barra proporcional de gasto
+                  LayoutBuilder(builder: (_, constraints) {
+                    return Container(
+                      height: 4,
+                      width: constraints.maxWidth,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDE9FE),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: barFraction,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [color, color.withValues(alpha: 0.6)],
+                            ),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Derecha: monto + pedidos
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _formatMoney(client.totalSpent),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${client.orderCount} ${client.orderCount == 1 ? 'pedido' : 'pedidos'}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.mutedLight,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
-          ),
-          Column(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  client.orderCount.toString(),
-                  style: const TextStyle(
-                      color: AppTheme.primaryDark,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13),
-                ),
-              ),
-              const SizedBox(height: 3),
-              const Text('PEDIDOS',
-                  style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryDark,
-                      letterSpacing: 0.3)),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 }
