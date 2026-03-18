@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -29,6 +30,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
   final List<_InternalNote> _notes = [];
   bool _isLoadingNotes = true;
   bool _isSavingNote = false;
+  DateTime? _lastNoteSavedAt;
 
   // Datos editables del cliente (null = usar los de la orden)
   String? _editedName;
@@ -98,7 +100,12 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
 
   Future<void> _addNote() async {
     final text = _noteCtrl.text.trim();
+    final now = DateTime.now();
     if (text.isEmpty || _isSavingNote) return;
+    if (_lastNoteSavedAt != null &&
+        now.difference(_lastNoteSavedAt!).inSeconds < 3) {
+      return;
+    }
 
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -133,6 +140,7 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
             );
           }
           _isSavingNote = false;
+          _lastNoteSavedAt = DateTime.now();
         });
       }
     } catch (e) {
@@ -954,7 +962,8 @@ class _EditClientSheetState extends State<_EditClientSheet> {
                     children: [
                       Expanded(
                         child: _inputField(
-                            e.value, 'Teléfono ${e.key + 2}', Icons.call_outlined),
+                            e.value, 'Teléfono ${e.key + 2}', Icons.call_outlined,
+                            isPhone: true),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
@@ -974,13 +983,14 @@ class _EditClientSheetState extends State<_EditClientSheet> {
                     ],
                   ),
                 )),
-            TextButton.icon(
-              onPressed: () => setState(() =>
-                  _phoneCtrllers.add(TextEditingController())),
-              icon: const Icon(Icons.add, size: 16, color: AppTheme.primary),
-              label: const Text('Agregar teléfono',
-                  style: TextStyle(color: AppTheme.primary, fontSize: 13)),
-            ),
+            if (_phoneCtrllers.length < 5)
+              TextButton.icon(
+                onPressed: () => setState(() =>
+                    _phoneCtrllers.add(TextEditingController())),
+                icon: const Icon(Icons.add, size: 16, color: AppTheme.primary),
+                label: const Text('Agregar teléfono',
+                    style: TextStyle(color: AppTheme.primary, fontSize: 13)),
+              ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -1022,10 +1032,16 @@ class _EditClientSheetState extends State<_EditClientSheet> {
       );
 
   Widget _inputField(
-      TextEditingController ctrl, String hint, IconData icon) {
+      TextEditingController ctrl, String hint, IconData icon,
+      {bool isPhone = false}) {
     return TextField(
       controller: ctrl,
       style: const TextStyle(fontSize: 14),
+      keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
+      maxLength: isPhone ? 20 : null,
+      inputFormatters: isPhone
+          ? [FilteringTextInputFormatter.digitsOnly]
+          : null,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppTheme.mutedLight, fontSize: 14),
@@ -1038,6 +1054,7 @@ class _EditClientSheetState extends State<_EditClientSheet> {
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        counterText: '',
       ),
     );
   }

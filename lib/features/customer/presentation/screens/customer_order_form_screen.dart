@@ -751,9 +751,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                         fontWeight: FontWeight.bold, fontSize: 15)),
                 GestureDetector(
                   onTap: () {
-                    setState(() {
-                      product['quantity'] = qty + 1;
-                    });
+                    if (qty < 99) setState(() => product['quantity'] = qty + 1);
                   },
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),

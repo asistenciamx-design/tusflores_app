@@ -447,7 +447,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
                     Text(method.accountType, style: const TextStyle(color: AppTheme.mutedLight, fontSize: 12)),
                   ],
                 )),
-                _buildIconAction(Icons.copy, () => Clipboard.setData(ClipboardData(text: '${method.bankName}\n${method.holderName}\nCuenta: ${method.accountNumber}\nCLABE: ${method.clabe}'))),
+                _buildIconAction(Icons.copy, () async {
+                  await Clipboard.setData(ClipboardData(text: '${method.bankName}\n${method.holderName}\nCuenta: ${method.accountNumber}\nCLABE: ${method.clabe}'));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Datos bancarios copiados al portapapeles'), duration: Duration(seconds: 2)),
+                    );
+                  }
+                }),
                 const SizedBox(width: 4),
                 _buildIconAction(Icons.ios_share, () => Share.share('${method.bankName} (${method.accountType})\nTitular: ${method.holderName}\nCuenta: ${method.accountNumber}\nCLABE: ${method.clabe}', subject: 'Datos bancarios — $_shopName')),
               ],
