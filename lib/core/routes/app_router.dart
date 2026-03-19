@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/main/presentation/screens/main_layout.dart';
 import '../../features/auth/domain/repositories/profile_repository.dart';
+import '../../features/admin/presentation/screens/admin_layout.dart';
 
 import '../../features/auth/presentation/screens/create_account_screen.dart';
 import '../../features/auth/presentation/screens/shop_name_claim_screen.dart';
@@ -34,7 +35,7 @@ final appRouter = GoRouter(
   redirect: (context, state) {
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final path = state.uri.path;
-    const protectedPaths = ['/', '/reviews/manage'];
+    const protectedPaths = ['/', '/reviews/manage', '/admin'];
     if (protectedPaths.contains(path) && !isLoggedIn) return '/login';
     return null;
   },
@@ -69,6 +70,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/',
       builder: (context, state) => const MainLayout(),
+    ),
+    GoRoute(
+      path: '/admin',
+      builder: (context, state) => const AdminLayout(),
     ),
     // ── Ruta pública de la tienda ──────────────────────────────────────────
     // Visitantes acceden por: tusflores.app/mx/{slug}

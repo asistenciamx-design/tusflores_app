@@ -43,7 +43,20 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.user != null && mounted) {
-        context.go('/');
+        // Check role and redirect accordingly
+        try {
+          final profile = await Supabase.instance.client
+              .from('profiles')
+              .select('role')
+              .eq('id', response.user!.id)
+              .maybeSingle();
+          final role = profile?['role'] as String? ?? 'shop_owner';
+          if (mounted) {
+            context.go(role == 'super_admin' ? '/admin' : '/');
+          }
+        } catch (_) {
+          if (mounted) context.go('/');
+        }
       }
     } on AuthException catch (e) {
       if (mounted) {
