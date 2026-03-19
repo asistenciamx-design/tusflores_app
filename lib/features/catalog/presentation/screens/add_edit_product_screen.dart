@@ -37,6 +37,15 @@ class _Category {
   String get displayName => emoji != null ? '$emoji $name' : name;
 }
 
+// ─── Group color palette ──────────────────────────────────────────────────────
+
+({Color bg, Color text, Color border}) _groupChipStyle(String group) =>
+    switch (group) {
+      'Flor'    => (bg: const Color(0xFFECFDF5), text: const Color(0xFF065F46), border: const Color(0xFF6EE7B7)),
+      'Ocasión' => (bg: const Color(0xFFF5F3FF), text: const Color(0xFF5B21B6), border: const Color(0xFFDDD6FE)),
+      _         => (bg: const Color(0xFFFFF7ED), text: const Color(0xFF9A3412), border: const Color(0xFFFDBA74)),
+    };
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 class AddEditProductScreen extends StatefulWidget {
@@ -338,9 +347,14 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _buildLabel('Categorías'),
-                          if (_selectedIds.isNotEmpty)
-                            Text('${_selectedIds.length} seleccionada${_selectedIds.length > 1 ? 's' : ''}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                          Text(
+                            '${_selectedIds.length}/3',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _selectedIds.length < 3 ? AppTheme.primary : Colors.grey.shade400,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -358,19 +372,22 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                             runSpacing: 8,
                             children: _allCategories
                                 .where((c) => _selectedIds.contains(c.id))
-                                .map((cat) => Chip(
-                                      label: Text(cat.displayName,
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              color: AppTheme.primary,
-                                              fontWeight: FontWeight.w600)),
-                                      backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-                                      deleteIcon: const Icon(Icons.close, size: 16, color: AppTheme.primary),
-                                      onDeleted: () => setState(() => _selectedIds.remove(cat.id)),
-                                      side: BorderSide.none,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16)),
-                                    ))
+                                .map((cat) {
+                                  final style = _groupChipStyle(cat.groupName);
+                                  return Chip(
+                                    label: Text(cat.name,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            color: style.text,
+                                            fontWeight: FontWeight.w600)),
+                                    backgroundColor: style.bg,
+                                    deleteIcon: Icon(Icons.close, size: 15, color: style.text),
+                                    onDeleted: () => setState(() => _selectedIds.remove(cat.id)),
+                                    side: BorderSide(color: style.border),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16)),
+                                  );
+                                })
                                 .toList(),
                           ),
                           const SizedBox(height: 10),
@@ -818,7 +835,7 @@ class _CategorySheetState extends State<_CategorySheet> {
   void _toggle(String id) => setState(() {
         if (_selected.contains(id)) {
           _selected.remove(id);
-        } else {
+        } else if (_selected.length < 3) {
           _selected.add(id);
         }
       });
@@ -859,9 +876,23 @@ class _CategorySheetState extends State<_CategorySheet> {
                 const Text('Seleccionar categorías',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                 const Spacer(),
-                if (_selected.isNotEmpty)
-                  Text('${_selected.length} sel.',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _selected.length >= 3
+                        ? Colors.grey.shade100
+                        : AppTheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_selected.length}/3',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _selected.length >= 3 ? Colors.grey.shade400 : AppTheme.primary,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -876,17 +907,26 @@ class _CategorySheetState extends State<_CategorySheet> {
                   // Group header
                   Padding(
                     padding: const EdgeInsets.only(top: 16, bottom: 8),
-                    child: Text(
-                      group == 'Flor'
-                          ? '🌸 Por Flor'
-                          : group == 'Ocasión'
-                              ? '🎉 Por Ocasión'
-                              : '🏷️ Por Tipo',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                          color: Colors.grey.shade500),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 3,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: _groupChipStyle(group).border,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          group == 'Flor' ? 'Por Flor' : group == 'Ocasión' ? 'Por Ocasión' : 'Por Tipo',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: _groupChipStyle(group).text),
+                        ),
+                      ],
                     ),
                   ),
                   // Top-level chips
@@ -896,37 +936,47 @@ class _CategorySheetState extends State<_CategorySheet> {
                     children: (topLevel[group] ?? []).map((cat) {
                       final isSelected = _selected.contains(cat.id);
                       final hasChildren = children.containsKey(cat.id);
+                      final atLimit = _selected.length >= 3 && !isSelected;
+                      final style = _groupChipStyle(cat.groupName);
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           GestureDetector(
-                            onTap: () => _toggle(cat.id),
+                            onTap: atLimit ? null : () => _toggle(cat.id),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 150),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppTheme.primary
-                                    : AppTheme.primary.withValues(alpha: 0.06),
+                                    ? style.text
+                                    : atLimit
+                                        ? Colors.grey.shade100
+                                        : style.bg,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: isSelected
-                                      ? AppTheme.primary
-                                      : AppTheme.primary.withValues(alpha: 0.2),
+                                      ? style.text
+                                      : atLimit
+                                          ? Colors.grey.shade200
+                                          : style.border,
                                 ),
                               ),
                               child: Text(
-                                cat.displayName,
+                                cat.name,
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: isSelected ? Colors.white : AppTheme.primary,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : atLimit
+                                          ? Colors.grey.shade300
+                                          : style.text,
                                 ),
                               ),
                             ),
                           ),
-                          // Children (subcategories indented)
+                          // Subcategories indented
                           if (hasChildren) ...[
                             const SizedBox(height: 6),
                             Padding(
@@ -936,28 +986,36 @@ class _CategorySheetState extends State<_CategorySheet> {
                                 runSpacing: 6,
                                 children: (children[cat.id] ?? []).map((sub) {
                                   final subSelected = _selected.contains(sub.id);
+                                  final subAtLimit = _selected.length >= 3 && !subSelected;
                                   return GestureDetector(
-                                    onTap: () => _toggle(sub.id),
+                                    onTap: subAtLimit ? null : () => _toggle(sub.id),
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 150),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 5),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                       decoration: BoxDecoration(
                                         color: subSelected
-                                            ? AppTheme.primary.withValues(alpha: 0.85)
-                                            : Colors.grey.shade100,
+                                            ? style.text.withValues(alpha: 0.85)
+                                            : subAtLimit
+                                                ? Colors.grey.shade50
+                                                : style.bg,
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
                                           color: subSelected
-                                              ? AppTheme.primary
-                                              : Colors.grey.shade300,
+                                              ? style.text
+                                              : subAtLimit
+                                                  ? Colors.grey.shade200
+                                                  : style.border,
                                         ),
                                       ),
                                       child: Text(
                                         sub.name,
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: subSelected ? Colors.white : Colors.grey.shade700,
+                                          color: subSelected
+                                              ? Colors.white
+                                              : subAtLimit
+                                                  ? Colors.grey.shade300
+                                                  : style.text,
                                         ),
                                       ),
                                     ),
@@ -995,7 +1053,11 @@ class _CategorySheetState extends State<_CategorySheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: Text(
-                    _selected.isEmpty ? 'Confirmar sin categoría' : 'Confirmar (${_selected.length})',
+                    _selected.isEmpty
+                        ? 'Confirmar sin categoría'
+                        : _selected.length >= 3
+                            ? 'Confirmar — límite alcanzado (3/3)'
+                            : 'Confirmar (${_selected.length}/3)',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
