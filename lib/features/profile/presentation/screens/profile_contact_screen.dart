@@ -150,7 +150,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
                 _buildSectionHeader('CONTACTO DIRECTO'),
                 _buildTextField(label: 'Correo electrónico', icon: Icons.email, controller: TextEditingController(text: _email), enabled: false),
                 const SizedBox(height: 16),
-                _buildTextField(label: 'WhatsApp principal de pedidos', icon: Icons.chat, controller: _whatsappCtrl, hintText: 'Ej. 55 9876 5432', keyboardType: TextInputType.phone),
+                _buildTextField(label: 'WhatsApp principal de pedidos', icon: Icons.chat, controller: _whatsappCtrl, hintText: 'Ej. 55 9876 5432', keyboardType: TextInputType.phone, maxLength: 15, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
               ],
             ),
           ),
@@ -245,7 +245,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
     );
   }
 
-  Widget _buildTextField({required String label, required IconData icon, TextEditingController? controller, String? hintText, TextInputType? keyboardType, bool enabled = true}) {
+  Widget _buildTextField({required String label, required IconData icon, TextEditingController? controller, String? hintText, TextInputType? keyboardType, bool enabled = true, int? maxLength, List<TextInputFormatter>? inputFormatters}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -257,6 +257,8 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
           controller: controller,
           enabled: enabled,
           keyboardType: keyboardType,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
           style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
           decoration: InputDecoration(
             hintText: hintText,

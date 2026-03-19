@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -23,6 +24,7 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
   Future<void> _sendCode() async {
     final phone = _phoneCtrl.text.trim();
     if (phone.isEmpty) return;
+    if (phone.length < 10) return;
     
     setState(() => _isLoading = true);
     
@@ -93,7 +95,10 @@ class _ConnectWhatsAppScreenState extends State<ConnectWhatsAppScreen> {
                       child: TextField(
                         controller: _phoneCtrl,
                         keyboardType: TextInputType.phone,
+                        maxLength: 15,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         decoration: InputDecoration(
+                          counterText: '',
                           hintText: '55 1234 5678',
                           filled: true,
                           fillColor: Colors.grey[50],

@@ -124,6 +124,7 @@ class _CatalogMessageScreenState extends State<CatalogMessageScreen> {
                     label: 'Descripción del mensaje',
                     controller: _descriptionController,
                     maxLines: 4,
+                    maxLength: 500,
                     hint: '✨ ¡Bienvenido a mi florería! Nuestras flores más frescas ya están listas para ti...',
                   ),
                   const SizedBox(height: 40),
@@ -163,6 +164,7 @@ class _CatalogMessageScreenState extends State<CatalogMessageScreen> {
     required TextEditingController controller,
     int maxLines = 1,
     String? hint,
+    int? maxLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,6 +181,7 @@ class _CatalogMessageScreenState extends State<CatalogMessageScreen> {
         TextField(
           controller: controller,
           maxLines: maxLines,
+          maxLength: maxLength,
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
