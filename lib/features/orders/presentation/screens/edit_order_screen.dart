@@ -578,7 +578,21 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                   children: [
                     Text(widget.order.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textLight)),
                     const SizedBox(height: 4),
-                    Text('+52 ${widget.order.customerPhone}', style: const TextStyle(fontSize: 14, color: AppTheme.mutedLight)),
+                    Row(
+                      children: [
+                        Text('+52 ${widget.order.customerPhone}', style: const TextStyle(fontSize: 14, color: AppTheme.mutedLight)),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: widget.order.customerPhone));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Teléfono copiado'), duration: Duration(seconds: 2)),
+                            );
+                          },
+                          child: const Icon(Icons.copy_rounded, size: 15, color: AppTheme.mutedLight),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
