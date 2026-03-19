@@ -9,6 +9,36 @@ import '../../../../core/utils/currency_cache.dart';
 import '../../domain/repositories/product_repository.dart';
 import 'catalog_screen.dart' show ProductItem;
 
+// ─── Category model ───────────────────────────────────────────────────────────
+
+class _Category {
+  final String id;
+  final String name;
+  final String? emoji;
+  final String groupName;
+  final String? parentId;
+
+  _Category({
+    required this.id,
+    required this.name,
+    this.emoji,
+    required this.groupName,
+    this.parentId,
+  });
+
+  factory _Category.fromMap(Map<String, dynamic> m) => _Category(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        emoji: m['emoji'] as String?,
+        groupName: m['group_name'] as String,
+        parentId: m['parent_id'] as String?,
+      );
+
+  String get displayName => emoji != null ? '$emoji $name' : name;
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 class AddEditProductScreen extends StatefulWidget {
   final ProductItem? product;
   final int? productIndex;
@@ -23,14 +53,17 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _priceCtrl;
-  late TextEditingController _tagCtrl;
   late TextEditingController _descCtrl;
 
-  List<String> _tags = [];
   List<dynamic> _images = []; // mixed: String (network url) or XFile
-  List<_RecipeRow> _recipeRows = [];
+  final List<_RecipeRow> _recipeRows = [];
   bool _isLoading = false;
   final _repo = ProductRepository();
+
+  // Categories
+  List<_Category> _allCategories = [];
+  final Set<String> _selectedIds = {};
+  bool _isLoadingCategories = true;
 
   bool get isEditing => widget.product != null;
 
@@ -40,9 +73,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _nameCtrl = TextEditingController(text: widget.product?.name ?? '');
     _priceCtrl = TextEditingController(
         text: widget.product != null ? widget.product!.price.toStringAsFixed(2) : '');
-    _tagCtrl = TextEditingController();
     _descCtrl = TextEditingController(text: widget.product?.description ?? '');
-    _tags = widget.product != null ? List.from(widget.product!.tags) : [];
     if (widget.product != null) {
       _images = List.from(widget.product!.imageUrls);
       for (final item in widget.product!.recipe) {
@@ -55,13 +86,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         ));
       }
     }
+    _loadCategories();
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
-    _tagCtrl.dispose();
     _descCtrl.dispose();
     for (final row in _recipeRows) {
       row.dispose();
@@ -69,50 +100,69 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     super.dispose();
   }
 
-  void _addTag(String tag) {
-    tag = tag.trim();
-    if (tag.isNotEmpty && !_tags.contains(tag) && _tags.length < 3) {
+  Future<void> _loadCategories() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('categories')
+          .select()
+          .order('group_name')
+          .order('sort_order');
+      if (!mounted) return;
+      final cats = (data as List).map((m) => _Category.fromMap(m)).toList();
+      final existingTags = widget.product?.tags ?? [];
       setState(() {
-        _tags.add(tag);
-        _tagCtrl.clear();
+        _allCategories = cats;
+        // Match existing tag names → IDs for edit mode
+        for (final cat in cats) {
+          if (existingTags.contains(cat.name)) _selectedIds.add(cat.id);
+        }
+        _isLoadingCategories = false;
       });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingCategories = false);
     }
   }
 
-  void _removeTag(String tag) {
-    setState(() {
-      _tags.remove(tag);
-    });
+  List<String> get _selectedNames => _allCategories
+      .where((c) => _selectedIds.contains(c.id))
+      .map((c) => c.name)
+      .toList();
+
+  void _openCategorySheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _CategorySheet(
+        allCategories: _allCategories,
+        selectedIds: Set.from(_selectedIds),
+        onDone: (ids) => setState(() {
+          _selectedIds
+            ..clear()
+            ..addAll(ids);
+        }),
+      ),
+    );
   }
 
   Future<void> _pickImages() async {
     if (_images.length >= 5) return;
-
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage();
-
     if (pickedFiles.isNotEmpty) {
       setState(() {
         for (var file in pickedFiles) {
-          if (_images.length < 5) {
-            _images.add(file);
-          }
+          if (_images.length < 5) _images.add(file);
         }
       });
     }
   }
 
-  void _removeImage(int index) {
-    setState(() {
-      _images.removeAt(index);
-    });
-  }
+  void _removeImage(int index) => setState(() => _images.removeAt(index));
 
-  void _addRecipeRow() {
-    setState(() {
-      _recipeRows.add(_RecipeRow());
-    });
-  }
+  void _addRecipeRow() => setState(() => _recipeRows.add(_RecipeRow()));
 
   void _removeRecipeRow(int index) {
     setState(() {
@@ -124,7 +174,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   Future<void> _saveProduct() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-
       try {
         final user = Supabase.instance.client.auth.currentUser;
         if (user == null) throw Exception('No session found — cierra sesión e intenta de nuevo.');
@@ -137,26 +186,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             .map((r) => r.toJson())
             .toList();
 
-
         List<String> finalImageUrls = [];
-
         for (int i = 0; i < _images.length; i++) {
           final item = _images[i];
           if (item is String) {
             finalImageUrls.add(item);
           } else {
             final uploadedUrl = await _repo.uploadProductImage(user.id, item as XFile);
-            if (uploadedUrl != null) {
-              finalImageUrls.add(uploadedUrl);
-            }
+            if (uploadedUrl != null) finalImageUrls.add(uploadedUrl);
           }
         }
 
-        // Auto-assign SKU only for new products
         String? autoSku;
-        if (!isEditing) {
-          autoSku = await _repo.getNextSku(user.id);
-        }
+        if (!isEditing) autoSku = await _repo.getNextSku(user.id);
 
         final productData = {
           'name': name,
@@ -164,11 +206,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           'price': price,
           'description': desc.isNotEmpty ? desc : null,
           'recipe': recipe.isNotEmpty ? recipe : null,
-          'tags': _tags,
+          'tags': _selectedNames,
           'image_urls': finalImageUrls,
           'is_active': widget.product?.isVisible ?? true,
         };
-
 
         if (isEditing && widget.product!.id != null) {
           await _repo.updateProduct(widget.product!.id!, user.id, productData);
@@ -184,11 +225,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               content: const Text('No se pudo guardar el producto. Intenta de nuevo.'),
               backgroundColor: Colors.red.shade700,
               duration: const Duration(seconds: 6),
-              action: SnackBarAction(
-                label: 'OK',
-                textColor: Colors.white,
-                onPressed: () {},
-              ),
+              action: SnackBarAction(label: 'OK', textColor: Colors.white, onPressed: () {}),
             ),
           );
         }
@@ -240,7 +277,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         validator: (v) => v == null || v.isEmpty ? 'Requerido' : null,
                       ),
 
-                      // SKU — solo lectura al editar; se auto-asigna al crear
+                      // SKU
                       if (isEditing && widget.product!.sku != null && widget.product!.sku!.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         _buildLabel('SKU'),
@@ -256,20 +293,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                             children: [
                               const Icon(Icons.qr_code, size: 18, color: AppTheme.primary),
                               const SizedBox(width: 10),
-                              Text(
-                                widget.product!.sku!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: AppTheme.primary,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
+                              Text(widget.product!.sku!,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: AppTheme.primary,
+                                      letterSpacing: 1.0)),
                               const SizedBox(width: 8),
-                              Text(
-                                '· asignado automáticamente',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                              ),
+                              Text('· asignado automáticamente',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                             ],
                           ),
                         ),
@@ -301,42 +333,79 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
                       const SizedBox(height: 20),
 
-                      // Categorías
+                      // ── Categorías ──────────────────────────────────────
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildLabel('Categorías (Max 3)'),
-                          Text(
-                            '${_tags.length}/3',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _tags.length < 3 ? AppTheme.primary : Colors.grey.shade400,
-                            ),
-                          ),
+                          _buildLabel('Categorías'),
+                          if (_selectedIds.isNotEmpty)
+                            Text('${_selectedIds.length} seleccionada${_selectedIds.length > 1 ? 's' : ''}',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                         ],
                       ),
                       const SizedBox(height: 8),
 
-                      if (_tags.length < 3)
-                        TextField(
-                          controller: _tagCtrl,
-                          decoration: _inputDeco('Escribe y enter...'),
-                          onSubmitted: _addTag,
-                        ),
-                      if (_tags.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _tags.map((tag) => Chip(
-                            label: Text(tag, style: const TextStyle(fontSize: 13, color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                            backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-                            deleteIcon: const Icon(Icons.close, size: 16, color: AppTheme.primary),
-                            onDeleted: () => _removeTag(tag),
-                            side: BorderSide.none,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          )).toList(),
+                      if (_isLoadingCategories)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      else ...[
+                        // Selected chips
+                        if (_selectedIds.isNotEmpty) ...[
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _allCategories
+                                .where((c) => _selectedIds.contains(c.id))
+                                .map((cat) => Chip(
+                                      label: Text(cat.displayName,
+                                          style: const TextStyle(
+                                              fontSize: 13,
+                                              color: AppTheme.primary,
+                                              fontWeight: FontWeight.w600)),
+                                      backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+                                      deleteIcon: const Icon(Icons.close, size: 16, color: AppTheme.primary),
+                                      onDeleted: () => setState(() => _selectedIds.remove(cat.id)),
+                                      side: BorderSide.none,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16)),
+                                    ))
+                                .toList(),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        // Selector button
+                        GestureDetector(
+                          onTap: _openCategorySheet,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.label_outline,
+                                    size: 18, color: AppTheme.primary.withValues(alpha: 0.8)),
+                                const SizedBox(width: 10),
+                                Text(
+                                  _selectedIds.isEmpty
+                                      ? 'Seleccionar categorías...'
+                                      : 'Cambiar categorías',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: _selectedIds.isEmpty
+                                          ? Colors.grey.shade400
+                                          : AppTheme.primary),
+                                ),
+                                const Spacer(),
+                                Icon(Icons.chevron_right,
+                                    color: Colors.grey.shade400, size: 20),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
 
@@ -345,23 +414,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       // Descripción Corta
                       _buildLabel('Descripción Corta'),
                       const SizedBox(height: 4),
-                      Text(
-                        'Resumen breve visible en el catálogo.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                      ),
+                      Text('Resumen breve visible en el catálogo.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _descCtrl,
                         maxLines: 3,
                         maxLength: 300,
-                        decoration: _inputDeco('Ej. Ramo de 24 rosas rojas con follaje tropical...'),
+                        decoration:
+                            _inputDeco('Ej. Ramo de 24 rosas rojas con follaje tropical...'),
                       ),
 
                       const SizedBox(height: 8),
-
-                      // Descripción Detallada (Receta)
                       _buildRecipeSection(),
-
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -430,9 +495,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
         ),
         const SizedBox(height: 12),
-
         if (_recipeRows.isNotEmpty) ...[
-          // Recipe rows as cards
           ...List.generate(_recipeRows.length, (i) {
             final row = _recipeRows[i];
             return Container(
@@ -446,7 +509,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Type chips + delete button
                   Row(
                     children: [
                       Expanded(
@@ -455,10 +517,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           runSpacing: 4,
                           children: [
                             for (final t in [
-                              ('flor',    '🌸', 'Flor'),
+                              ('flor', '🌸', 'Flor'),
                               ('follaje', '🌿', 'Follaje'),
                               ('florero', '🏺', 'Florero'),
-                              ('extra',   '✨', 'Extra'),
+                              ('extra', '✨', 'Extra'),
                             ])
                               GestureDetector(
                                 onTap: () => setState(() => row.type = t.$1),
@@ -479,8 +541,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                                     '${t.$2} ${t.$3}',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      fontWeight: row.type == t.$1 ? FontWeight.w600 : FontWeight.normal,
-                                      color: row.type == t.$1 ? AppTheme.primary : Colors.grey.shade500,
+                                      fontWeight: row.type == t.$1
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                      color: row.type == t.$1
+                                          ? AppTheme.primary
+                                          : Colors.grey.shade500,
                                     ),
                                   ),
                                 ),
@@ -497,7 +563,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // Data fields
                   Row(
                     children: [
                       SizedBox(
@@ -510,7 +575,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           decoration: _inputDeco('Cant.').copyWith(
                             counterText: '',
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                           ),
                           style: const TextStyle(fontSize: 14),
                         ),
@@ -524,7 +590,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           textCapitalization: TextCapitalization.sentences,
                           decoration: _inputDeco('Rosa, Eucalipto...').copyWith(
                             counterText: '',
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                           ),
                           style: const TextStyle(fontSize: 13),
                         ),
@@ -538,7 +605,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           textCapitalization: TextCapitalization.sentences,
                           decoration: _inputDeco('Rojo...').copyWith(
                             counterText: '',
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                           ),
                           style: const TextStyle(fontSize: 13),
                         ),
@@ -552,7 +620,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           textCapitalization: TextCapitalization.sentences,
                           decoration: _inputDeco('Premium...').copyWith(
                             counterText: '',
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                           ),
                           style: const TextStyle(fontSize: 13),
                         ),
@@ -565,8 +634,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           }),
           const SizedBox(height: 4),
         ],
-
-        // Add row button
         GestureDetector(
           onTap: _addRecipeRow,
           child: Container(
@@ -574,9 +641,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             decoration: BoxDecoration(
               color: AppTheme.primary.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.primary.withValues(alpha: 0.25),
-              ),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -632,14 +697,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     decoration: BoxDecoration(
                       color: AppTheme.primary.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.5),
+                      border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.3), width: 1.5),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.add_a_photo, size: 28, color: AppTheme.primary),
                         const SizedBox(height: 8),
-                        Text('Agregar', style: TextStyle(color: AppTheme.primary.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.bold)),
+                        Text('Agregar',
+                            style: TextStyle(
+                                color: AppTheme.primary.withValues(alpha: 0.8),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -659,11 +729,19 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: item is String
-                            ? Image.network(item, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image))
+                            ? Image.network(item,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
                             : item is XFile
                                 ? (kIsWeb
-                                    ? Image.network(item.path, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image))
-                                    : Image.file(File(item.path), fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.broken_image)))
+                                    ? Image.network(item.path,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(Icons.broken_image))
+                                    : Image.file(File(item.path),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(Icons.broken_image)))
                                 : const SizedBox(),
                       ),
                     ),
@@ -675,9 +753,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
+                              color: Colors.black54, shape: BoxShape.circle),
                           child: const Icon(Icons.close, size: 16, color: Colors.white),
                         ),
                       ),
@@ -692,41 +768,254 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     );
   }
 
-  Widget _buildLabel(String text) {
-    return Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87));
+  Widget _buildLabel(String text) =>
+      Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87));
+
+  InputDecoration _inputDeco(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppTheme.primary, width: 2)),
+      );
+}
+
+// ─── Category Bottom Sheet ─────────────────────────────────────────────────────
+
+class _CategorySheet extends StatefulWidget {
+  final List<_Category> allCategories;
+  final Set<String> selectedIds;
+  final void Function(Set<String>) onDone;
+
+  const _CategorySheet({
+    required this.allCategories,
+    required this.selectedIds,
+    required this.onDone,
+  });
+
+  @override
+  State<_CategorySheet> createState() => _CategorySheetState();
+}
+
+class _CategorySheetState extends State<_CategorySheet> {
+  late Set<String> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = Set.from(widget.selectedIds);
   }
 
-  InputDecoration _inputDeco(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.primary, width: 2),
+  void _toggle(String id) => setState(() {
+        if (_selected.contains(id)) {
+          _selected.remove(id);
+        } else {
+          _selected.add(id);
+        }
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = ['Flor', 'Ocasión', 'Tipo'];
+    // Top-level categories per group (no parent)
+    Map<String, List<_Category>> topLevel = {
+      for (final g in groups)
+        g: widget.allCategories.where((c) => c.groupName == g && c.parentId == null).toList()
+    };
+    // Children map: parentId → list
+    Map<String, List<_Category>> children = {};
+    for (final c in widget.allCategories.where((c) => c.parentId != null)) {
+      children.putIfAbsent(c.parentId!, () => []).add(c);
+    }
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      expand: false,
+      builder: (_, scrollCtrl) => Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const Text('Seleccionar categorías',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                const Spacer(),
+                if (_selected.isNotEmpty)
+                  Text('${_selected.length} sel.',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                for (final group in groups) ...[
+                  // Group header
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, bottom: 8),
+                    child: Text(
+                      group == 'Flor'
+                          ? '🌸 Por Flor'
+                          : group == 'Ocasión'
+                              ? '🎉 Por Ocasión'
+                              : '🏷️ Por Tipo',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: Colors.grey.shade500),
+                    ),
+                  ),
+                  // Top-level chips
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: (topLevel[group] ?? []).map((cat) {
+                      final isSelected = _selected.contains(cat.id);
+                      final hasChildren = children.containsKey(cat.id);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: () => _toggle(cat.id),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppTheme.primary
+                                    : AppTheme.primary.withValues(alpha: 0.06),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppTheme.primary
+                                      : AppTheme.primary.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Text(
+                                cat.displayName,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSelected ? Colors.white : AppTheme.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Children (subcategories indented)
+                          if (hasChildren) ...[
+                            const SizedBox(height: 6),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 12),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: (children[cat.id] ?? []).map((sub) {
+                                  final subSelected = _selected.contains(sub.id);
+                                  return GestureDetector(
+                                    onTap: () => _toggle(sub.id),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 150),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: subSelected
+                                            ? AppTheme.primary.withValues(alpha: 0.85)
+                                            : Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: subSelected
+                                              ? AppTheme.primary
+                                              : Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        sub.name,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: subSelected ? Colors.white : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ],
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+          // Done button
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    widget.onDone(_selected);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(
+                    _selected.isEmpty ? 'Confirmar sin categoría' : 'Confirmar (${_selected.length})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─── Recipe Row Helper ────────────────────────────────────────────────────────
+// ─── Recipe Row Helper ─────────────────────────────────────────────────────────
 
 class _RecipeRow {
   final TextEditingController qty;
   final TextEditingController name;
   final TextEditingController color;
   final TextEditingController quality;
-  String type; // 'flor' | 'follaje' | 'florero' | 'extra'
+  String type;
 
   _RecipeRow({
     int? initialQty,
@@ -748,10 +1037,10 @@ class _RecipeRow {
   }
 
   Map<String, dynamic> toJson() => {
-    'qty': int.tryParse(qty.text.trim()) ?? 0,
-    'name': name.text.trim(),
-    'color': color.text.trim(),
-    'quality': quality.text.trim(),
-    'type': type,
-  };
+        'qty': int.tryParse(qty.text.trim()) ?? 0,
+        'name': name.text.trim(),
+        'color': color.text.trim(),
+        'quality': quality.text.trim(),
+        'type': type,
+      };
 }
