@@ -2,6 +2,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/models/shop_settings_model.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
@@ -9,6 +11,18 @@ import '../../domain/models/order_model.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'print_card_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+class _OrderNote {
+  final String id;
+  final String note;
+  final DateTime createdAt;
+  _OrderNote({required this.id, required this.note, required this.createdAt});
+  factory _OrderNote.fromMap(Map<String, dynamic> m) => _OrderNote(
+        id: m['id'] as String,
+        note: m['note'] as String,
+        createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
+      );
+}
 
 class EditOrderScreen extends StatefulWidget {
   final OrderModel order;
@@ -39,7 +53,14 @@ class _ProductItem {
 class _EditOrderScreenState extends State<EditOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final _orderRepo = OrderRepository();
+  final _supabase = Supabase.instance.client;
   bool _isSaving = false;
+
+  // Notes
+  List<_OrderNote> _notes = [];
+  final _noteCtrl = TextEditingController();
+  bool _isLoadingNotes = true;
+  bool _isSavingNote = false;
 
   // Products
   final List<_ProductItem> _productItems = [];
@@ -126,6 +147,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     _selectedCity = widget.order.deliveryCity;
     _shippingCost = widget.order.shippingCost;
     _loadSettings();
+    _loadNotes();
 
     _cardToCtrl = TextEditingController(text: widget.order.recipientName ?? '');
     _cardPhoneCtrl = TextEditingController(text: widget.order.recipientPhone ?? '');
@@ -150,6 +172,46 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     _locationType = widget.order.deliveryLocationType ?? 'Casa';
     _deliveryMethod = widget.order.deliveryMethod;
     _isAnonymous = widget.order.isAnonymous;
+  }
+
+  Future<void> _loadNotes() async {
+    try {
+      final data = await _supabase
+          .from('order_notes')
+          .select()
+          .eq('order_id', widget.order.id as Object)
+          .order('created_at', ascending: false);
+      if (mounted) {
+        setState(() {
+          _notes = (data as List).map((m) => _OrderNote.fromMap(m)).toList();
+          _isLoadingNotes = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingNotes = false);
+    }
+  }
+
+  Future<void> _saveNote() async {
+    final text = _noteCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _isSavingNote = true);
+    try {
+      final data = await _supabase.from('order_notes').insert({
+        'order_id': widget.order.id,
+        'shop_id': widget.order.shopId,
+        'note': text,
+      }).select().single();
+      _noteCtrl.clear();
+      if (mounted) {
+        setState(() {
+          _notes.insert(0, _OrderNote.fromMap(data));
+          _isSavingNote = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isSavingNote = false);
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -179,6 +241,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     _zipCtrl.dispose();
     _referenceCtrl.dispose();
     _mapsUrlCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
@@ -306,8 +369,10 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildOrderHeaderRow(),
+                const SizedBox(height: 16),
+                _buildNotesSection(),
                 const SizedBox(height: 24),
-                
+
                 _buildSectionTitle('CLIENTE'),
                 const SizedBox(height: 12),
                 _buildCustomerCard(),
@@ -551,6 +616,108 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
               Text('Creado: ${_formatDate(widget.order.createdAt)}, ${_formatTime(widget.order.createdAt)}', style: const TextStyle(fontSize: 12, color: Color(0xFF757575))),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotesSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.sticky_note_2_outlined, size: 18, color: Color(0xFFD97706)),
+              const SizedBox(width: 8),
+              const Text('Notas internas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF92400E))),
+              const Spacer(),
+              Text('Solo tú las ves', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Input
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _noteCtrl,
+                  maxLength: 500,
+                  maxLines: 2,
+                  minLines: 1,
+                  decoration: InputDecoration(
+                    hintText: 'Ej: Confirmar color del moño antes de enviar...',
+                    hintStyle: const TextStyle(fontSize: 13),
+                    filled: true,
+                    fillColor: Colors.white,
+                    counterText: '',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 42,
+                child: ElevatedButton(
+                  onPressed: _isSavingNote ? null : _saveNote,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD97706),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  child: _isSavingNote
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.check, size: 20),
+                ),
+              ),
+            ],
+          ),
+          // History
+          if (_isLoadingNotes)
+            const Padding(padding: EdgeInsets.only(top: 12), child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
+          else if (_notes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text('Sin notas aún.', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+            )
+          else ...[
+            const SizedBox(height: 12),
+            ..._notes.map((n) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.circle, size: 6, color: Color(0xFFD97706)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(n.note, style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
+                        const SizedBox(height: 2),
+                        Text(
+                          DateFormat("d MMM yyyy · HH:mm", 'es').format(n.createdAt),
+                          style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
         ],
       ),
     );
