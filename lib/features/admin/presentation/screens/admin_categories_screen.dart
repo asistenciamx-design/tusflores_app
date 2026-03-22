@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/repositories/admin_repository.dart';
 
@@ -13,8 +14,19 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   final _repo = AdminRepository();
   bool _isLoading = true;
   List<Map<String, dynamic>> _categories = [];
+  List<String> _groups = [];
 
-  static const _groups = ['Flor', 'Ocasión', 'Tipo'];
+  // Paleta de colores ciclica para grupos dinámicos
+  static const _palette = [
+    (bg: Color(0xFFECFDF5), text: Color(0xFF065F46)),
+    (bg: Color(0xFFF5F3FF), text: Color(0xFF5B21B6)),
+    (bg: Color(0xFFFFF7ED), text: Color(0xFF9A3412)),
+    (bg: Color(0xFFEFF6FF), text: Color(0xFF1D4ED8)),
+    (bg: Color(0xFFFDF2F8), text: Color(0xFF9D174D)),
+    (bg: Color(0xFFF0FDF4), text: Color(0xFF166534)),
+    (bg: Color(0xFFFFFBEB), text: Color(0xFF92400E)),
+    (bg: Color(0xFFF0F9FF), text: Color(0xFF0369A1)),
+  ];
 
   @override
   void initState() {
@@ -25,10 +37,14 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
-      final cats = await _repo.getCategories();
+      final results = await Future.wait([
+        _repo.getGroups(),
+        _repo.getCategories(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _categories = cats;
+        _groups = results[0] as List<String>;
+        _categories = results[1] as List<Map<String, dynamic>>;
         _isLoading = false;
       });
     } catch (e) {
@@ -36,29 +52,87 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
   }
 
-  // ── Color helper ────────────────────────────────────────────────────────────
+  // ── Color helper ─────────────────────────────────────────────────────────────
 
-  ({Color bg, Color text}) _groupColor(String group) => switch (group) {
-        'Flor' => (bg: const Color(0xFFECFDF5), text: const Color(0xFF065F46)),
-        'Ocasión' => (
-            bg: const Color(0xFFF5F3FF),
-            text: const Color(0xFF5B21B6)
+  ({Color bg, Color text}) _groupColor(String group) {
+    final idx = _groups.indexOf(group);
+    final i = idx < 0 ? 0 : idx % _palette.length;
+    return _palette[i];
+  }
+
+  // ── Crear nuevo grupo ────────────────────────────────────────────────────────
+
+  Future<void> _createGroup() async {
+    final nameCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nuevo grupo'),
+        content: TextField(
+          controller: nameCtrl,
+          textCapitalization: TextCapitalization.words,
+          maxLength: 40,
+          decoration: InputDecoration(
+            labelText: 'Nombre del grupo',
+            hintText: 'Ej: Color, Temporada...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            counterText: '',
           ),
-        _ => (bg: const Color(0xFFFFF7ED), text: const Color(0xFF9A3412)),
-      };
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF4F46E5),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
 
-  // ── Add / Edit sheet ────────────────────────────────────────────────────────
+    if (confirmed != true) return;
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    if (_groups.contains(name)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('El grupo "$name" ya existe')),
+        );
+      }
+      return;
+    }
+    try {
+      await _repo.createGroup(name);
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al crear el grupo')),
+        );
+      }
+    }
+  }
+
+  // ── Add / Edit sheet ─────────────────────────────────────────────────────────
 
   Future<void> _openSheet({Map<String, dynamic>? existing}) async {
-    // Collect parent ids for each group (categories without parent_id)
     final parents = _categories
         .where((c) => c['parent_id'] == null)
         .toList();
 
     final nameCtrl =
         TextEditingController(text: existing?['name'] as String? ?? '');
-    String selectedGroup = existing?['group_name'] as String? ?? _groups.first;
+    String selectedGroup =
+        existing?['group_name'] as String? ?? (_groups.isNotEmpty ? _groups.first : '');
     String? selectedParentId = existing?['parent_id'] as String?;
+    String? existingImageUrl = existing?['image_url'] as String?;
+    XFile? pickedFile;
     bool isSaving = false;
 
     await showModalBottomSheet(
@@ -66,180 +140,335 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModal) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.fromLTRB(
-              24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                existing == null ? 'Nueva categoría' : 'Editar categoría',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              // Name field
-              TextField(
-                controller: nameCtrl,
-                textCapitalization: TextCapitalization.words,
-                maxLength: 60,
-                decoration: InputDecoration(
-                  labelText: 'Nombre',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  counterText: '',
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Group selector
-              Text('Grupo',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.mutedLight,
-                      fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: _groups.map((g) {
-                  final style = _groupColor(g);
-                  final isSelected = selectedGroup == g;
-                  return FilterChip(
-                    label: Text(g),
-                    selected: isSelected,
-                    onSelected: (_) {
-                      setModal(() {
-                        selectedGroup = g;
-                        selectedParentId = null;
-                      });
-                    },
-                    backgroundColor: Colors.white,
-                    selectedColor: style.bg,
-                    labelStyle: TextStyle(
-                      color: isSelected ? style.text : AppTheme.textLight,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                    ),
-                    side: BorderSide(
-                        color: isSelected
-                            ? style.text.withValues(alpha: 0.4)
-                            : Colors.grey.shade300),
-                    showCheckmark: false,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              // Parent selector (optional, only show parents of same group)
-              Builder(builder: (_) {
-                final groupParents = parents
-                    .where((p) => p['group_name'] == selectedGroup)
-                    .toList();
-                if (groupParents.isEmpty) return const SizedBox.shrink();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Subcategoría de (opcional)',
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.mutedLight,
-                            fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String?>(
-                      value: selectedParentId,
-                      decoration: InputDecoration(
-                        hintText: 'Sin categoría padre',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+        builder: (ctx, setModal) {
+          Future<void> pickImage() async {
+            final picker = ImagePicker();
+            final file =
+                await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+            if (file != null) setModal(() => pickedFile = file);
+          }
+
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.fromLTRB(
+                24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Sin categoría padre'),
-                        ),
-                        ...groupParents.map((p) => DropdownMenuItem<String?>(
-                              value: p['id'] as String,
-                              child: Text(p['name'] as String? ?? ''),
-                            )),
-                      ],
-                      onChanged: (val) =>
-                          setModal(() => selectedParentId = val),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                );
-              }),
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          final name = nameCtrl.text.trim();
-                          if (name.isEmpty) return;
-                          setModal(() => isSaving = true);
-                          try {
-                            if (existing == null) {
-                              await _repo.createCategory(
-                                name: name,
-                                groupName: selectedGroup,
-                                parentId: selectedParentId,
-                              );
-                            } else {
-                              await _repo.updateCategory(
-                                id: existing['id'] as String,
-                                name: name,
-                                groupName: selectedGroup,
-                              );
-                            }
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            _load();
-                          } catch (e) {
-                            setModal(() => isSaving = false);
-                          }
+                  const SizedBox(height: 20),
+                  Text(
+                    existing == null ? 'Nueva categoría' : 'Editar categoría',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Imagen ───────────────────────────────────────────────
+                  Text('Imagen de referencia',
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.mutedLight,
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: isSaving ? null : pickImage,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: pickedFile != null || existingImageUrl != null
+                                  ? const Color(0xFF4F46E5).withValues(alpha: 0.4)
+                                  : Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: pickedFile != null
+                              ? FutureBuilder<dynamic>(
+                                  future: pickedFile!.readAsBytes(),
+                                  builder: (_, snap) {
+                                    if (!snap.hasData) {
+                                      return const Center(
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2));
+                                    }
+                                    return Image.memory(snap.data!,
+                                        fit: BoxFit.cover);
+                                  },
+                                )
+                              : existingImageUrl != null
+                                  ? Image.network(existingImageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          const Icon(Icons.broken_image_outlined,
+                                              color: Colors.grey))
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add_photo_alternate_outlined,
+                                            size: 28, color: Colors.grey.shade400),
+                                        const SizedBox(height: 4),
+                                        Text('Agregar',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade400)),
+                                      ],
+                                    ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              pickedFile != null
+                                  ? 'Nueva imagen seleccionada'
+                                  : existingImageUrl != null
+                                      ? 'Imagen actual'
+                                      : 'Sin imagen',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: pickedFile != null
+                                      ? const Color(0xFF4F46E5)
+                                      : AppTheme.textLight),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('JPG, PNG o WebP · máx. 5 MB',
+                                style: TextStyle(
+                                    fontSize: 11, color: AppTheme.mutedLight)),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: isSaving ? null : pickImage,
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF4F46E5),
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: const Icon(Icons.photo_library_outlined,
+                                  size: 16),
+                              label: Text(
+                                pickedFile != null || existingImageUrl != null
+                                    ? 'Cambiar imagen'
+                                    : 'Seleccionar imagen',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                            if (existingImageUrl != null && pickedFile == null)
+                              TextButton.icon(
+                                onPressed: isSaving
+                                    ? null
+                                    : () => setModal(() => existingImageUrl = null),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red.shade400,
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                icon: const Icon(Icons.delete_outline, size: 16),
+                                label: const Text('Quitar imagen',
+                                    style: TextStyle(fontSize: 12)),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Nombre ───────────────────────────────────────────────
+                  TextField(
+                    controller: nameCtrl,
+                    textCapitalization: TextCapitalization.words,
+                    maxLength: 60,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Grupo ────────────────────────────────────────────────
+                  Text('Grupo',
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.mutedLight,
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _groups.map((g) {
+                      final style = _groupColor(g);
+                      final isSelected = selectedGroup == g;
+                      return FilterChip(
+                        label: Text(g),
+                        selected: isSelected,
+                        onSelected: (_) {
+                          setModal(() {
+                            selectedGroup = g;
+                            selectedParentId = null;
+                          });
                         },
-                  child: isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Guardar',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w600)),
-                ),
+                        backgroundColor: Colors.white,
+                        selectedColor: style.bg,
+                        labelStyle: TextStyle(
+                          color: isSelected ? style.text : AppTheme.textLight,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        side: BorderSide(
+                            color: isSelected
+                                ? style.text.withValues(alpha: 0.4)
+                                : Colors.grey.shade300),
+                        showCheckmark: false,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Categoría padre (opcional) ────────────────────────────
+                  Builder(builder: (_) {
+                    final groupParents = parents
+                        .where((p) => p['group_name'] == selectedGroup)
+                        .toList();
+                    if (groupParents.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Subcategoría de (opcional)',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.mutedLight,
+                                fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String?>(
+                          value: selectedParentId,
+                          decoration: InputDecoration(
+                            hintText: 'Sin categoría padre',
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('Sin categoría padre'),
+                            ),
+                            ...groupParents.map((p) => DropdownMenuItem<String?>(
+                                  value: p['id'] as String,
+                                  child: Text(p['name'] as String? ?? ''),
+                                )),
+                          ],
+                          onChanged: (val) =>
+                              setModal(() => selectedParentId = val),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  }),
+
+                  // ── Guardar ──────────────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF4F46E5),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              final name = nameCtrl.text.trim();
+                              if (name.isEmpty) return;
+                              if (selectedGroup.isEmpty) return;
+                              setModal(() => isSaving = true);
+                              try {
+                                // Subir imagen si se seleccionó una nueva
+                                String? imageUrl = existingImageUrl;
+                                if (pickedFile != null) {
+                                  imageUrl =
+                                      await _repo.uploadCategoryImage(pickedFile!);
+                                }
+
+                                if (existing == null) {
+                                  await _repo.createCategory(
+                                    name: name,
+                                    groupName: selectedGroup,
+                                    parentId: selectedParentId,
+                                    imageUrl: imageUrl,
+                                  );
+                                } else {
+                                  await _repo.updateCategory(
+                                    id: existing['id'] as String,
+                                    name: name,
+                                    groupName: selectedGroup,
+                                    imageUrl: imageUrl,
+                                    clearImage: existingImageUrl == null &&
+                                        pickedFile == null,
+                                  );
+                                }
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                _load();
+                              } catch (e) {
+                                setModal(() => isSaving = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
+                              }
+                            },
+                      child: isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Guardar',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
+
+  // ── Confirmar eliminación ─────────────────────────────────────────────────────
 
   Future<void> _confirmDelete(Map<String, dynamic> cat) async {
     final name = cat['name'] as String? ?? '';
@@ -266,22 +495,29 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    // Group categories
     final grouped = <String, List<Map<String, dynamic>>>{};
     for (final cat in _categories) {
       final g = cat['group_name'] as String? ?? 'Otro';
       grouped.putIfAbsent(g, () => []).add(cat);
     }
 
+    // Incluir todos los grupos registrados, aunque estén vacíos
+    final allGroups = {
+      ..._groups,
+      ...grouped.keys,
+    }.toList();
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openSheet(),
+        onPressed: _groups.isEmpty ? null : () => _openSheet(),
         backgroundColor: const Color(0xFF4F46E5),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Nueva',
+        label: const Text('Nueva categoría',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
       body: SafeArea(
@@ -292,7 +528,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(20),
                   children: [
-                    // Header
+                    // ── Header ─────────────────────────────────────────────
                     Row(
                       children: [
                         const Icon(Icons.category_rounded,
@@ -317,17 +553,70 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 fontWeight: FontWeight.w600),
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        // Botón nuevo grupo
+                        Tooltip(
+                          message: 'Nuevo grupo',
+                          child: InkWell(
+                            onTap: _createGroup,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FDF4),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: const Color(0xFF065F46)
+                                        .withValues(alpha: 0.3)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.add_rounded,
+                                      size: 14, color: Color(0xFF065F46)),
+                                  SizedBox(width: 3),
+                                  Text('Grupo',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF065F46),
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Groups
-                    ..._groups.map((g) {
+
+                    // ── Sin grupos ─────────────────────────────────────────
+                    if (allGroups.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 40),
+                          child: Column(
+                            children: [
+                              Icon(Icons.folder_open_outlined,
+                                  size: 48, color: Colors.grey.shade300),
+                              const SizedBox(height: 12),
+                              Text('Crea un grupo primero',
+                                  style: TextStyle(
+                                      color: AppTheme.mutedLight,
+                                      fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // ── Grupos con sus categorías ──────────────────────────
+                    ...allGroups.map((g) {
                       final cats = grouped[g] ?? [];
-                      if (cats.isEmpty) return const SizedBox.shrink();
                       final style = _groupColor(g);
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Cabecera del grupo
                           Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.symmetric(
@@ -336,12 +625,24 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               color: style.bg,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
-                              g,
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: style.text),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  g,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: style.text),
+                                ),
+                                if (cats.isEmpty) ...[
+                                  const SizedBox(width: 6),
+                                  Text('sin categorías',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: style.text.withValues(alpha: 0.6))),
+                                ],
+                              ],
                             ),
                           ),
                           ...cats.map((cat) => _CategoryRow(
@@ -354,7 +655,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                         ],
                       );
                     }),
-                    const SizedBox(height: 60), // FAB padding
+                    const SizedBox(height: 80), // espacio para FAB
                   ],
                 ),
               ),
@@ -363,7 +664,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 }
 
-// ── Category row ───────────────────────────────────────────────────────────────
+// ── Category row ──────────────────────────────────────────────────────────────
 
 class _CategoryRow extends StatelessWidget {
   final Map<String, dynamic> cat;
@@ -382,10 +683,11 @@ class _CategoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = cat['name'] as String? ?? '—';
     final isChild = cat['parent_id'] != null;
+    final imageUrl = cat['image_url'] as String?;
 
     return Container(
       margin: EdgeInsets.only(bottom: 8, left: isChild ? 16 : 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppTheme.cardLight,
         borderRadius: BorderRadius.circular(12),
@@ -396,9 +698,46 @@ class _CategoryRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Thumbnail
+          if (imageUrl != null)
+            Container(
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: style.bg,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.image_not_supported_outlined,
+                  size: 20,
+                  color: style.text.withValues(alpha: 0.5),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: style.bg,
+              ),
+              child: Icon(
+                Icons.local_florist_outlined,
+                size: 20,
+                color: style.text.withValues(alpha: 0.5),
+              ),
+            ),
+
           if (isChild)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 6),
               child: Icon(Icons.subdirectory_arrow_right_rounded,
                   size: 14, color: style.text.withValues(alpha: 0.5)),
             ),
@@ -407,8 +746,7 @@ class _CategoryRow extends StatelessWidget {
               name,
               style: TextStyle(
                   fontSize: 14,
-                  fontWeight:
-                      isChild ? FontWeight.normal : FontWeight.w600),
+                  fontWeight: isChild ? FontWeight.normal : FontWeight.w600),
             ),
           ),
           IconButton(

@@ -3,6 +3,7 @@ import '../../../../core/theme/app_theme.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_shops_screen.dart';
 import 'admin_categories_screen.dart';
+import 'admin_settings_screen.dart';
 
 class AdminLayout extends StatefulWidget {
   const AdminLayout({super.key});
@@ -18,6 +19,7 @@ class _AdminLayoutState extends State<AdminLayout> {
     AdminDashboardScreen(),
     AdminShopsScreen(),
     AdminCategoriesScreen(),
+    AdminSettingsScreen(),
   ];
 
   @override
@@ -58,6 +60,11 @@ class _AdminLayoutState extends State<AdminLayout> {
                 icon: Icon(Icons.category_outlined),
                 activeIcon: Icon(Icons.category_rounded),
                 label: 'Categorías',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.settings_outlined),
+                activeIcon: Icon(Icons.settings_rounded),
+                label: 'Ajustes',
               ),
             ],
           ),
