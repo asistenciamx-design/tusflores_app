@@ -127,11 +127,14 @@ class AdminRepository {
     required String groupName,
     String? imageUrl,
     bool clearImage = false,
+    String? parentId,
+    bool clearParent = false,
   }) async {
     await _db.from('categories').update({
       'name': name,
       'group_name': groupName,
       if (clearImage) 'image_url': null else if (imageUrl != null) 'image_url': imageUrl,
+      if (clearParent) 'parent_id': null else if (parentId != null) 'parent_id': parentId,
     }).eq('id', id);
   }
 

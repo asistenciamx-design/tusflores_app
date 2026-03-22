@@ -527,6 +527,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                     imageUrl: imageUrl,
                                     clearImage: existingImageUrl == null &&
                                         pickedFile == null,
+                                    parentId: selectedParentId,
+                                    clearParent: selectedParentId == null,
                                   );
                                 }
                                 if (ctx.mounted) Navigator.pop(ctx);
