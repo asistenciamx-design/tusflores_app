@@ -566,6 +566,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       final g = cat['group_name'] as String? ?? 'Otro';
       grouped.putIfAbsent(g, () => []).add(cat);
     }
+    for (final list in grouped.values) {
+      list.sort((a, b) =>
+          (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
+    }
 
     // Incluir todos los grupos registrados, aunque estén vacíos (solo si no hay búsqueda activa)
     final allGroups = _searchQuery.isEmpty
