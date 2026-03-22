@@ -410,7 +410,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   Builder(builder: (_) {
                     final groupParents = parents
                         .where((p) => p['group_name'] == selectedGroup)
-                        .toList();
+                        .toList()
+                      ..sort((a, b) =>
+                          (a['name'] as String? ?? '')
+                              .compareTo(b['name'] as String? ?? ''));
                     if (groupParents.isEmpty) return const SizedBox.shrink();
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,27 +424,63 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 color: AppTheme.mutedLight,
                                 fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
-                        DropdownButtonFormField<String?>(
-                          value: selectedParentId,
-                          decoration: InputDecoration(
-                            hintText: 'Sin categoría padre',
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
-                          ),
-                          items: [
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('Sin categoría padre'),
+                        GestureDetector(
+                          onTap: () async {
+                            final result =
+                                await showModalBottomSheet<String?>(
+                              context: ctx,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.white,
+                              shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(24))),
+                              builder: (_) => _ParentPickerSheet(
+                                parents: groupParents,
+                                selectedId: selectedParentId,
+                              ),
+                            );
+                            if (result != null) {
+                              setModal(() => selectedParentId =
+                                  result.isEmpty ? null : result);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: Colors.grey.shade300),
                             ),
-                            ...groupParents.map((p) => DropdownMenuItem<String?>(
-                                  value: p['id'] as String,
-                                  child: Text(p['name'] as String? ?? ''),
-                                )),
-                          ],
-                          onChanged: (val) =>
-                              setModal(() => selectedParentId = val),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    selectedParentId == null
+                                        ? 'Sin categoría padre'
+                                        : (groupParents.firstWhere(
+                                                (p) =>
+                                                    p['id'] ==
+                                                    selectedParentId,
+                                                orElse: () => {
+                                                      'name':
+                                                          'Sin categoría padre'
+                                                    })['name']
+                                            as String),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: selectedParentId == null
+                                          ? Colors.grey.shade400
+                                          : AppTheme.textLight,
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right,
+                                    color: Colors.grey.shade400, size: 20),
+                              ],
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -911,6 +950,137 @@ class _CategoryRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Parent category picker sheet ───────────────────────────────────────────────
+
+class _ParentPickerSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> parents;
+  final String? selectedId;
+  const _ParentPickerSheet({required this.parents, this.selectedId});
+
+  @override
+  State<_ParentPickerSheet> createState() => _ParentPickerSheetState();
+}
+
+class _ParentPickerSheetState extends State<_ParentPickerSheet> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.parents
+        .where((p) =>
+            _query.isEmpty ||
+            (p['name'] as String? ?? '')
+                .toLowerCase()
+                .contains(_query.toLowerCase()))
+        .toList();
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.92,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (_, scrollCtrl) => Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Categoría padre',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchCtrl,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar...',
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        size: 20, color: Color(0xFF4F46E5)),
+                    suffixIcon: _query.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _query = '');
+                            })
+                        : null,
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.grey.shade200)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.grey.shade200)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF4F46E5), width: 1.5)),
+                  ),
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              controller: scrollCtrl,
+              children: [
+                if (_query.isEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.remove_circle_outline,
+                        size: 20, color: Colors.grey),
+                    title: const Text('Sin categoría padre'),
+                    selected: widget.selectedId == null,
+                    selectedColor: const Color(0xFF4F46E5),
+                    onTap: () => Navigator.pop(context, ''),
+                  ),
+                ...filtered.map((p) => ListTile(
+                      title: Text(p['name'] as String? ?? ''),
+                      selected: widget.selectedId == p['id'],
+                      selectedColor: const Color(0xFF4F46E5),
+                      onTap: () =>
+                          Navigator.pop(context, p['id'] as String),
+                    )),
+                if (filtered.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Text('Sin resultados',
+                          style:
+                              TextStyle(color: Colors.grey.shade400)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
