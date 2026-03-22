@@ -605,9 +605,32 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       final g = cat['group_name'] as String? ?? 'Otro';
       grouped.putIfAbsent(g, () => []).add(cat);
     }
-    for (final list in grouped.values) {
-      list.sort((a, b) =>
-          (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
+    // Ordenar: padres A→Z, cada padre seguido inmediatamente de sus hijas A→Z
+    for (final key in grouped.keys.toList()) {
+      final all = grouped[key]!;
+      final topLevel = all.where((c) => c['parent_id'] == null).toList()
+        ..sort((a, b) =>
+            (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
+      final childrenMap = <String, List<Map<String, dynamic>>>{};
+      for (final c in all.where((c) => c['parent_id'] != null)) {
+        childrenMap.putIfAbsent(c['parent_id'] as String, () => []).add(c);
+      }
+      for (final list in childrenMap.values) {
+        list.sort((a, b) =>
+            (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
+      }
+      final ordered = <Map<String, dynamic>>[];
+      for (final parent in topLevel) {
+        ordered.add(parent);
+        ordered.addAll(childrenMap[parent['id'] as String] ?? []);
+      }
+      // Subcategorías huérfanas (padre fuera del grupo filtrado, ej. búsqueda activa)
+      final seen = ordered.map((c) => c['id'] as String).toSet();
+      for (final c in all.where(
+          (c) => c['parent_id'] != null && !seen.contains(c['id'] as String))) {
+        ordered.add(c);
+      }
+      grouped[key] = ordered;
     }
 
     // Incluir todos los grupos registrados, aunque estén vacíos (solo si no hay búsqueda activa)
