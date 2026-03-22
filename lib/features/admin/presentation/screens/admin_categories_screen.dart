@@ -231,6 +231,29 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
+                  if (existing != null && existing['sku'] != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.tag_rounded,
+                            size: 14, color: Color(0xFF4F46E5)),
+                        const SizedBox(width: 4),
+                        Text(
+                          existing['sku'] as String,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF4F46E5),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text('· código de categoría',
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey.shade400)),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 20),
 
                   // ── Imagen ───────────────────────────────────────────────
@@ -855,6 +878,7 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = cat['name'] as String? ?? '—';
+    final sku = cat['sku'] as String?;
     final isChild = cat['parent_id'] != null;
     final imageUrl = cat['image_url'] as String?;
     final isActive = cat['is_active'] as bool? ?? true;
@@ -930,6 +954,16 @@ class _CategoryRow extends StatelessWidget {
                         fontWeight: isChild ? FontWeight.normal : FontWeight.w600,
                         decoration: isActive ? null : TextDecoration.none),
                   ),
+                  if (sku != null)
+                    Text(
+                      sku,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: style.text.withValues(alpha: 0.5),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
                   if (!isActive)
                     Container(
                       margin: const EdgeInsets.only(top: 2),
