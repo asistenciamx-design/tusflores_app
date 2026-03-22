@@ -864,15 +864,19 @@ class _CategorySheetState extends State<_CategorySheet> {
         .toSet()
         .toList()
       ..sort();
-    // Top-level categories per group (no parent)
+    // Top-level categories per group (no parent), sorted alphabetically
     Map<String, List<_Category>> topLevel = {
       for (final g in groups)
-        g: widget.allCategories.where((c) => c.groupName == g && c.parentId == null).toList()
+        g: (widget.allCategories.where((c) => c.groupName == g && c.parentId == null).toList()
+          ..sort((a, b) => a.name.compareTo(b.name)))
     };
-    // Children map: parentId → list
+    // Children map: parentId → list, sorted alphabetically
     Map<String, List<_Category>> children = {};
     for (final c in widget.allCategories.where((c) => c.parentId != null)) {
       children.putIfAbsent(c.parentId!, () => []).add(c);
+    }
+    for (final list in children.values) {
+      list.sort((a, b) => a.name.compareTo(b.name));
     }
 
     return DraggableScrollableSheet(
