@@ -15,6 +15,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _categories = [];
   List<String> _groups = [];
+  String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
 
   // Paleta de colores ciclica para grupos dinámicos
   static const _palette = [
@@ -32,6 +34,15 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   void initState() {
     super.initState();
     _load();
+    _searchCtrl.addListener(() {
+      setState(() => _searchQuery = _searchCtrl.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -58,6 +69,49 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     final idx = _groups.indexOf(group);
     final i = idx < 0 ? 0 : idx % _palette.length;
     return _palette[i];
+  }
+
+  // ── Pausa / activar categoría ────────────────────────────────────────────────
+
+  Future<void> _toggleActive(Map<String, dynamic> cat) async {
+    final isActive = cat['is_active'] as bool? ?? true;
+    final name = cat['name'] as String? ?? '';
+    final action = isActive ? 'pausar' : 'activar';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${isActive ? 'Pausar' : 'Activar'} categoría'),
+        content: Text(
+          isActive
+              ? '¿Pausar "$name"? No aparecerá en el selector de productos hasta que la reactives.'
+              : '¿Activar "$name"? Volverá a aparecer en el selector de productos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: isActive ? Colors.orange : const Color(0xFF4F46E5),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isActive ? 'Pausar' : 'Activar'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _repo.toggleCategoryActive(cat['id'] as String, isActive: !isActive);
+      _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al $action la categoría')),
+        );
+      }
+    }
   }
 
   // ── Crear nuevo grupo ────────────────────────────────────────────────────────
@@ -499,17 +553,27 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Filtrar por búsqueda
+    final filtered = _searchQuery.isEmpty
+        ? _categories
+        : _categories.where((c) {
+            final name = (c['name'] as String? ?? '').toLowerCase();
+            return name.contains(_searchQuery.toLowerCase());
+          }).toList();
+
     final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final cat in _categories) {
+    for (final cat in filtered) {
       final g = cat['group_name'] as String? ?? 'Otro';
       grouped.putIfAbsent(g, () => []).add(cat);
     }
 
-    // Incluir todos los grupos registrados, aunque estén vacíos
-    final allGroups = {
-      ..._groups,
-      ...grouped.keys,
-    }.toList();
+    // Incluir todos los grupos registrados, aunque estén vacíos (solo si no hay búsqueda activa)
+    final allGroups = _searchQuery.isEmpty
+        ? {
+            ..._groups,
+            ...grouped.keys,
+          }.toList()
+        : grouped.keys.toList();
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
@@ -588,6 +652,43 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+
+                    // ── Buscador ────────────────────────────────────────────
+                    TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar categoría...',
+                        prefixIcon: const Icon(Icons.search_rounded,
+                            size: 20, color: Color(0xFF4F46E5)),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 18),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: AppTheme.cardLight,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF4F46E5), width: 1.5),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 20),
 
                     // ── Sin grupos ─────────────────────────────────────────
@@ -650,6 +751,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 style: style,
                                 onEdit: () => _openSheet(existing: cat),
                                 onDelete: () => _confirmDelete(cat),
+                                onToggleActive: () => _toggleActive(cat),
                               )),
                           const SizedBox(height: 16),
                         ],
@@ -671,12 +773,14 @@ class _CategoryRow extends StatelessWidget {
   final ({Color bg, Color text}) style;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onToggleActive;
 
   const _CategoryRow({
     required this.cat,
     required this.style,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggleActive,
   });
 
   @override
@@ -684,84 +788,124 @@ class _CategoryRow extends StatelessWidget {
     final name = cat['name'] as String? ?? '—';
     final isChild = cat['parent_id'] != null;
     final imageUrl = cat['image_url'] as String?;
+    final isActive = cat['is_active'] as bool? ?? true;
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 8, left: isChild ? 16 : 0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.cardLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: isChild
-                ? style.text.withValues(alpha: 0.12)
-                : Colors.black.withValues(alpha: 0.06)),
-      ),
-      child: Row(
-        children: [
-          // Thumbnail
-          if (imageUrl != null)
-            Container(
-              width: 44,
-              height: 44,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: style.bg,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.image_not_supported_outlined,
+    return Opacity(
+      opacity: isActive ? 1.0 : 0.55,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 8, left: isChild ? 16 : 0),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? AppTheme.cardLight : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: isActive
+                  ? (isChild
+                      ? style.text.withValues(alpha: 0.12)
+                      : Colors.black.withValues(alpha: 0.06))
+                  : Colors.orange.shade200),
+        ),
+        child: Row(
+          children: [
+            // Thumbnail
+            if (imageUrl != null)
+              Container(
+                width: 44,
+                height: 44,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: style.bg,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.image_not_supported_outlined,
+                    size: 20,
+                    color: style.text.withValues(alpha: 0.5),
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 44,
+                height: 44,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: style.bg,
+                ),
+                child: Icon(
+                  Icons.local_florist_outlined,
                   size: 20,
                   color: style.text.withValues(alpha: 0.5),
                 ),
               ),
-            )
-          else
-            Container(
-              width: 44,
-              height: 44,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: style.bg,
-              ),
-              child: Icon(
-                Icons.local_florist_outlined,
-                size: 20,
-                color: style.text.withValues(alpha: 0.5),
-              ),
-            ),
 
-          if (isChild)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Icon(Icons.subdirectory_arrow_right_rounded,
-                  size: 14, color: style.text.withValues(alpha: 0.5)),
+            if (isChild)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Icon(Icons.subdirectory_arrow_right_rounded,
+                    size: 14, color: style.text.withValues(alpha: 0.5)),
+              ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isChild ? FontWeight.normal : FontWeight.w600,
+                        decoration: isActive ? null : TextDecoration.none),
+                  ),
+                  if (!isActive)
+                    Container(
+                      margin: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('Pausada',
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.orange.shade800,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                ],
+              ),
             ),
-          Expanded(
-            child: Text(
-              name,
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isChild ? FontWeight.normal : FontWeight.w600),
+            // Botón pausa / reactivar
+            IconButton(
+              onPressed: onToggleActive,
+              icon: Icon(
+                isActive
+                    ? Icons.pause_circle_outline_rounded
+                    : Icons.play_circle_outline_rounded,
+                size: 20,
+              ),
+              color: isActive ? Colors.orange.shade400 : Colors.green.shade500,
+              visualDensity: VisualDensity.compact,
+              tooltip: isActive ? 'Pausar' : 'Activar',
             ),
-          ),
-          IconButton(
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            color: AppTheme.mutedLight,
-            visualDensity: VisualDensity.compact,
-          ),
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            color: Colors.red.shade400,
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
+            IconButton(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              color: AppTheme.mutedLight,
+              visualDensity: VisualDensity.compact,
+            ),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              color: Colors.red.shade400,
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
       ),
     );
   }

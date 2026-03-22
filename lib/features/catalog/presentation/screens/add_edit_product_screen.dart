@@ -39,12 +39,28 @@ class _Category {
 
 // ─── Group color palette ──────────────────────────────────────────────────────
 
-({Color bg, Color text, Color border}) _groupChipStyle(String group) =>
-    switch (group) {
-      'Flor'    => (bg: const Color(0xFFECFDF5), text: const Color(0xFF065F46), border: const Color(0xFF6EE7B7)),
-      'Ocasión' => (bg: const Color(0xFFF5F3FF), text: const Color(0xFF5B21B6), border: const Color(0xFFDDD6FE)),
-      _         => (bg: const Color(0xFFFFF7ED), text: const Color(0xFF9A3412), border: const Color(0xFFFDBA74)),
-    };
+const _kGroupPalette = [
+  (bg: Color(0xFFECFDF5), text: Color(0xFF065F46), border: Color(0xFF6EE7B7)),
+  (bg: Color(0xFFF5F3FF), text: Color(0xFF5B21B6), border: Color(0xFFDDD6FE)),
+  (bg: Color(0xFFFFF7ED), text: Color(0xFF9A3412), border: Color(0xFFFDBA74)),
+  (bg: Color(0xFFEFF6FF), text: Color(0xFF1D4ED8), border: Color(0xFF93C5FD)),
+  (bg: Color(0xFFFDF2F8), text: Color(0xFF9D174D), border: Color(0xFFF9A8D4)),
+  (bg: Color(0xFFFFFBEB), text: Color(0xFF92400E), border: Color(0xFFFCD34D)),
+  (bg: Color(0xFFF0F9FF), text: Color(0xFF0369A1), border: Color(0xFF7DD3FC)),
+  (bg: Color(0xFFF0FDF4), text: Color(0xFF166534), border: Color(0xFF86EFAC)),
+];
+
+// Cache de índice por nombre de grupo para colores consistentes por sesión
+final _groupColorIndex = <String, int>{};
+int _nextGroupIndex = 0;
+
+({Color bg, Color text, Color border}) _groupChipStyle(String group) {
+  if (!_groupColorIndex.containsKey(group)) {
+    _groupColorIndex[group] = _nextGroupIndex % _kGroupPalette.length;
+    _nextGroupIndex++;
+  }
+  return _kGroupPalette[_groupColorIndex[group]!];
+}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -114,8 +130,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       final data = await Supabase.instance.client
           .from('categories')
           .select()
+          .eq('is_active', true)
           .order('group_name')
-          .order('sort_order');
+          .order('name');
       if (!mounted) return;
       final cats = (data as List).map((m) => _Category.fromMap(m)).toList();
       final existingTags = widget.product?.tags ?? [];
@@ -842,7 +859,11 @@ class _CategorySheetState extends State<_CategorySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final groups = ['Flor', 'Ocasión', 'Tipo'];
+    final groups = widget.allCategories
+        .map((c) => c.groupName)
+        .toSet()
+        .toList()
+      ..sort();
     // Top-level categories per group (no parent)
     Map<String, List<_Category>> topLevel = {
       for (final g in groups)

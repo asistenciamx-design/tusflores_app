@@ -94,8 +94,15 @@ class AdminRepository {
         .from('categories')
         .select()
         .order('group_name')
-        .order('sort_order');
+        .order('name');
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> toggleCategoryActive(String id, {required bool isActive}) async {
+    await _db
+        .from('categories')
+        .update({'is_active': isActive})
+        .eq('id', id);
   }
 
   Future<void> createCategory({
