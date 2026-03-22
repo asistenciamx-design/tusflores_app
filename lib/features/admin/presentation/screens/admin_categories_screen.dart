@@ -572,12 +572,13 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
 
     // Incluir todos los grupos registrados, aunque estén vacíos (solo si no hay búsqueda activa)
-    final allGroups = _searchQuery.isEmpty
-        ? {
-            ..._groups,
-            ...grouped.keys,
-          }.toList()
-        : grouped.keys.toList();
+    final allGroups = (_searchQuery.isEmpty
+            ? {
+                ..._groups,
+                ...grouped.keys,
+              }.toList()
+            : grouped.keys.toList())
+        ..sort();
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
