@@ -251,6 +251,14 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             ? pw.TextAlign.right
             : pw.TextAlign.center;
 
+    // Load NotoEmoji as fallback so emoji characters render correctly in PDF.
+    pw.Font? emojiFont;
+    try {
+      emojiFont = await _assetFont('assets/fonts/NotoEmoji-Regular.ttf');
+    } catch (_) {
+      // If the asset is unavailable, continue without emoji support.
+    }
+
     Future<Uint8List> buildWith(pw.Font f) async {
       // compress: false avoids zlib issues on Flutter Web
       final doc = pw.Document(version: PdfVersion.pdf_1_5, compress: false);
@@ -272,6 +280,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
               fontSize: _fontSize,
               decoration:
                   _isStrikethrough ? pw.TextDecoration.lineThrough : null,
+              fontFallback: emojiFont != null ? [emojiFont] : [],
             ),
           ),
         ),
@@ -294,7 +303,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     try {
       return await buildWith(font);
     } catch (_) {
-      if (usingFallback) rethrow; // already on fallback — propagate the error
+      if (usingFallback) rethrow;
       return await buildWith(
           _isBold ? pw.Font.helveticaBold() : pw.Font.helvetica());
     }
