@@ -848,6 +848,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
   }
 
   void _showProductSelector() {
+    final searchCtrl = TextEditingController();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -856,12 +857,22 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return DraggableScrollableSheet(
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.6,
           minChildSize: 0.4,
           maxChildSize: 0.9,
           builder: (context, scrollController) {
+            final q = searchCtrl.text.trim().toLowerCase();
+            final filtered = q.isEmpty
+                ? _catalogProducts
+                : _catalogProducts.where((p) =>
+                    p.name.toLowerCase().contains(q) ||
+                    (p.sku?.toLowerCase().contains(q) ?? false) ||
+                    p.tags.any((t) => t.toLowerCase().contains(q))
+                  ).toList();
             return Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -887,15 +898,39 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                   Text(
                       'Selecciona el producto que deseas agregar a este pedido.',
                       style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: searchCtrl,
+                    onChanged: (_) => setSheetState(() {}),
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar producto, flor o código...',
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                      prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
+                      suffixIcon: searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                              onPressed: () => setSheetState(() => searchCtrl.clear()),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: ListView.separated(
                       controller: scrollController,
-                      itemCount: _catalogProducts.length,
+                      itemCount: filtered.length,
                       separatorBuilder: (context, index) =>
                           const Divider(height: 24),
                       itemBuilder: (context, index) {
-                        final productItem = _catalogProducts[index];
+                        final productItem = filtered[index];
                         final productImage = productItem.imageUrls.isNotEmpty
                             ? productItem.imageUrls.first
                             : null;
@@ -980,8 +1015,10 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
             );
           },
         );
+          },
+        );
       },
-    );
+    ).whenComplete(() => searchCtrl.dispose());
   }
 
   Future<void> _selectDate(BuildContext context) async {
