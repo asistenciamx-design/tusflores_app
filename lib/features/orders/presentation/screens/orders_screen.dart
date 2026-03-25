@@ -876,7 +876,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Venta: ${_formatDate(order.saleDate)}, ${_formatTime(order.saleDate)}',
+                        'Venta: ${_formatDate(order.createdAt)}, ${_formatTime(order.createdAt)}',
                         style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
                       ),
                       Text(
@@ -1682,8 +1682,8 @@ extension OrderShareExtension on OrderModel {
     }
     buf.writeln();
     
-    final sDate = _formatDateGlobal(saleDate);
-    final sTime = _formatTimeGlobal(saleDate);
+    final sDate = _formatDateGlobal(createdAt);
+    final sTime = _formatTimeGlobal(createdAt);
 
     if (isReceipt) {
       if (isPaid && paymentMethod != null) {
