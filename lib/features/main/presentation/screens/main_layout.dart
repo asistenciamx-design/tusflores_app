@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/currency_cache.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../catalog/presentation/screens/catalog_screen.dart';
 import '../../../orders/presentation/screens/orders_screen.dart';
@@ -37,6 +38,34 @@ class _MainLayoutState extends State<MainLayout>
         const MainProfileSettingsScreen(),
       ];
 
+  static const _sidebarItems = [
+    AppSidebarItem(
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home,
+      label: 'Inicio',
+    ),
+    AppSidebarItem(
+      icon: Icons.local_florist_outlined,
+      activeIcon: Icons.local_florist,
+      label: 'Catálogo',
+    ),
+    AppSidebarItem(
+      icon: Icons.shopping_bag_outlined,
+      activeIcon: Icons.shopping_bag,
+      label: 'Pedidos',
+    ),
+    AppSidebarItem(
+      icon: Icons.group_outlined,
+      activeIcon: Icons.group,
+      label: 'CRM',
+    ),
+    AppSidebarItem(
+      icon: Icons.person_outline,
+      activeIcon: Icons.person,
+      label: 'Perfil',
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -44,7 +73,6 @@ class _MainLayoutState extends State<MainLayout>
       vsync: this,
       duration: const Duration(milliseconds: 380),
     );
-    // Start subscription after first frame so Overlay is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startRealtimeSubscription();
     });
@@ -61,7 +89,7 @@ class _MainLayoutState extends State<MainLayout>
     super.dispose();
   }
 
-  // ── Realtime subscription (INSERT only — just for the banner) ─────────────
+  // ── Realtime subscription ─────────────────────────────────────────────────
 
   void _startRealtimeSubscription() {
     final user = Supabase.instance.client.auth.currentUser;
@@ -84,12 +112,10 @@ class _MainLayoutState extends State<MainLayout>
               final newOrder = OrderModel.fromJson(
                   payload.newRecord as Map<String, dynamic>);
               if (!mounted) return;
-              // Only show banner when user is NOT on the Pedidos tab
               if (_currentIndex != 2) {
                 _showNewOrderBanner(newOrder);
               }
-            } catch (e) {
-            }
+            } catch (e) {}
           },
         )
         .subscribe();
@@ -98,7 +124,7 @@ class _MainLayoutState extends State<MainLayout>
   // ── Banner ────────────────────────────────────────────────────────────────
 
   void _showNewOrderBanner(OrderModel order) {
-    _dismissBannerImmediately(); // remove any previous banner
+    _dismissBannerImmediately();
 
     final slide = Tween<Offset>(
       begin: const Offset(0, -1),
@@ -133,10 +159,8 @@ class _MainLayoutState extends State<MainLayout>
 
     Overlay.of(context).insert(_bannerEntry!);
     _bannerController.forward(from: 0);
-
   }
 
-  /// Animated dismiss (slide out upward).
   void _dismissBanner() {
     if (_bannerEntry == null || !mounted) return;
     _bannerController.reverse().then((_) {
@@ -145,19 +169,54 @@ class _MainLayoutState extends State<MainLayout>
     });
   }
 
-  /// Immediate dismiss (no animation) — used before showing a new banner.
   void _dismissBannerImmediately() {
     _bannerEntry?.remove();
     _bannerEntry = null;
     _bannerController.reset();
   }
 
+  void _onNavTap(int index) {
+    setState(() => _currentIndex = index);
+    if (index == 2) _dismissBanner();
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    return ResponsiveLayout(
+      mobile: _MobileLayout(
+        currentIndex: _currentIndex,
+        onTap: _onNavTap,
+        screen: _screens[_currentIndex],
+      ),
+      desktop: _WideLayout(
+        currentIndex: _currentIndex,
+        onTap: _onNavTap,
+        screen: _screens[_currentIndex],
+        items: _sidebarItems,
+      ),
+    );
+  }
+}
+
+// ── Mobile layout: bottom navigation bar ─────────────────────────────────────
+
+class _MobileLayout extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final Widget screen;
+
+  const _MobileLayout({
+    required this.currentIndex,
+    required this.onTap,
+    required this.screen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: screen,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -171,14 +230,8 @@ class _MainLayoutState extends State<MainLayout>
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24.0)),
           child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-              // Dismiss banner when user manually navigates to Pedidos
-              if (index == 2) _dismissBanner();
-            },
+            currentIndex: currentIndex,
+            onTap: onTap,
             type: BottomNavigationBarType.fixed,
             items: const [
               BottomNavigationBarItem(
@@ -214,6 +267,69 @@ class _MainLayoutState extends State<MainLayout>
   }
 }
 
+// ── Wide layout: sidebar + content ───────────────────────────────────────────
+
+class _WideLayout extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final Widget screen;
+  final List<AppSidebarItem> items;
+
+  const _WideLayout({
+    required this.currentIndex,
+    required this.onTap,
+    required this.screen,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Row(
+        children: [
+          AppSidebar(
+            currentIndex: currentIndex,
+            onTap: onTap,
+            items: items,
+            accentColor: const Color(0xFF2BEE79),
+            header: _SidebarHeader(),
+          ),
+          Expanded(child: screen),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2BEE79),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.local_florist, color: Colors.white, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'tusflores',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            color: isDark ? Colors.white : const Color(0xFF1F2937),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Banner widget ────────────────────────────────────────────────────────────
 
 class _NewOrderBanner extends StatelessWidget {
@@ -229,7 +345,6 @@ class _NewOrderBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Try to parse the buyer name (may be different from customerName)
     final buyerLabel = order.buyerName?.isNotEmpty == true
         ? order.buyerName!
         : order.customerName;
@@ -251,11 +366,9 @@ class _NewOrderBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
           ),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                // Icon
                 Container(
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
@@ -266,8 +379,6 @@ class _NewOrderBanner extends StatelessWidget {
                       color: Colors.white, size: 22),
                 ),
                 const SizedBox(width: 12),
-
-                // Text
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,8 +404,6 @@ class _NewOrderBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-
-                // CTA + close
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
