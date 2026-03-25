@@ -34,6 +34,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   bool _isUnavailable = false;
   String? _unavailableMessage;
 
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
   final _productRepo = ProductRepository();
   final _settingsRepo = ShopSettingsRepository();
   ShopSettingsModel? _settings;
@@ -48,10 +51,31 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   }
 
   List<ProductItem> get _filteredProducts {
-    if (_categories.isEmpty || _selectedCategoryIndex >= _categories.length) return _products;
-    final category = _categories[_selectedCategoryIndex];
-    if (category == 'Todos') return _products;
-    return _products.where((p) => p.tags.contains(category)).toList();
+    var list = _products;
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      list = list.where((p) =>
+        p.name.toLowerCase().contains(q) ||
+        (p.sku?.toLowerCase().contains(q) ?? false) ||
+        p.tags.any((t) => t.toLowerCase().contains(q))
+      ).toList();
+    }
+
+    if (_categories.isNotEmpty && _selectedCategoryIndex < _categories.length) {
+      final category = _categories[_selectedCategoryIndex];
+      if (category != 'Todos') {
+        list = list.where((p) => p.tags.contains(category)).toList();
+      }
+    }
+
+    return list;
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -150,6 +174,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               _buildStoreInfoSection(context),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              SliverToBoxAdapter(child: _buildSearchBar()),
               if (_products.isNotEmpty) _buildCategoryTabs(context),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               _buildProductsGrid(context),
@@ -316,6 +341,38 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.4),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: TextField(
+        controller: _searchCtrl,
+        onChanged: (v) => setState(() => _searchQuery = v.trim()),
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Buscar producto, flor o código...',
+          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+          prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );
