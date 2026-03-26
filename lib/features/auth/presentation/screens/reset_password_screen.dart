@@ -35,15 +35,29 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   Future<void> _exchangeCode() async {
     final code = widget.code;
+
+    // On Flutter web, Supabase SDK may auto-exchange the code during initialize()
+    // and strip it from the URL before GoRouter reads it. Check current session first.
     if (code == null || code.isEmpty) {
-      setState(() => _error = 'Enlace inválido o expirado.');
+      final user = Supabase.instance.client.auth.currentUser;
+      if (mounted) {
+        setState(() => user != null
+            ? _sessionReady = true
+            : _error = 'Enlace inválido o expirado.');
+      }
       return;
     }
+
     try {
       await Supabase.instance.client.auth.exchangeCodeForSession(code);
       if (mounted) setState(() => _sessionReady = true);
     } catch (e) {
-      if (mounted) setState(() => _error = 'El enlace expiró o ya fue usado. Solicita uno nuevo.');
+      if (!mounted) return;
+      // Code may have been auto-exchanged; check if session exists anyway
+      final user = Supabase.instance.client.auth.currentUser;
+      setState(() => user != null
+          ? _sessionReady = true
+          : _error = 'El enlace expiró o ya fue usado. Solicita uno nuevo.');
     }
   }
 
