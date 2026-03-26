@@ -110,18 +110,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
       final matched = Map<String, dynamic>.from(result as Map);
 
-      // Fetch shop name for display
+      // shop_name ya viene del RPC (no requiere query extra)
       final shopId = matched['shop_id'] as String?;
-      String shopName = 'Tu florería';
-      if (shopId != null) {
-        final profile = await Supabase.instance.client
-            .from('profiles')
-            .select('shop_name')
-            .eq('id', shopId)
-            .maybeSingle();
-        shopName = (profile?['shop_name'] ?? 'Tu florería') as String;
-      }
-      matched['_shop_name'] = shopName;
+      matched['_shop_name'] = matched['shop_name'] as String? ?? 'Tu florería';
 
       // Load shop currency settings
       if (shopId != null) {

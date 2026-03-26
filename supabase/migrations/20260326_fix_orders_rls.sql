@@ -51,6 +51,7 @@ DECLARE
   v_stored_phone TEXT;
   v_stored10 TEXT;
   v_entered10 TEXT;
+  v_shop_name TEXT;
 BEGIN
   -- Normalizar teléfono ingresado (solo dígitos, últimos 10)
   v_entered10 := right(regexp_replace(p_phone, '[^0-9]', '', 'g'), 10);
@@ -77,6 +78,10 @@ BEGIN
     RETURN json_build_object('found', false, 'error', 'phone_mismatch');
   END IF;
 
+  -- Obtener nombre de la florería (evita query extra desde el cliente)
+  SELECT shop_name INTO v_shop_name
+  FROM profiles WHERE id = v_order.shop_id;
+
   -- Devolver campos seguros (sin customer_phone)
   RETURN json_build_object(
     'found', true,
@@ -93,6 +98,7 @@ BEGIN
     'shipping_cost', v_order.shipping_cost,
     'recipient_name', v_order.recipient_name,
     'shop_id', v_order.shop_id,
+    'shop_name', coalesce(v_shop_name, 'Tu florería'),
     'created_at', v_order.created_at,
     'completion_photos', v_order.completion_photos
   );
