@@ -11,6 +11,7 @@ import '../../features/auth/presentation/screens/shop_name_claim_screen.dart';
 import '../../features/auth/presentation/screens/connect_whatsapp_screen.dart';
 import '../../features/auth/presentation/screens/verify_code_screen.dart';
 import '../../features/auth/presentation/screens/account_verified_screen.dart';
+import '../../features/auth/presentation/screens/reset_password_screen.dart';
 
 import '../../features/customer/presentation/screens/customer_main_layout.dart';
 import '../../features/customer/presentation/screens/customer_catalog_screen.dart';
@@ -66,6 +67,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/account-verified',
       builder: (context, state) => const AccountVerifiedScreen(),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) {
+        final code = state.uri.queryParameters['code'];
+        return ResetPasswordScreen(code: code);
+      },
     ),
     GoRoute(
       path: '/',
