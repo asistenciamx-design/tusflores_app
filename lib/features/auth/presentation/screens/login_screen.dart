@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'https://tusflores-app.vercel.app/reset-password',
+        redirectTo: 'https://app.tusflores.app/reset-password',
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
