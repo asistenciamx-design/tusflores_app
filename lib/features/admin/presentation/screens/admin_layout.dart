@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../domain/repositories/admin_repository.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_shops_screen.dart';
 import 'admin_categories_screen.dart';
@@ -14,6 +16,8 @@ class AdminLayout extends StatefulWidget {
 
 class _AdminLayoutState extends State<AdminLayout> {
   int _currentIndex = 0;
+  bool _authorized = false;
+  bool _checking = true;
 
   final List<Widget> _screens = const [
     AdminDashboardScreen(),
@@ -23,7 +27,27 @@ class _AdminLayoutState extends State<AdminLayout> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkRole();
+  }
+
+  Future<void> _checkRole() async {
+    final isAdmin = await AdminRepository().isSuperAdmin();
+    if (!mounted) return;
+    if (!isAdmin) {
+      context.go('/');
+      return;
+    }
+    setState(() { _authorized = true; _checking = false; });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!_authorized) return const SizedBox.shrink();
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: Container(

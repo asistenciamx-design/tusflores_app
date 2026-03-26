@@ -166,12 +166,11 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final msg = e.toString().toLowerCase().contains('rate limit') || e.toString().contains('429')
+            ? 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.'
+            : 'No se pudo enviar el enlace. Verifica tu correo e intenta de nuevo.';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 8),
-          ),
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
       }
     }

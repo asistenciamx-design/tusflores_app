@@ -55,8 +55,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       setState(() => _error = 'Completa ambos campos.');
       return;
     }
-    if (pass.length < 6) {
-      setState(() => _error = 'La contraseña debe tener al menos 6 caracteres.');
+    if (pass.length < 8) {
+      setState(() => _error = 'La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (!RegExp(r'\d').hasMatch(pass)) {
+      setState(() => _error = 'La contraseña debe incluir al menos un número.');
       return;
     }
     if (pass != confirm) {
@@ -156,7 +160,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   controller: _passCtrl,
                   obscureText: _obscurePass,
                   decoration: InputDecoration(
-                    hintText: 'Mínimo 6 caracteres',
+                    hintText: 'Mínimo 8 caracteres con 1 número',
                     prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.mutedLight),
                     suffixIcon: IconButton(
                       icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility,
