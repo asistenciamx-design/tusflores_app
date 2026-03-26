@@ -82,6 +82,7 @@ class OrderModel {
   final String? buyerName;
   final String? buyerWhatsapp;
   final String? buyerEmail;
+  final String source; // 'manual' | 'shopify' | 'woocommerce'
 
   OrderModel({
     this.id,
@@ -116,6 +117,7 @@ class OrderModel {
     this.buyerName,
     this.buyerWhatsapp,
     this.buyerEmail,
+    this.source = 'manual',
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -153,6 +155,7 @@ class OrderModel {
       buyerName: json['buyer_name'] as String?,
       buyerWhatsapp: json['buyer_whatsapp'] as String?,
       buyerEmail: json['buyer_email'] as String?,
+      source: json['source'] as String? ?? 'manual',
       // Map UI colors for displaying correctly in the app
       iconBgColor: const Color(0xFFF5F5F5),
       iconColor: Colors.black87,

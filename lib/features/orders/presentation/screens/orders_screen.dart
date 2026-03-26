@@ -791,6 +791,26 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (order.source == 'shopify') ...[
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF96BF48).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF96BF48), width: 0.8),
+                        ),
+                        child: const Text(
+                          'Shopify',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF5A8A00),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
                     ..._buildUrgencyBadge(order),
                     Text(
                       'FOLIO ${order.folio}',
