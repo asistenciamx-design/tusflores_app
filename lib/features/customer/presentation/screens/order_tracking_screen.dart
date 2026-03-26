@@ -78,63 +78,37 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         // Fail open: if rate limit check fails, allow the attempt
       }
 
-      // 2. Query order by folio; we'll match phone client-side to handle
-      // stored numbers with/without country code.
-      final results = await Supabase.instance.client
-          .from('orders')
-          .select(
-              'id, folio, status, product_name, quantity, delivery_method, delivery_info, delivery_address, delivery_city, price, shipping_cost, recipient_name, shop_id, created_at, completion_photos')
-          .eq('folio', _folio)
-          .limit(5);
+      // 2. Query via RPC seguro (phone matching se hace server-side)
+      final result = await Supabase.instance.client
+          .rpc('get_order_tracking', params: {'p_folio': _folio, 'p_phone': phone});
 
-      if (results.isEmpty) {
-        setState(() {
-          _error = 'No encontramos un pedido con ese folio.';
-          _loading = false;
-        });
-        return;
-      }
-
-      // Match phone: stored value vs entered value — both normalized
-      Map<String, dynamic>? matched;
-      for (final row in results) {
-        // Also fetch customer_phone
-        final full = await Supabase.instance.client
-            .from('orders')
-            .select('customer_phone')
-            .eq('folio', _folio)
-            .limit(1)
-            .single();
-
-        final storedPhone =
-            ((full['customer_phone'] ?? '') as String).replaceAll(RegExp(r'\D'), '');
-
-        // Exact match on last 10 digits to handle country-code differences
-        final stored10 = storedPhone.length >= 10 ? storedPhone.substring(storedPhone.length - 10) : storedPhone;
-        final entered10 = phone.length >= 10 ? phone.substring(phone.length - 10) : phone;
-        if (stored10 == entered10) {
-          matched = row;
-          break;
+      final found = result['found'] as bool? ?? false;
+      if (!found) {
+        final errorCode = result['error'] as String? ?? '';
+        if (errorCode == 'phone_mismatch') {
+          try {
+            await Supabase.instance.client
+                .rpc('record_tracking_attempt', params: {'p_folio': _folio});
+          } catch (_) {}
+          final newRemaining = _remaining - 1;
+          setState(() {
+            if (newRemaining <= 0) _isBlocked = true;
+            _remaining = newRemaining;
+            _error = newRemaining > 0
+                ? 'El número no coincide. Te quedan $newRemaining intento${newRemaining == 1 ? '' : 's'}.'
+                : 'Demasiados intentos fallidos. Contacta a la florería directamente.';
+            _loading = false;
+          });
+        } else {
+          setState(() {
+            _error = 'No encontramos un pedido con ese folio.';
+            _loading = false;
+          });
         }
-      }
-
-      if (matched == null) {
-        // Record failed attempt on server
-        try {
-          await Supabase.instance.client
-              .rpc('record_tracking_attempt', params: {'p_folio': _folio});
-        } catch (_) {}
-        final newRemaining = _remaining - 1;
-        setState(() {
-          if (newRemaining <= 0) _isBlocked = true;
-          _remaining = newRemaining;
-          _error = newRemaining > 0
-              ? 'El número no coincide. Te quedan $newRemaining intento${newRemaining == 1 ? '' : 's'}.'
-              : 'Demasiados intentos fallidos. Contacta a la florería directamente.';
-          _loading = false;
-        });
         return;
       }
+
+      final matched = Map<String, dynamic>.from(result as Map);
 
       // Fetch shop name for display
       final shopId = matched['shop_id'] as String?;

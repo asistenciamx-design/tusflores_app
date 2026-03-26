@@ -69,6 +69,8 @@ class ReviewRepository {
   /// Obtiene TODAS las reseñas de una florería (visibles e invisibles).
   /// Solo debe llamarse desde la pantalla de gestión del dueño.
   Future<List<ReviewModel>> getAllShopReviews(String shopId) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null || uid != shopId) return [];
     try {
       final rows = await _client
           .from('shop_reviews')
