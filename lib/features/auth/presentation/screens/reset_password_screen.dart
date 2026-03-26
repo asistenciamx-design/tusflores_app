@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,15 +20,25 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _isLoading = false;
   bool _sessionReady = false;
   String? _error;
+  StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
+    // Listen for the passwordRecovery event (implicit flow: SDK processes
+    // the token from the URL hash and fires this event automatically)
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (!mounted) return;
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        setState(() { _sessionReady = true; _error = null; });
+      }
+    });
     _exchangeCode();
   }
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _passCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
