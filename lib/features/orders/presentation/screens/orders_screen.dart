@@ -1595,16 +1595,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
     ];
+    final local = dt.toLocal();
     final now = DateTime.now();
-    if (dt.day == now.day && dt.month == now.month && dt.year == now.year) return 'Hoy';
-    if (dt.day == now.day + 1 && dt.month == now.month && dt.year == now.year) return 'Mañana';
-    return '${dt.day} de ${meses[dt.month - 1]} de ${dt.year}';
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(local.year, local.month, local.day);
+    if (d == today) return 'Hoy';
+    if (d == today.add(const Duration(days: 1))) return 'Mañana';
+    if (d == today.subtract(const Duration(days: 1))) return 'Ayer';
+    return '${local.day} de ${meses[local.month - 1]} de ${local.year}';
   }
 
   String _formatTime(DateTime dt) {
-    final h = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
-    final m = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    final local = dt.toLocal();
+    final h = local.hour > 12 ? local.hour - 12 : local.hour == 0 ? 12 : local.hour;
+    final m = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
     return '$h:$m $period';
   }
 
@@ -1638,16 +1643,21 @@ String _formatDateGlobal(DateTime dt) {
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
   ];
+  final local = dt.toLocal();
   final now = DateTime.now();
-  if (dt.day == now.day && dt.month == now.month && dt.year == now.year) return 'Hoy';
-  if (dt.day == now.day + 1 && dt.month == now.month && dt.year == now.year) return 'Mañana';
-  return '${dt.day} de ${meses[dt.month - 1]} de ${dt.year}';
+  final today = DateTime(now.year, now.month, now.day);
+  final d = DateTime(local.year, local.month, local.day);
+  if (d == today) return 'Hoy';
+  if (d == today.add(const Duration(days: 1))) return 'Mañana';
+  if (d == today.subtract(const Duration(days: 1))) return 'Ayer';
+  return '${local.day} de ${meses[local.month - 1]} de ${local.year}';
 }
 
 String _formatTimeGlobal(DateTime dt) {
-  final h = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
-  final m = dt.minute.toString().padLeft(2, '0');
-  final period = dt.hour >= 12 ? 'PM' : 'AM';
+  final local = dt.toLocal();
+  final h = local.hour > 12 ? local.hour - 12 : local.hour == 0 ? 12 : local.hour;
+  final m = local.minute.toString().padLeft(2, '0');
+  final period = local.hour >= 12 ? 'PM' : 'AM';
   return '$h:$m $period';
 }
 
