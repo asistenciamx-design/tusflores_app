@@ -226,7 +226,7 @@ Deno.serve(async (req: Request) => {
   // Buscamos la conexión de esta tienda
   const { data: connection, error: connError } = await supabase
     .from("shopify_connections")
-    .select("shop_id, client_secret")
+    .select("shop_id, client_secret, access_token")
     .eq("shopify_domain", shopDomain)
     .eq("is_active", true)
     .single();
@@ -259,8 +259,28 @@ Deno.serve(async (req: Request) => {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  // Descargar imagen del producto y guardarla en Supabase Storage (evita CORS)
-  const shopifyImageSrc = (order.line_items ?? [])[0]?.image?.src ?? null;
+  // Obtener imagen del producto via Admin API (el webhook no incluye imágenes)
+  let shopifyImageSrc: string | null = (order.line_items ?? [])[0]?.image?.src ?? null;
+
+  if (!shopifyImageSrc && connection.access_token) {
+    const productId = (order.line_items ?? [])[0]?.product_id;
+    if (productId) {
+      try {
+        const apiRes = await fetch(
+          `https://${shopDomain}/admin/api/2024-01/products/${productId}.json`,
+          { headers: { "X-Shopify-Access-Token": connection.access_token } }
+        );
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          shopifyImageSrc = apiData.product?.image?.src ?? null;
+          console.log(`[webhook] imagen obtenida via Products API: ${shopifyImageSrc ? "✅" : "sin imagen"}`);
+        }
+      } catch (e) {
+        console.log("[webhook] error consultando Products API:", e);
+      }
+    }
+  }
+
   const productImageUrl = shopifyImageSrc
     ? await storeProductImage(supabase, shopifyImageSrc, connection.shop_id, order.id)
     : null;
