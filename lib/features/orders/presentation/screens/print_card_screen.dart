@@ -499,7 +499,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTemplatesRow(),
+            _buildTemplateDropdown(),
             const SizedBox(height: 14),
             _buildPreview(),
             const SizedBox(height: 18),
@@ -521,69 +521,72 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
-  // ── Template slots ──────────────────────────────────────────────────────────
-  Widget _buildTemplatesRow() {
-    return Row(
-      children: List.generate(3, (i) {
+  // ── Template dropdown ────────────────────────────────────────────────────────
+  Widget _buildTemplateDropdown() {
+    final hasAny = _templates.any((t) => t != null);
+    return PopupMenuButton<int>(
+      onSelected: (i) => _applyTemplate(_templates[i]!),
+      enabled: hasAny,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      offset: const Offset(0, 44),
+      itemBuilder: (_) => List.generate(3, (i) {
         final t = _templates[i];
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i < 2 ? 8 : 0),
-            child: GestureDetector(
-              onTap: t != null ? () => _applyTemplate(t) : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                    vertical: 10, horizontal: 6),
-                decoration: BoxDecoration(
-                  color: t != null
-                      ? AppTheme.primary.withValues(alpha: 0.08)
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: t != null
-                        ? AppTheme.primary.withValues(alpha: 0.3)
-                        : Colors.grey.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      t != null ? Icons.text_fields : Icons.add,
-                      size: 16,
-                      color: t != null
-                          ? AppTheme.primary
-                          : Colors.grey[400],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      t != null ? t.label : 'Vacía',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: t != null
-                            ? AppTheme.primary
-                            : Colors.grey[400],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Plantilla ${i + 1}',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: t != null
-                            ? Colors.black45
-                            : Colors.grey[300],
-                      ),
-                    ),
-                  ],
+        return PopupMenuItem<int>(
+          value: i,
+          enabled: t != null,
+          child: Row(
+            children: [
+              Icon(
+                t != null ? Icons.text_fields : Icons.block,
+                size: 16,
+                color: t != null ? AppTheme.primary : Colors.grey[300],
+              ),
+              const SizedBox(width: 10),
+              Text(
+                t != null
+                    ? 'Plantilla ${i + 1}  ·  ${t.label}'
+                    : 'Plantilla ${i + 1}  ·  vacía',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: t != null ? Colors.black87 : Colors.grey[400],
                 ),
               ),
-            ),
+            ],
           ),
         );
       }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.primary.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.style_outlined,
+                size: 16,
+                color: hasAny ? AppTheme.primary : Colors.grey[400]),
+            const SizedBox(width: 8),
+            Text(
+              'PLANTILLAS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+                color: hasAny ? AppTheme.primary : Colors.grey[400],
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.expand_more,
+                size: 16,
+                color: hasAny ? AppTheme.primary : Colors.grey[400]),
+          ],
+        ),
+      ),
     );
   }
 
