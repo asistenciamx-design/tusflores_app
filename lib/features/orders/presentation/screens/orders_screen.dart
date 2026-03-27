@@ -64,6 +64,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   bool _isLoading = true;
   /// false = filtrar por fecha de venta (createdAt), true = filtrar por fecha de entrega (saleDate)
   bool _filterByDelivery = false;
+  final Set<String> _expandedOrders = {};
 
   // ── Search
   String _searchQuery = '';
@@ -766,7 +767,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
   // ─── Order Card ─────────────────────────────────────────────────────────────
 
   Widget _buildOrderCard(OrderModel order) {
-    return Container(
+    final key = order.id ?? order.folio;
+    final isExpanded = _expandedOrders.contains(key);
+
+    return GestureDetector(
+      onTap: () => setState(() {
+        isExpanded ? _expandedOrders.remove(key) : _expandedOrders.add(key);
+      }),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -913,7 +921,54 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+
+            // Collapsed indicator / expand toggle
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Status badge (always visible)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: order.status.chipColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(order.status.chipIcon, color: order.status.chipColor, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        order.status.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: order.status.chipColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Chevron
+                AnimatedRotation(
+                  turns: isExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 20, color: Color(0xFFBDBDBD)),
+                ),
+              ],
+            ),
+
+            // ── Expandable section ──────────────────────────────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: isExpanded
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
 
             // Action icons row — 6 quick-access buttons (Foto is last)
             Row(
@@ -1098,10 +1153,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ),
               ],
             ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),
-    );
+    )); // GestureDetector
   }
 
   Widget _cardAction({
