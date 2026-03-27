@@ -63,8 +63,55 @@ function parseMexDate(dateStr: string | null): string | null {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
+// ── Descarga imagen de Shopify CDN y la re-sube a Supabase Storage ────────────
+async function storeProductImage(
+  supabase: ReturnType<typeof createClient>,
+  shopifyImageSrc: string,
+  shopId: string,
+  orderId: string | number
+): Promise<string | null> {
+  try {
+    // Crear bucket si no existe (public: true para que Flutter pueda leerlo)
+    await supabase.storage
+      .createBucket("order-images", { public: true })
+      .catch(() => {/* ya existe */});
+
+    const imgRes = await fetch(shopifyImageSrc);
+    if (!imgRes.ok) return null;
+
+    const imgBytes = await imgRes.arrayBuffer();
+    const rawExt = (shopifyImageSrc.split(".").pop()?.split("?")[0] ?? "jpg").toLowerCase();
+    const safeExt = ["jpg", "jpeg", "png", "webp"].includes(rawExt) ? rawExt : "jpg";
+    const contentType = `image/${safeExt === "jpg" ? "jpeg" : safeExt}`;
+    const path = `${shopId}/${orderId}.${safeExt}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from("order-images")
+      .upload(path, imgBytes, { contentType, upsert: true });
+
+    if (uploadErr) {
+      console.log(`[webhook] error subiendo imagen: ${uploadErr.message}`);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("order-images")
+      .getPublicUrl(path);
+
+    console.log(`[webhook] imagen guardada en Storage: ${path}`);
+    return urlData.publicUrl;
+  } catch (e) {
+    console.log("[webhook] error procesando imagen:", e);
+    return null;
+  }
+}
+
 // ── Mapea un pedido de Shopify al modelo de tusflores ─────────────────────────
-function mapShopifyOrder(order: any, shopId: string): Record<string, unknown> {
+function mapShopifyOrder(
+  order: any,
+  shopId: string,
+  productImageUrl: string | null
+): Record<string, unknown> {
   const noteAttrs: Array<{ name: string; value: string }> =
     order.note_attributes ?? [];
   const shipping = order.shipping_address ?? {};
@@ -80,9 +127,6 @@ function mapShopifyOrder(order: any, shopId: string): Record<string, unknown> {
   // Nombre del producto (todos los line items separados por coma)
   const productName =
     lineItems.map((i: any) => i.name).join(", ") || "Producto Shopify";
-
-  // Imagen del primer producto (para mostrar en el albarán)
-  const productImageUrl = lineItems[0]?.image?.src ?? null;
 
   // Fecha de entrega desde note_attributes
   const rawDeliveryDate = getNoteAttr(noteAttrs, "Fecha de entrega");
@@ -215,8 +259,14 @@ Deno.serve(async (req: Request) => {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const mappedOrder = mapShopifyOrder(order, connection.shop_id);
-  console.log(`[webhook] mapeado: folio=${mappedOrder.folio}`);
+  // Descargar imagen del producto y guardarla en Supabase Storage (evita CORS)
+  const shopifyImageSrc = (order.line_items ?? [])[0]?.image?.src ?? null;
+  const productImageUrl = shopifyImageSrc
+    ? await storeProductImage(supabase, shopifyImageSrc, connection.shop_id, order.id)
+    : null;
+
+  const mappedOrder = mapShopifyOrder(order, connection.shop_id, productImageUrl);
+  console.log(`[webhook] mapeado: folio=${mappedOrder.folio} imagen=${productImageUrl ? "✅" : "sin imagen"}`);
 
   // Verificar si el pedido ya existe (evita duplicados)
   const { data: existing } = await supabase
