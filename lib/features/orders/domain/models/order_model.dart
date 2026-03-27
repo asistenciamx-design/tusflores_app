@@ -84,6 +84,7 @@ class OrderModel {
   final String? buyerEmail;
   final String source; // 'manual' | 'shopify' | 'woocommerce'
   final DateTime? deliveryDate; // From delivery_date DATE column (Shopify/structured orders)
+  final String? productImageUrl; // Thumbnail del producto para el albarán
 
   OrderModel({
     this.id,
@@ -120,6 +121,7 @@ class OrderModel {
     this.buyerEmail,
     this.source = 'manual',
     this.deliveryDate,
+    this.productImageUrl,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -161,6 +163,7 @@ class OrderModel {
       deliveryDate: json['delivery_date'] != null
           ? DateTime.parse(json['delivery_date'] as String)
           : null,
+      productImageUrl: json['product_image_url'] as String?,
       // Map UI colors for displaying correctly in the app
       iconBgColor: const Color(0xFFF5F5F5),
       iconColor: Colors.black87,
@@ -200,6 +203,7 @@ class OrderModel {
       'buyer_name': buyerName,
       'buyer_whatsapp': buyerWhatsapp,
       'buyer_email': buyerEmail,
+      if (productImageUrl != null) 'product_image_url': productImageUrl,
     };
   }
 
@@ -249,6 +253,7 @@ class OrderModel {
     String? buyerName,
     String? buyerWhatsapp,
     String? buyerEmail,
+    String? productImageUrl,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -283,6 +288,7 @@ class OrderModel {
       buyerName: buyerName ?? this.buyerName,
       buyerWhatsapp: buyerWhatsapp ?? this.buyerWhatsapp,
       buyerEmail: buyerEmail ?? this.buyerEmail,
+      productImageUrl: productImageUrl ?? this.productImageUrl,
     );
   }
 

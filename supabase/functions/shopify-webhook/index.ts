@@ -81,6 +81,9 @@ function mapShopifyOrder(order: any, shopId: string): Record<string, unknown> {
   const productName =
     lineItems.map((i: any) => i.name).join(", ") || "Producto Shopify";
 
+  // Imagen del primer producto (para mostrar en el albarán)
+  const productImageUrl = lineItems[0]?.image?.src ?? null;
+
   // Fecha de entrega desde note_attributes
   const rawDeliveryDate = getNoteAttr(noteAttrs, "Fecha de entrega");
   const deliveryDate = parseMexDate(rawDeliveryDate);
@@ -96,6 +99,7 @@ function mapShopifyOrder(order: any, shopId: string): Record<string, unknown> {
     shopify_order_id: String(order.id),
     folio: folio || `SH-${order.id}`,
     product_name: productName,
+    product_image_url: productImageUrl,
 
     // Comprador
     customer_name: buyerName,

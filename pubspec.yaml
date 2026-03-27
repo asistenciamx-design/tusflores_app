@@ -22,6 +22,7 @@ dependencies:
   
   # Backend
   supabase_flutter: ^2.6.0
+  http: ^1.2.0
   
   # Fonts
   google_fonts: ^6.2.1

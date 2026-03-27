@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -41,6 +42,27 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
   double _fontSize = 10.0;
 
   bool _isPrinting = false;
+  Uint8List? _productImageBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProductImage();
+  }
+
+  Future<void> _loadProductImage() async {
+    final url = widget.order.productImageUrl;
+    if (url == null || url.isEmpty) return;
+    try {
+      final res = await http.get(Uri.parse(url))
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200 && mounted) {
+        setState(() => _productImageBytes = res.bodyBytes);
+      }
+    } catch (_) {
+      // Fallback silencioso — se muestra ícono de flor
+    }
+  }
 
   static const _sansFonts = [
     'Manrope',
@@ -193,11 +215,42 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                 ..._products.map((p) => pw.Padding(
                       padding: const pw.EdgeInsets.only(bottom: 6),
                       child: pw.Row(
-                        mainAxisAlignment:
-                            pw.MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
                         children: [
-                          pw.Text('${p['qty'] ?? 1}x  ${p['name'] ?? ''}',
-                              style: boldStyle),
+                          if (_showFoto) ...[
+                            if (_productImageBytes != null)
+                              pw.Container(
+                                width: 36,
+                                height: 36,
+                                margin: const pw.EdgeInsets.only(right: 8),
+                                child: pw.ClipRRect(
+                                  horizontalRadius: 4,
+                                  verticalRadius: 4,
+                                  child: pw.Image(
+                                    pw.MemoryImage(_productImageBytes!),
+                                    fit: pw.BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                            else
+                              pw.Container(
+                                width: 36,
+                                height: 36,
+                                margin: const pw.EdgeInsets.only(right: 8),
+                                decoration: const pw.BoxDecoration(
+                                  color: PdfColors.grey100,
+                                ),
+                                child: pw.Center(
+                                  child: pw.Text('🌸',
+                                      style: pw.TextStyle(fontSize: 18)),
+                                ),
+                              ),
+                          ],
+                          pw.Expanded(
+                            child: pw.Text(
+                                '${p['qty'] ?? 1}x  ${p['name'] ?? ''}',
+                                style: boldStyle),
+                          ),
                           if (_showPrecio)
                             pw.Text(
                                 '${CurrencyCache.symbol}${_total.toStringAsFixed(2)} ${CurrencyCache.code}',
@@ -465,8 +518,22 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                             color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Icon(Icons.local_florist_rounded,
-                              size: 14, color: Color(0xFF94A3B8)),
+                          clipBehavior: Clip.antiAlias,
+                          child: _productImageBytes != null
+                              ? Image.memory(
+                                  _productImageBytes!,
+                                  fit: BoxFit.cover,
+                                )
+                              : widget.order.productImageUrl != null
+                                  ? Image.network(
+                                      widget.order.productImageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          const Icon(Icons.local_florist_rounded,
+                                              size: 14, color: Color(0xFF94A3B8)),
+                                    )
+                                  : const Icon(Icons.local_florist_rounded,
+                                      size: 14, color: Color(0xFF94A3B8)),
                         ),
                       Expanded(
                         child: Column(
