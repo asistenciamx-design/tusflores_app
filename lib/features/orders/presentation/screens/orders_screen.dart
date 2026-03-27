@@ -382,10 +382,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   /// Picks the date to use for filtering depending on the active mode:
-  /// - Por venta  → createdAt (when the order was placed)
-  /// - Por entrega → saleDate  (the chosen delivery date)
-  DateTime _filterDateOf(OrderModel o) =>
-      _filterByDelivery ? o.saleDate : o.createdAt;
+  /// - Por venta  → createdAt in local timezone (when the order was placed)
+  /// - Por entrega → deliveryDate if available, else saleDate (delivery date)
+  DateTime _filterDateOf(OrderModel o) {
+    if (_filterByDelivery) {
+      return o.deliveryDate ?? o.saleDate.toLocal();
+    }
+    return o.createdAt.toLocal();
+  }
 
   /// Applies the date-range or chip filter to any list of orders.
   List<OrderModel> _applyDateFilter(List<OrderModel> orders) {
@@ -1395,8 +1399,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (order.status == OrderStatus.delivered) return [];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final deliveryDay = DateTime(
-        order.saleDate.year, order.saleDate.month, order.saleDate.day);
+    final ref = order.deliveryDate ?? order.saleDate.toLocal();
+    final deliveryDay = DateTime(ref.year, ref.month, ref.day);
 
     if (deliveryDay.isBefore(today)) {
       return [_urgencyPill('Vencido', Colors.red), const SizedBox(width: 6)];

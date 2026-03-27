@@ -83,6 +83,7 @@ class OrderModel {
   final String? buyerWhatsapp;
   final String? buyerEmail;
   final String source; // 'manual' | 'shopify' | 'woocommerce'
+  final DateTime? deliveryDate; // From delivery_date DATE column (Shopify/structured orders)
 
   OrderModel({
     this.id,
@@ -118,6 +119,7 @@ class OrderModel {
     this.buyerWhatsapp,
     this.buyerEmail,
     this.source = 'manual',
+    this.deliveryDate,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -156,6 +158,9 @@ class OrderModel {
       buyerWhatsapp: json['buyer_whatsapp'] as String?,
       buyerEmail: json['buyer_email'] as String?,
       source: json['source'] as String? ?? 'manual',
+      deliveryDate: json['delivery_date'] != null
+          ? DateTime.parse(json['delivery_date'] as String)
+          : null,
       // Map UI colors for displaying correctly in the app
       iconBgColor: const Color(0xFFF5F5F5),
       iconColor: Colors.black87,
