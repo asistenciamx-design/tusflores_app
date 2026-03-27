@@ -154,7 +154,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                         style: pw.TextStyle(
                             font: boldFont,
                             fontSize: 9,
-                            color: PdfColors.grey400)),
+                            color: PdfColors.black)),
                 ],
               ),
               pw.SizedBox(height: 20),
@@ -402,7 +402,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                     style: const TextStyle(
                         fontSize: 6,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFFCBD5E1))),
+                        color: Colors.black87)),
             ],
           ),
           const SizedBox(height: 12),
