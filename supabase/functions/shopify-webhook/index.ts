@@ -63,45 +63,45 @@ function parseMexDate(dateStr: string | null): string | null {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
-// ── Descarga imagen de Shopify CDN y la re-sube a Supabase Storage ────────────
-async function storeProductImage(
-  supabase: ReturnType<typeof createClient>,
-  shopifyImageSrc: string,
-  shopId: string,
-  orderId: string | number
+// ── Obtiene la URL de imagen del producto (CDN de Shopify, pública y permanente) ─
+async function getProductImageUrl(
+  order: any,
+  shopDomain: string,
+  accessToken: string | null
 ): Promise<string | null> {
+  const lineItem = (order.line_items ?? [])[0];
+  console.log(`[img] product_id=${lineItem?.product_id} featured_image=${JSON.stringify(lineItem?.featured_image)} token=${accessToken ? accessToken.slice(0,10) + "..." : "null"}`);
+
+  // 1. featured_image.url viene directo en el webhook payload (Shopify API 2024+)
+  const featuredUrl = lineItem?.featured_image?.url ?? null;
+  if (featuredUrl) {
+    console.log(`[img] fuente: featured_image ✅`);
+    return featuredUrl;
+  }
+
+  // 2. Fallback: Products API con Admin token
+  if (!accessToken) {
+    console.log(`[img] sin access_token, no se puede consultar Products API`);
+    return null;
+  }
+  const productId = lineItem?.product_id;
+  if (!productId) {
+    console.log(`[img] sin product_id en line_item`);
+    return null;
+  }
+
   try {
-    // Crear bucket si no existe (public: true para que Flutter pueda leerlo)
-    await supabase.storage
-      .createBucket("order-images", { public: true })
-      .catch(() => {/* ya existe */});
-
-    const imgRes = await fetch(shopifyImageSrc);
-    if (!imgRes.ok) return null;
-
-    const imgBytes = await imgRes.arrayBuffer();
-    const rawExt = (shopifyImageSrc.split(".").pop()?.split("?")[0] ?? "jpg").toLowerCase();
-    const safeExt = ["jpg", "jpeg", "png", "webp"].includes(rawExt) ? rawExt : "jpg";
-    const contentType = `image/${safeExt === "jpg" ? "jpeg" : safeExt}`;
-    const path = `${shopId}/${orderId}.${safeExt}`;
-
-    const { error: uploadErr } = await supabase.storage
-      .from("order-images")
-      .upload(path, imgBytes, { contentType, upsert: true });
-
-    if (uploadErr) {
-      console.log(`[webhook] error subiendo imagen: ${uploadErr.message}`);
-      return null;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("order-images")
-      .getPublicUrl(path);
-
-    console.log(`[webhook] imagen guardada en Storage: ${path}`);
-    return urlData.publicUrl;
+    const url = `https://${shopDomain}/admin/api/2024-01/products/${productId}.json`;
+    console.log(`[img] consultando: ${url}`);
+    const res = await fetch(url, { headers: { "X-Shopify-Access-Token": accessToken } });
+    console.log(`[img] Products API status: ${res.status}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const src = data.product?.image?.src ?? data.product?.images?.[0]?.src ?? null;
+    console.log(`[img] resultado: ${src ?? "sin imagen"}`);
+    return src;
   } catch (e) {
-    console.log("[webhook] error procesando imagen:", e);
+    console.log("[img] error:", e);
     return null;
   }
 }
@@ -259,31 +259,7 @@ Deno.serve(async (req: Request) => {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  // Obtener imagen del producto via Admin API (el webhook no incluye imágenes)
-  let shopifyImageSrc: string | null = (order.line_items ?? [])[0]?.image?.src ?? null;
-
-  if (!shopifyImageSrc && connection.access_token) {
-    const productId = (order.line_items ?? [])[0]?.product_id;
-    if (productId) {
-      try {
-        const apiRes = await fetch(
-          `https://${shopDomain}/admin/api/2024-01/products/${productId}.json`,
-          { headers: { "X-Shopify-Access-Token": connection.access_token } }
-        );
-        if (apiRes.ok) {
-          const apiData = await apiRes.json();
-          shopifyImageSrc = apiData.product?.image?.src ?? null;
-          console.log(`[webhook] imagen obtenida via Products API: ${shopifyImageSrc ? "✅" : "sin imagen"}`);
-        }
-      } catch (e) {
-        console.log("[webhook] error consultando Products API:", e);
-      }
-    }
-  }
-
-  const productImageUrl = shopifyImageSrc
-    ? await storeProductImage(supabase, shopifyImageSrc, connection.shop_id, order.id)
-    : null;
+  const productImageUrl = await getProductImageUrl(order, shopDomain, connection.access_token);
 
   const mappedOrder = mapShopifyOrder(order, connection.shop_id, productImageUrl);
   console.log(`[webhook] mapeado: folio=${mappedOrder.folio} imagen=${productImageUrl ? "✅" : "sin imagen"}`);

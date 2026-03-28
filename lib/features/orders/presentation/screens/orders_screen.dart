@@ -842,15 +842,34 @@ class _OrdersScreenState extends State<OrdersScreen> {
             // Product row
             Row(
               children: [
-                // Product icon
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: order.iconBgColor ?? const Color(0xFFFFF8E1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(order.icon ?? Icons.local_florist, color: order.iconColor ?? const Color(0xFFFFA726), size: 28),
+                // Product icon / image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: order.productImageUrl != null
+                      ? Image.network(
+                          order.productImageUrl!,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: order.iconBgColor ?? const Color(0xFFFFF8E1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(order.icon ?? Icons.local_florist, color: order.iconColor ?? const Color(0xFFFFA726), size: 28),
+                          ),
+                        )
+                      : Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: order.iconBgColor ?? const Color(0xFFFFF8E1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(order.icon ?? Icons.local_florist, color: order.iconColor ?? const Color(0xFFFFA726), size: 28),
+                        ),
                 ),
                 const SizedBox(width: 14),
 
