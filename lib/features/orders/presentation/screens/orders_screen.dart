@@ -1102,9 +1102,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     }
                   },
                   child: _statusChip(
-                    icon: Icons.account_balance_wallet_outlined,
+                    icon: order.isPaid ? null : Icons.account_balance_wallet_outlined,
                     label: order.isPaid
-                        ? (order.paymentMethod != null ? '\u2713 ${order.paymentMethod}' : 'Pagado')
+                        ? (order.paymentMethod != null
+                            ? '\u2713 ${order.paymentMethod!.replaceFirst(RegExp(r'^Activa\s+', caseSensitive: false), '')}'
+                            : 'Pagado')
                         : '¿Pagado?',
                     color: order.isPaid ? const Color(0xFF2E7D52) : const Color(0xFFD4790A),
                     outlined: true,
@@ -1234,7 +1236,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _statusChip({required IconData icon, required String label, required Color color, bool outlined = false}) {
+  Widget _statusChip({IconData? icon, required String label, required Color color, bool outlined = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -1245,8 +1247,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 4),
+          if (icon != null) ...[
+            Icon(icon, color: color, size: 14),
+            const SizedBox(width: 4),
+          ],
           Text(label,
               style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
