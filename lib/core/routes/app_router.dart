@@ -37,6 +37,8 @@ final appRouter = GoRouter(
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final path = state.uri.path;
     const protectedPaths = ['/', '/reviews/manage', '/admin'];
+    // Si ya está autenticado y va al login, redirigir al home
+    if (isLoggedIn && path == '/login') return '/';
     if (protectedPaths.contains(path) && !isLoggedIn) return '/login';
     return null;
   },
