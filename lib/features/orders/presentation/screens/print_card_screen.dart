@@ -20,6 +20,8 @@ class _Template {
   bool italic;
   bool strikethrough;
   String align;
+  String paperSize;
+  bool landscape;
 
   _Template({
     this.font = 'Manrope',
@@ -31,6 +33,8 @@ class _Template {
     this.italic = false,
     this.strikethrough = false,
     this.align = 'center',
+    this.paperSize = 'letter',
+    this.landscape = false,
   });
 
   String get label => font.split(' ').first;
@@ -45,6 +49,8 @@ class _Template {
         'italic': italic,
         'strikethrough': strikethrough,
         'align': align,
+        'paperSize': paperSize,
+        'landscape': landscape,
       };
 
   factory _Template.fromJson(Map<String, dynamic> j) => _Template(
@@ -57,6 +63,8 @@ class _Template {
         italic: j['italic'] ?? false,
         strikethrough: j['strikethrough'] ?? false,
         align: j['align'] ?? 'center',
+        paperSize: j['paperSize'] ?? 'letter',
+        landscape: j['landscape'] ?? false,
       );
 }
 
@@ -81,6 +89,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   double _marginTopCm = 1.0;
   double _marginLeftCm = 1.0;
   double _marginRightCm = 1.0;
+  String _paperSize = 'letter';  // letter | half_letter | a4 | a5
+  bool _isLandscape = false;
 
   // 3 saved template slots (null = empty)
   final List<_Template?> _templates = [null, null, null];
@@ -171,6 +181,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
           : _textAlign == TextAlign.right
               ? 'right'
               : 'center',
+      paperSize: _paperSize,
+      landscape: _isLandscape,
     );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_prefTmplPrefix$slot', jsonEncode(t.toJson()));
@@ -197,7 +209,27 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             : t.align == 'right'
                 ? TextAlign.right
                 : TextAlign.center;
+        _paperSize = t.paperSize;
+        _isLandscape = t.landscape;
       });
+
+  PdfPageFormat get _resolvedFormat {
+    PdfPageFormat base;
+    switch (_paperSize) {
+      case 'half_letter':
+        base = const PdfPageFormat(5.5 * PdfPageFormat.inch, 8.5 * PdfPageFormat.inch);
+        break;
+      case 'a4':
+        base = PdfPageFormat.a4;
+        break;
+      case 'a5':
+        base = PdfPageFormat.a5;
+        break;
+      default:
+        base = PdfPageFormat.letter;
+    }
+    return _isLandscape ? base.landscape : base;
+  }
 
   // ── PDF ─────────────────────────────────────────────────────────────────────
   /// Loads a bundled TTF asset and returns a [pw.Font].
@@ -510,6 +542,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             _buildStyleRow(),
             const SizedBox(height: 16),
             _buildMarginsRow(),
+            const SizedBox(height: 16),
+            _buildPageFormatRow(),
             const SizedBox(height: 18),
             _buildSaveBtn(),
             const SizedBox(height: 20),
@@ -872,6 +906,131 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
     );
   }
 
+  // ── Page format (size + orientation) ────────────────────────────────────────
+  Widget _buildPageFormatRow() {
+    const sizes = [
+      ('letter', 'Carta'),
+      ('half_letter', 'Media Carta'),
+      ('a4', 'A4'),
+      ('a5', 'A5'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('TAMAÑO Y ORIENTACIÓN',
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+                color: Colors.black54)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            // Paper size chips
+            Expanded(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: sizes.map((e) {
+                  final selected = _paperSize == e.$1;
+                  return GestureDetector(
+                    onTap: () => setState(() => _paperSize = e.$1),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppTheme.primary
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? AppTheme.primary
+                              : AppTheme.primary.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        e.$2,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? Colors.white : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Orientation toggle
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _orientationBtn(
+                    icon: Icons.crop_portrait,
+                    label: 'Vert.',
+                    active: !_isLandscape,
+                    onTap: () => setState(() => _isLandscape = false),
+                  ),
+                  _orientationBtn(
+                    icon: Icons.crop_landscape,
+                    label: 'Horiz.',
+                    active: _isLandscape,
+                    onTap: () => setState(() => _isLandscape = true),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _orientationBtn({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: active
+              ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 18,
+                color: active ? AppTheme.primary : Colors.black54),
+            const SizedBox(height: 2),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: active ? AppTheme.primary : Colors.black54)),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Save template button ─────────────────────────────────────────────────────
   Widget _buildSaveBtn() {
     return Column(
@@ -924,7 +1083,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             shadow: true,
             enabled: !_isPrinting,
             onTap: () => _runAction(() async {
-              final pdf = await _generatePdf(PdfPageFormat.letter);
+              final pdf = await _generatePdf(_resolvedFormat);
               await Printing.layoutPdf(onLayout: (_) async => pdf);
             }),
           ),
@@ -939,7 +1098,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             shadow: false,
             enabled: !_isPrinting,
             onTap: () => _runAction(() async {
-              final pdf = await _generatePdf(PdfPageFormat.letter);
+              final pdf = await _generatePdf(_resolvedFormat);
               await Printing.sharePdf(bytes: pdf, filename: 'dedicatoria.pdf');
             }),
           ),
@@ -954,7 +1113,7 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             shadow: false,
             enabled: !_isPrinting,
             onTap: () => _runAction(() async {
-              final pdf = await _generatePdf(PdfPageFormat.letter);
+              final pdf = await _generatePdf(_resolvedFormat);
               await Printing.sharePdf(bytes: pdf, filename: 'dedicatoria.pdf');
             }),
           ),
