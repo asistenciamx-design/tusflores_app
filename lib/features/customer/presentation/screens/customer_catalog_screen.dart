@@ -562,45 +562,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         ),
       );
   }
-}
-
-class _AnimatedAddButton extends StatefulWidget {
-  const _AnimatedAddButton();
-
-  @override
-  State<_AnimatedAddButton> createState() => _AnimatedAddButtonState();
-}
-
-class _AnimatedAddButtonState extends State<_AnimatedAddButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedRotation(
-        turns: _hovered ? 0.25 : 0.0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: _hovered ? AppTheme.primary : Colors.black87,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 16,
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildLegalFooter(BuildContext context) {
     return Padding(
@@ -617,10 +578,7 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton> {
               const SizedBox(width: 5),
               Text(
                 'Potenciado por tusflores.app',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade400,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
               ),
             ],
           ),
@@ -663,6 +621,45 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton> {
             style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AnimatedAddButton extends StatefulWidget {
+  const _AnimatedAddButton();
+
+  @override
+  State<_AnimatedAddButton> createState() => _AnimatedAddButtonState();
+}
+
+class _AnimatedAddButtonState extends State<_AnimatedAddButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedRotation(
+        turns: _hovered ? 0.25 : 0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: _hovered ? AppTheme.primary : Colors.black87,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.add,
+            color: Colors.white,
+            size: 16,
+          ),
+        ),
       ),
     );
   }
