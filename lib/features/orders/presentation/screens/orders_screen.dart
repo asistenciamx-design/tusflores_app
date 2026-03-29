@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:universal_html/html.dart' as html;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/currency_cache.dart';
@@ -1873,40 +1875,41 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
   }
 
   Future<void> _pickPhoto(int index) async {
-    ImageSource? source;
-
     if (kIsWeb) {
-      // En web, ImageSource.camera usa <input capture="environment"> que en
-      // iOS Safari puede mostrar pantalla negra. Usamos gallery que abre el
-      // sheet nativo de iOS donde "Tomar foto" funciona correctamente.
-      source = ImageSource.gallery;
-    } else {
-      source = await showDialog<ImageSource>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Agregar foto'),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading:
-                    const Icon(Icons.camera_alt_outlined, color: _pink),
-                title: const Text('Tomar foto'),
-                onTap: () => Navigator.pop(ctx, ImageSource.camera),
-              ),
-              ListTile(
-                leading:
-                    const Icon(Icons.photo_library_outlined, color: _pink),
-                title: const Text('Elegir de fototeca'),
-                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-              ),
-            ],
-          ),
-        ),
-      );
+      // En web usamos un <input type="file"> nativo creado y clickeado de forma
+      // SÍNCRONA dentro del gesto del usuario. Esto evita que iOS Safari bloquee
+      // el file picker (popup blocker) y evita la pantalla negra de la cámara
+      // que ocurría con image_picker_for_web (que pasa por el event loop de
+      // Flutter antes de disparar el click, perdiendo el contexto del gesto).
+      _pickPhotoWeb(index);
+      return;
     }
+
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Agregar foto'),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading:
+                  const Icon(Icons.camera_alt_outlined, color: _pink),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.photo_library_outlined, color: _pink),
+              title: const Text('Elegir de fototeca'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
 
     if (source == null || !mounted) return;
 
@@ -1935,6 +1938,69 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
     }
 
     if (mounted) setState(() => _uploading[index] = false);
+  }
+
+  /// Crea un <input type="file" accept="image/*"> y lo clickea SINCRÓNICAMENTE
+  /// dentro del callback del gesto. Así iOS Safari no lo bloquea por popup
+  /// blocker y el selector nativo (fototeca + "Tomar foto") funciona
+  /// correctamente sin pantalla negra.
+  void _pickPhotoWeb(int index) {
+    final input = html.InputElement()
+      ..type = 'file'
+      ..accept = 'image/*';
+    input.style.display = 'none';
+    html.document.body?.append(input);
+
+    StreamSubscription? sub;
+    sub = input.onChange.listen((_) async {
+      sub?.cancel();
+      final file = input.files?.first;
+      input.remove();
+
+      if (file == null || !mounted) return;
+      setState(() => _uploading[index] = true);
+
+      try {
+        final completer = Completer<Uint8List?>();
+        final reader = html.FileReader();
+        reader.onLoadEnd.listen((_) {
+          final result = reader.result;
+          if (result is Uint8List) {
+            completer.complete(result);
+          } else if (result is ByteBuffer) {
+            completer.complete(result.asUint8List());
+          } else {
+            completer.complete(null);
+          }
+        });
+        reader.readAsArrayBuffer(file);
+
+        final bytes = await completer.future;
+        if (bytes == null || !mounted) return;
+
+        final url = await widget.orderRepo.uploadOrderPhoto(
+          widget.order.shopId,
+          widget.order.id!,
+          index + 1,
+          bytes,
+        );
+
+        if (url != null && mounted) {
+          _slots[index] = url;
+          final urls = _slots.whereType<String>().toList();
+          await widget.orderRepo.updateCompletionPhotos(widget.order.id!, urls);
+          widget.onPhotosUpdated(urls);
+        }
+      } catch (e) {
+        debugPrint('[photo] Error al procesar imagen: $e');
+      } finally {
+        if (mounted) setState(() => _uploading[index] = false);
+      }
+    });
+
+    // IMPORTANTE: .click() debe ir aquí, sincrónicamente, sin ningún await
+    // previo, para que iOS Safari lo reconozca como gesto del usuario.
+    input.click();
   }
 
   Future<void> _deletePhoto(int index) async {
