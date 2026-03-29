@@ -211,9 +211,9 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[webhook] topic="${topic}" domain="${shopDomain}"`);
 
-  // Aceptamos orders/create y webhooks de prueba
-  if (!topic.includes("orders/create") && topic !== "") {
-    console.log(`[webhook] topic ignorado: ${topic}`);
+  // Solo aceptamos orders/create
+  if (!topic.includes("orders/create")) {
+    console.log(`[webhook] topic rechazado: "${topic}"`);
     return new Response("Ignored topic", { status: 200 });
   }
 
@@ -239,17 +239,17 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[webhook] conexión encontrada para shop_id: ${connection.shop_id}`);
 
-  // Verificamos la firma HMAC (omitimos en webhooks de prueba sin HMAC)
-  if (hmacHeader) {
-    const isValid = await verifyShopifyHmac(body, hmacHeader, connection.client_secret);
-    if (!isValid) {
-      console.error("[webhook] HMAC inválido");
-      return new Response("Invalid signature", { status: 401 });
-    }
-    console.log("[webhook] HMAC válido ✅");
-  } else {
-    console.log("[webhook] sin HMAC (modo prueba)");
+  // Verificamos la firma HMAC — siempre requerida
+  if (!hmacHeader) {
+    console.error("[webhook] falta cabecera X-Shopify-Hmac-SHA256");
+    return new Response("Unauthorized", { status: 401 });
   }
+  const isValid = await verifyShopifyHmac(body, hmacHeader, connection.client_secret);
+  if (!isValid) {
+    console.error("[webhook] HMAC inválido");
+    return new Response("Invalid signature", { status: 401 });
+  }
+  console.log("[webhook] HMAC válido ✅");
 
   let order: any;
   try {

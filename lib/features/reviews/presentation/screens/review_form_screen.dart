@@ -168,8 +168,10 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
           TextField(
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
+            maxLength: 80,
             decoration: InputDecoration(
               hintText: 'Ej. María G.',
+              counterText: '',
               prefixIcon: const Icon(Icons.person_outline, color: _pink),
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

@@ -176,7 +176,9 @@ class OrderModel {
       if (id != null) 'id': id,
       'shop_id': shopId,
       'florist_id': shopId,
-      'folio': folio,
+      // Solo enviar folio al actualizar un pedido existente — al crear,
+      // el trigger trg_assign_order_folio lo asigna en el servidor.
+      if (id != null) 'folio': folio,
       'product_name': productName,
       'customer_name': customerName,
       'customer_phone': customerPhone,
