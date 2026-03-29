@@ -53,9 +53,14 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  // Date filter
-  final List<String> _dateFilters = ['Ayer', 'Hoy', 'Mañana', '7 días', '15 días'];
-  int _selectedDateIndex = 1; // "Hoy" selected by default
+  // Date filter — chips varían según el modo activo
+  // Por Venta:    ['15 días', '7 días', 'Ayer', 'Hoy']   default index=3
+  // Por Entrega:  ['Hoy', 'Mañana', '7 días', '15 días'] default index=0
+  int _selectedDateIndex = 3; // "Hoy" en modo Por Venta
+
+  List<String> get _currentChips => _filterByDelivery
+      ? ['Hoy', 'Mañana', '7 días', '15 días']
+      : ['15 días', '7 días', 'Ayer', 'Hoy'];
 
   late int _selectedTab;
 
@@ -407,26 +412,36 @@ class _OrdersScreenState extends State<OrdersScreen> {
         return d.isAfter(start.subtract(const Duration(minutes: 1))) &&
             d.isBefore(end.add(const Duration(minutes: 1)));
       }).toList();
-    } else {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      return orders.where((o) {
-        final d = _filterDateOf(o);
-        final oDate = DateTime(d.year, d.month, d.day);
-        if (_selectedDateIndex == 0)
-          return oDate == today.subtract(const Duration(days: 1)); // Ayer
-        if (_selectedDateIndex == 1) return oDate == today; // Hoy
-        if (_selectedDateIndex == 2)
-          return oDate == today.add(const Duration(days: 1)); // Mañana
-        if (_selectedDateIndex == 3)
-          return oDate
-              .isAfter(today.subtract(const Duration(days: 7))); // 7 días
-        if (_selectedDateIndex == 4)
-          return oDate
-              .isAfter(today.subtract(const Duration(days: 15))); // 15 días
-        return true;
-      }).toList();
     }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    return orders.where((o) {
+      final d = _filterDateOf(o);
+      final oDate = DateTime(d.year, d.month, d.day);
+
+      if (_filterByDelivery) {
+        // Chips: ['Hoy', 'Mañana', '7 días', '15 días']
+        if (_selectedDateIndex == 0) return oDate == today;
+        if (_selectedDateIndex == 1)
+          return oDate == today.add(const Duration(days: 1));
+        if (_selectedDateIndex == 2)
+          return !oDate.isAfter(today.add(const Duration(days: 7)));
+        if (_selectedDateIndex == 3)
+          return !oDate.isAfter(today.add(const Duration(days: 15)));
+      } else {
+        // Chips: ['15 días', '7 días', 'Ayer', 'Hoy']
+        if (_selectedDateIndex == 0)
+          return oDate.isAfter(today.subtract(const Duration(days: 15)));
+        if (_selectedDateIndex == 1)
+          return oDate.isAfter(today.subtract(const Duration(days: 7)));
+        if (_selectedDateIndex == 2)
+          return oDate == today.subtract(const Duration(days: 1));
+        if (_selectedDateIndex == 3) return oDate == today;
+      }
+      return true;
+    }).toList();
   }
 
   /// All orders in current period (both tabs) — used for the summary banner.
@@ -631,16 +646,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
           _buildFilterModeToggle(),
           const SizedBox(height: 12),
 
-          // Date filter chips
+          // Date filter chips (dinámicos según modo)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: List.generate(_dateFilters.length, (i) {
+              children: List.generate(_currentChips.length, (i) {
                 final selected = i == _selectedDateIndex;
                 return GestureDetector(
                   onTap: () => setState(() {
                     _selectedDateIndex = i;
-                    _customDateRange = null; // Clear custom range
+                    _customDateRange = null;
                   }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -651,7 +666,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Text(
-                      _dateFilters[i],
+                      _currentChips[i],
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -665,54 +680,56 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Date range selector
-          GestureDetector(
-            onTap: _selectDateRange,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+          // Selector de rango solo en modo "Por Venta"
+          if (!_filterByDelivery) ...[
+            GestureDetector(
+              onTap: _selectDateRange,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.calendar_today, color: AppTheme.primary, size: 18),
                     ),
-                    child: const Icon(Icons.calendar_today, color: AppTheme.primary, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _customDateRange == null 
-                        ? 'Seleccionar rango de fechas' 
-                        : '${_formatDate(_customDateRange!.start)} - ${_formatDate(_customDateRange!.end)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _customDateRange == null ? const Color(0xFF9E9E9E) : AppTheme.textLight,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _customDateRange == null
+                            ? 'Seleccionar rango de fechas'
+                            : '${_formatDate(_customDateRange!.start)} - ${_formatDate(_customDateRange!.end)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _customDateRange == null ? const Color(0xFF9E9E9E) : AppTheme.textLight,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  if (_customDateRange != null)
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        _customDateRange = null;
-                        _selectedDateIndex = 1; // back to Hoy
-                      }),
-                      child: const Icon(Icons.close, color: Color(0xFF9E9E9E), size: 22),
-                    )
-                  else
-                    const Icon(Icons.keyboard_arrow_down, color: Color(0xFF9E9E9E), size: 22),
-                ],
+                    if (_customDateRange != null)
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          _customDateRange = null;
+                          _selectedDateIndex = 3; // back to Hoy
+                        }),
+                        child: const Icon(Icons.close, color: Color(0xFF9E9E9E), size: 22),
+                      )
+                    else
+                      const Icon(Icons.keyboard_arrow_down, color: Color(0xFF9E9E9E), size: 22),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
+          ],
 
           const SizedBox(height: 4),
         ],
@@ -1284,12 +1301,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
           _buildToggleOption(
             label: '🛒  Por venta',
             isSelected: !_filterByDelivery,
-            onTap: () => setState(() => _filterByDelivery = false),
+            onTap: () => setState(() {
+              _filterByDelivery = false;
+              _selectedDateIndex = 3; // Hoy
+              _customDateRange = null;
+            }),
           ),
           _buildToggleOption(
-            label: '🚚  Por entrega',
+            label: '🚚  Por entregar',
             isSelected: _filterByDelivery,
-            onTap: () => setState(() => _filterByDelivery = true),
+            onTap: () => setState(() {
+              _filterByDelivery = true;
+              _selectedDateIndex = 0; // Hoy
+              _customDateRange = null;
+            }),
           ),
         ],
       ),
