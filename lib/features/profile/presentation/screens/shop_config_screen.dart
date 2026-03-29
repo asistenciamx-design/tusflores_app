@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -354,9 +355,101 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
                         ),
                       ),
                     ]),
+                    if (kIsWeb) ...[
+                      const SizedBox(height: 8),
+                      _SectionHeader(title: 'CÁMARA EN IPHONE'),
+                      const SizedBox(height: 12),
+                      _buildCameraTipCard(),
+                    ],
                     const SizedBox(height: 32),
                   ],
                 ),
+    );
+  }
+
+  Widget _buildCameraTipCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFBBF24), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.camera_alt_rounded,
+                    color: Color(0xFFD97706), size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Activa la cámara en iPhone',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _cameraStep('1', 'Abre Ajustes de iPhone'),
+          _cameraStep('2', 'Busca y toca Chrome (o Safari, según tu navegador)'),
+          _cameraStep('3', 'Toca "Cámara"'),
+          _cameraStep('4', 'Selecciona "Permitir"'),
+          _cameraStep('5', 'Regresa a la app y vuelve a intentarlo'),
+        ],
+      ),
+    );
+  }
+
+  Widget _cameraStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            margin: const EdgeInsets.only(top: 1, right: 8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFBBF24),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF78350F),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF78350F),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
