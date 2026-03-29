@@ -1940,55 +1940,13 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
     if (mounted) setState(() => _uploading[index] = false);
   }
 
-  /// En web muestra un selector con dos opciones: cámara en vivo o fototeca.
+  /// Abre directamente el overlay de cámara sin bottom sheet intermedio.
+  /// getUserMedia debe invocarse sincrónicamente dentro del gesto del usuario;
+  /// cualquier Navigator.pop / await previo rompe ese contexto en iOS y provoca
+  /// denegación de permiso silenciosa. La opción "Fototeca" está dentro del
+  /// propio overlay HTML.
   void _pickPhotoWeb(int index) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 4),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: _pink),
-              title: const Text('Tomar foto'),
-              subtitle: const Text('Preview en vivo de la cámara',
-                  style: TextStyle(fontSize: 12)),
-              onTap: () {
-                Navigator.pop(ctx);
-                // _openCameraOverlay se llama sincrónicamente dentro del
-                // gesto del usuario (onTap del ListTile), por lo que
-                // getUserMedia recibirá el contexto de gesto correcto.
-                _openCameraOverlay(index);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: _pink),
-              title: const Text('Fototeca'),
-              subtitle: const Text('Elegir de tus fotos guardadas',
-                  style: TextStyle(fontSize: 12)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickFromFileInput(index);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
+    _openCameraOverlay(index);
   }
 
   /// Abre el selector de archivos nativo del sistema para elegir una imagen.
@@ -2090,18 +2048,27 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
         'box-shadow:0 3px 12px rgba(0,0,0,0.5);',
       );
 
+    const btnStyle =
+        'padding:10px 20px;font-size:15px;color:white;cursor:pointer;'
+        'border:1px solid rgba(255,255,255,0.55);border-radius:50px;'
+        'font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
+
+    final galleryBtn = html.DivElement()
+      ..innerText = 'Fototeca'
+      ..setAttribute('style', btnStyle);
+
     final cancelBtn = html.DivElement()
       ..innerText = 'Cancelar'
+      ..setAttribute('style', btnStyle);
+
+    final btnRow = html.DivElement()
       ..setAttribute(
         'style',
-        'padding:10px 28px;font-size:15px;color:white;cursor:pointer;'
-        'border:1px solid rgba(255,255,255,0.55);border-radius:50px;'
-        'font-family:-apple-system,BlinkMacSystemFont,sans-serif;',
+        'display:flex;gap:16px;align-items:center;justify-content:center;',
       );
+    btnRow..append(galleryBtn)..append(cancelBtn);
 
-    bar
-      ..append(captureBtn)
-      ..append(cancelBtn);
+    bar..append(captureBtn)..append(btnRow);
     overlay
       ..append(video)
       ..append(bar);
@@ -2115,6 +2082,11 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
     }
 
     cancelBtn.onClick.listen((_) => stopAndRemove());
+
+    galleryBtn.onClick.listen((_) {
+      stopAndRemove();
+      _pickFromFileInput(index);
+    });
 
     captureBtn.onClick.listen((_) {
       final w = (video.videoWidth > 0 ? video.videoWidth : 1280).toInt();
