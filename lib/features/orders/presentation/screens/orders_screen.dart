@@ -24,6 +24,9 @@ import '../../domain/repositories/order_repository.dart';
 
 enum _NotifType { newOrder, statusChange, comment }
 
+/// Three display modes for the orders screen.
+enum _FilterMode { byVenta, byEntrega, entregados }
+
 class _NotificationItem {
   final String id;
   final _NotifType type;
@@ -53,26 +56,27 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  // Date filter — chips varían según el modo activo
-  // Por Venta:    ['15 días', '7 días', 'Ayer', 'Hoy']   default index=3
-  // Por Entrega:  ['Hoy', 'Mañana', '7 días', '15 días'] default index=0
-  int _selectedDateIndex = 3; // "Hoy" en modo Por Venta
+  // Active display mode
+  _FilterMode _filterMode = _FilterMode.byVenta;
 
-  List<String> get _currentChips => _filterByDelivery
-      ? ['Hoy', 'Mañana', '7 días', '15 días']
-      : ['15 días', '7 días', 'Ayer', 'Hoy'];
+  // Chip index per mode (default: last chip = "Hoy" for venta/entregados, first = "Hoy" for entrega)
+  int _selectedDateIndex = 3;
 
-  late int _selectedTab;
+  List<String> get _currentChips {
+    switch (_filterMode) {
+      case _FilterMode.byVenta:    return ['15 días', '7 días', 'Ayer', 'Hoy'];
+      case _FilterMode.byEntrega:  return ['Hoy', 'Mañana', '7 días', '15 días'];
+      case _FilterMode.entregados: return ['Hoy', 'Esta semana', 'Este mes'];
+    }
+  }
 
-  // Custom date range
+  // Custom date range (only used in byVenta mode)
   DateTimeRange? _customDateRange;
 
   // Orders as mutable state
   List<OrderModel> _orders = [];
   final _orderRepo = OrderRepository();
   bool _isLoading = true;
-  /// false = filtrar por fecha de venta (createdAt), true = filtrar por fecha de entrega (saleDate)
-  bool _filterByDelivery = false;
   final Set<String> _expandedOrders = {};
 
   // ── Search
@@ -92,7 +96,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedTab = widget.initialTab;
+    // initialTab == 1 → open directly in Entregados mode
+    if (widget.initialTab == 1) {
+      _filterMode = _FilterMode.entregados;
+      _selectedDateIndex = 2; // Este mes
+    }
     _loadOrders();
   }
 
@@ -391,19 +399,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return 'Hace ${diff.inDays} días';
   }
 
-  /// Picks the date to use for filtering depending on the active mode:
-  /// - Por venta  → createdAt in local timezone (when the order was placed)
-  /// - Por entrega → deliveryDate if available, else saleDate (delivery date)
+  /// Picks the date to use for filtering depending on the active mode.
   DateTime _filterDateOf(OrderModel o) {
-    if (_filterByDelivery) {
-      return o.deliveryDate ?? o.saleDate.toLocal();
-    }
-    return o.createdAt.toLocal();
+    if (_filterMode == _FilterMode.byVenta) return o.createdAt.toLocal();
+    return o.deliveryDate ?? o.saleDate.toLocal();
   }
 
   /// Applies the date-range or chip filter to any list of orders.
   List<OrderModel> _applyDateFilter(List<OrderModel> orders) {
-    if (_customDateRange != null) {
+    if (_customDateRange != null && _filterMode == _FilterMode.byVenta) {
       return orders.where((o) {
         final d = _filterDateOf(o);
         final start = _customDateRange!.start;
@@ -421,24 +425,41 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final d = _filterDateOf(o);
       final oDate = DateTime(d.year, d.month, d.day);
 
-      if (_filterByDelivery) {
-        // Chips: ['Hoy', 'Mañana', '7 días', '15 días']
-        if (_selectedDateIndex == 0) return oDate == today;
-        if (_selectedDateIndex == 1)
-          return oDate == today.add(const Duration(days: 1));
-        if (_selectedDateIndex == 2)
-          return !oDate.isAfter(today.add(const Duration(days: 7)));
-        if (_selectedDateIndex == 3)
-          return !oDate.isAfter(today.add(const Duration(days: 15)));
-      } else {
-        // Chips: ['15 días', '7 días', 'Ayer', 'Hoy']
-        if (_selectedDateIndex == 0)
-          return oDate.isAfter(today.subtract(const Duration(days: 15)));
-        if (_selectedDateIndex == 1)
-          return oDate.isAfter(today.subtract(const Duration(days: 7)));
-        if (_selectedDateIndex == 2)
-          return oDate == today.subtract(const Duration(days: 1));
-        if (_selectedDateIndex == 3) return oDate == today;
+      switch (_filterMode) {
+        case _FilterMode.byVenta:
+          // Chips: ['15 días', '7 días', 'Ayer', 'Hoy']
+          if (_selectedDateIndex == 0)
+            return oDate.isAfter(today.subtract(const Duration(days: 15)));
+          if (_selectedDateIndex == 1)
+            return oDate.isAfter(today.subtract(const Duration(days: 7)));
+          if (_selectedDateIndex == 2)
+            return oDate == today.subtract(const Duration(days: 1));
+          if (_selectedDateIndex == 3) return oDate == today;
+
+        case _FilterMode.byEntrega:
+          // Chips: ['Hoy', 'Mañana', '7 días', '15 días'] — future orders only
+          if (_selectedDateIndex == 0) return oDate == today;
+          if (_selectedDateIndex == 1)
+            return oDate == today.add(const Duration(days: 1));
+          if (_selectedDateIndex == 2)
+            return !oDate.isBefore(today) &&
+                !oDate.isAfter(today.add(const Duration(days: 7)));
+          if (_selectedDateIndex == 3)
+            return !oDate.isBefore(today) &&
+                !oDate.isAfter(today.add(const Duration(days: 15)));
+
+        case _FilterMode.entregados:
+          // Chips: ['Hoy', 'Esta semana', 'Este mes'] — past delivered orders
+          if (_selectedDateIndex == 0) return oDate == today;
+          if (_selectedDateIndex == 1) {
+            final weekStart =
+                today.subtract(Duration(days: today.weekday - 1));
+            return !oDate.isBefore(weekStart) && !oDate.isAfter(today);
+          }
+          if (_selectedDateIndex == 2) {
+            final monthStart = DateTime(today.year, today.month, 1);
+            return !oDate.isBefore(monthStart) && !oDate.isAfter(today);
+          }
       }
       return true;
     }).toList();
@@ -447,9 +468,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   /// All orders in current period (both tabs) — used for the summary banner.
   List<OrderModel> get _allOrdersInPeriod => _applyDateFilter(_orders);
 
-  /// Orders filtered by both date period AND the active status tab.
-  /// When [_searchQuery] is non-empty, bypasses date/status filters and
-  /// searches ALL orders by folio, customer name, or product name.
+  /// Orders filtered by mode, date period, and optionally search query.
   List<OrderModel> get _filteredOrders {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
@@ -459,14 +478,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
             o.productName.toLowerCase().contains(q);
       }).toList();
     }
-    final byStatus = _selectedTab == 1
-        ? _orders.where((o) => o.status == OrderStatus.delivered).toList()
-        : _orders
-            .where((o) =>
-                o.status == OrderStatus.waiting ||
-                o.status == OrderStatus.processing ||
-                o.status == OrderStatus.inTransit)
-            .toList();
+    final List<OrderModel> byStatus;
+    if (_filterMode == _FilterMode.entregados) {
+      byStatus =
+          _orders.where((o) => o.status == OrderStatus.delivered).toList();
+    } else {
+      byStatus = _orders
+          .where((o) =>
+              o.status == OrderStatus.waiting ||
+              o.status == OrderStatus.processing ||
+              o.status == OrderStatus.inTransit)
+          .toList();
+    }
     return _applyDateFilter(byStatus);
   }
 
@@ -550,9 +573,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
               ],
-              const Text(
-                'Mis Pedidos',
-                style: TextStyle(
+              Text(
+                _filterMode == _FilterMode.entregados
+                    ? 'Pedidos Entregados'
+                    : 'Mis Pedidos',
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textLight,
@@ -681,7 +706,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           const SizedBox(height: 14),
 
           // Selector de rango solo en modo "Por Venta"
-          if (!_filterByDelivery) ...[
+          if (_filterMode == _FilterMode.byVenta) ...[
             GestureDetector(
               onTap: _selectDateRange,
               child: Container(
@@ -1299,20 +1324,29 @@ class _OrdersScreenState extends State<OrdersScreen> {
       child: Row(
         children: [
           _buildToggleOption(
-            label: '🛒  Por venta',
-            isSelected: !_filterByDelivery,
+            label: '🛒 Venta',
+            isSelected: _filterMode == _FilterMode.byVenta,
             onTap: () => setState(() {
-              _filterByDelivery = false;
+              _filterMode = _FilterMode.byVenta;
               _selectedDateIndex = 3; // Hoy
               _customDateRange = null;
             }),
           ),
           _buildToggleOption(
-            label: '🚚  Por entregar',
-            isSelected: _filterByDelivery,
+            label: '🚚 Entregar',
+            isSelected: _filterMode == _FilterMode.byEntrega,
             onTap: () => setState(() {
-              _filterByDelivery = true;
+              _filterMode = _FilterMode.byEntrega;
               _selectedDateIndex = 0; // Hoy
+              _customDateRange = null;
+            }),
+          ),
+          _buildToggleOption(
+            label: '✅ Entregados',
+            isSelected: _filterMode == _FilterMode.entregados,
+            onTap: () => setState(() {
+              _filterMode = _FilterMode.entregados;
+              _selectedDateIndex = 2; // Este mes
               _customDateRange = null;
             }),
           ),
@@ -1425,8 +1459,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            _selectedTab == 0 ? 'Sin pedidos en operación' : 'Sin pedidos entregados',
-            style: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 15, fontWeight: FontWeight.w500),
+            _filterMode == _FilterMode.entregados
+                ? 'Sin pedidos entregados en este período'
+                : 'Sin pedidos en operación',
+            style: const TextStyle(
+                color: Color(0xFFBDBDBD),
+                fontSize: 15,
+                fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -1437,11 +1476,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   /// Builds the flat or grouped list of widgets to render in the SliverList.
   List<Widget> _buildOrderItems() {
-    // Search results and Entregados tab → flat list
-    if (_selectedTab == 1 || _searchQuery.isNotEmpty) {
+    // Entregados mode → summary banner + compact delivered cards
+    if (_filterMode == _FilterMode.entregados) {
+      return [
+        _buildEntregadosSummary(_filteredOrders),
+        ..._filteredOrders.map((o) => _buildEntregadoCard(o)),
+      ];
+    }
+    // Search results → flat list
+    if (_searchQuery.isNotEmpty) {
       return _filteredOrders.map((o) => _buildOrderCard(o)).toList();
     }
-    // En operación tab → grouped by status with section headers
+    // En operación → grouped by status with section headers
     final items = <Widget>[];
     for (final status in [
       OrderStatus.waiting,
@@ -1455,6 +1501,225 @@ class _OrdersScreenState extends State<OrdersScreen> {
       items.addAll(group.map((o) => _buildOrderCard(o)));
     }
     return items;
+  }
+
+  // ─── Entregados Summary Banner ───────────────────────────────────────────────
+
+  Widget _buildEntregadosSummary(List<OrderModel> orders) {
+    final total = orders.fold<double>(0, (sum, o) => sum + o.price * o.quantity + o.shippingCost);
+    final chipLabel = _currentChips[_selectedDateIndex < _currentChips.length ? _selectedDateIndex : 0];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0D3320), Color(0xFF1A5C38)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_circle_rounded,
+                color: Color(0xFF2BEE79), size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${orders.length} pedido${orders.length == 1 ? '' : 's'} entregado${orders.length == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  chipLabel,
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${CurrencyCache.symbol}${total.toStringAsFixed(0)}',
+                style: const TextStyle(
+                    color: Color(0xFF2BEE79),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900),
+              ),
+              Text(
+                CurrencyCache.code,
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Entregado Card ──────────────────────────────────────────────────────────
+
+  Widget _buildEntregadoCard(OrderModel order) {
+    // Parse product name (may be JSON array)
+    String productDisplay;
+    try {
+      final List<dynamic> items = jsonDecode(order.productName);
+      productDisplay = items.map((p) {
+        final name = p['name'] as String? ?? 'Producto';
+        final qty = p['qty'] as int? ?? 1;
+        return '${qty}× $name';
+      }).join(', ');
+    } catch (_) {
+      productDisplay = '${order.quantity}× ${order.productName}';
+    }
+
+    final deliveryRef = order.deliveryDate ?? order.saleDate.toLocal();
+    final deliveryLabel = _formatDate(deliveryRef);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: order.productImageUrl != null
+                  ? Image.network(order.productImageUrl!,
+                      width: 60, height: 60, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _entregadoIconBox(order))
+                  : _entregadoIconBox(order),
+            ),
+            const SizedBox(width: 12),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product name + shopify pill
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          productDisplay,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textLight),
+                        ),
+                      ),
+                      if (order.source == 'shopify')
+                        Container(
+                          margin: const EdgeInsets.only(left: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF96BF48).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                                color: const Color(0xFF96BF48), width: 0.8),
+                          ),
+                          child: const Text('Shopify',
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF5A8A00))),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(order.customerName,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF9E9E9E))),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded,
+                          size: 11, color: Color(0xFF10B981)),
+                      const SizedBox(width: 4),
+                      Text(deliveryLabel,
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFF10B981))),
+                      const Spacer(),
+                      Text('FOLIO ${order.folio}',
+                          style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFBDBDBD),
+                              letterSpacing: 0.4)),
+                    ],
+                  ),
+                  // Star rating (if available)
+                  if (order.customerRating != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: List.generate(5, (i) {
+                        return Icon(
+                          i < order.customerRating!
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          size: 14,
+                          color: i < order.customerRating!
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFFDDDDDD),
+                        );
+                      }),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _entregadoIconBox(OrderModel order) {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: order.iconBgColor ?? const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(order.icon ?? Icons.local_florist,
+          color: order.iconColor ?? Colors.black54, size: 28),
+    );
   }
 
   Widget _buildStatusSectionHeader(OrderStatus status, int count) {

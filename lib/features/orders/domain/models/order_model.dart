@@ -85,6 +85,7 @@ class OrderModel {
   final String source; // 'manual' | 'shopify' | 'woocommerce'
   final DateTime? deliveryDate; // From delivery_date DATE column (Shopify/structured orders)
   final String? productImageUrl; // Thumbnail del producto para el albarán
+  final int? customerRating;     // 1–5 stars, set by the end customer via the review flow
 
   OrderModel({
     this.id,
@@ -122,6 +123,7 @@ class OrderModel {
     this.source = 'manual',
     this.deliveryDate,
     this.productImageUrl,
+    this.customerRating,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -164,6 +166,7 @@ class OrderModel {
           ? DateTime.parse(json['delivery_date'] as String)
           : null,
       productImageUrl: json['product_image_url'] as String?,
+      customerRating: json['customer_rating'] as int?,
       // Map UI colors for displaying correctly in the app
       iconBgColor: const Color(0xFFF5F5F5),
       iconColor: Colors.black87,
