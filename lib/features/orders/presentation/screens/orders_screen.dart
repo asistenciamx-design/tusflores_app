@@ -1839,7 +1839,7 @@ extension OrderShareExtension on OrderModel {
       buf.writeln('━━━━━━━━━━━━━━━━━━━━');
     }
     
-    buf.write('¡Gracias por tu compra! 🌹\ntusflores.app/floreria-las-rosas');
+    buf.write('¡Gracias por tu compra! 🌹\nwww.tusflores.app/floreria-las-rosas');
     return buf.toString();
   }
 }

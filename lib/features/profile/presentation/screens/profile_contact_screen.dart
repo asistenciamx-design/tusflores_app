@@ -287,7 +287,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
 
   Widget _buildStoreLinkCard() {
     final linkEnd = _shopNameCtrl.text.isEmpty ? 'tu-floreria' : _shopNameCtrl.text.toLowerCase().replaceAll(' ', '-');
-    final storeLink = 'tusflores.app/mx/$linkEnd';
+    final storeLink = 'www.tusflores.app/mx/$linkEnd';
     
     return Container(
       padding: const EdgeInsets.all(16),

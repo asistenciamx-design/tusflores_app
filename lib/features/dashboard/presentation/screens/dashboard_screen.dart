@@ -400,8 +400,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                    final slug = (profile?['shop_name'] as String?)?.trim() ?? '';
                    final storeUrl = slug.isNotEmpty
-                       ? 'https://tusflores.app/mx/$slug'
-                       : 'https://tusflores.app';
+                       ? 'https://www.tusflores.app/mx/$slug'
+                       : 'https://www.tusflores.app';
 
                    final customMsg = (settings?.catalogMessage as String?)?.trim() ?? '';
 

@@ -225,7 +225,7 @@ class _CustomerOrderSummaryScreenState
     if (trackingEnabled && trackingFolio != '#0000') {
       final encodedFolio = trackingFolio.replaceAll('#', '%23');
       buffer.writeln(
-          '\n\u2605 *Seguimiento del pedido:* https://tusflores.app/seguimiento/$encodedFolio');
+          '\n\u2605 *Seguimiento del pedido:* https://www.tusflores.app/seguimiento/$encodedFolio');
     }
 
     return buffer.toString();

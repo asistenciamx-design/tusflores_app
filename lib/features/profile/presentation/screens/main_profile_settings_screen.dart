@@ -112,7 +112,7 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
     }
 
     final linkEnd = _shopName.isEmpty ? 'tu-floreria' : _shopName.toLowerCase().replaceAll(' ', '-');
-    final storeLink = 'tusflores.app/mx/$linkEnd';
+    final storeLink = 'www.tusflores.app/mx/$linkEnd';
 
     return Container(
       padding: const EdgeInsets.only(top: 24, bottom: 24, left: 24, right: 24),

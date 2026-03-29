@@ -139,7 +139,7 @@ class _ShopNameClaimScreenState extends State<ShopNameClaimScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'tusflores.app/$_selectedCountry/${_nameCtrl.text.isEmpty ? 'tu-florería' : _nameCtrl.text.toLowerCase().replaceAll(' ', '-')}',
+                      'www.tusflores.app/$_selectedCountry/${_nameCtrl.text.isEmpty ? 'tu-florería' : _nameCtrl.text.toLowerCase().replaceAll(' ', '-')}',
                       style: const TextStyle(fontSize: 16, color: AppTheme.textLight),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 2,
