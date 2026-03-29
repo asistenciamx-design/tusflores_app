@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
@@ -1872,28 +1873,41 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
   }
 
   Future<void> _pickPhoto(int index) async {
-    final source = await showDialog<ImageSource>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Agregar foto'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined, color: _pink),
-              title: const Text('Tomar foto'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: _pink),
-              title: const Text('Elegir de galería'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
+    ImageSource? source;
+
+    if (kIsWeb) {
+      // En web, ImageSource.camera usa <input capture="environment"> que en
+      // iOS Safari puede mostrar pantalla negra. Usamos gallery que abre el
+      // sheet nativo de iOS donde "Tomar foto" funciona correctamente.
+      source = ImageSource.gallery;
+    } else {
+      source = await showDialog<ImageSource>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Agregar foto'),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading:
+                    const Icon(Icons.camera_alt_outlined, color: _pink),
+                title: const Text('Tomar foto'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.photo_library_outlined, color: _pink),
+                title: const Text('Elegir de fototeca'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
+
     if (source == null || !mounted) return;
 
     final picked = await _picker.pickImage(
