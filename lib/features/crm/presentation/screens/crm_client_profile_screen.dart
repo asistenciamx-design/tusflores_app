@@ -607,58 +607,61 @@ class _CrmClientProfileScreenState extends State<CrmClientProfileScreen> {
                 else
                   ..._notes.map((n) => _NoteItemWidget(note: n)),
                 const SizedBox(height: 12),
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _noteCtrl,
-                        style: const TextStyle(fontSize: 13),
-                        maxLength: 500,
-                        onSubmitted: (_) => _addNote(),
-                        decoration: InputDecoration(
-                          hintText: 'Agregar una nota...',
-                          hintStyle: const TextStyle(
-                              color: AppTheme.mutedLight, fontSize: 13),
-                          filled: true,
-                          fillColor: const Color(0xFFF6F8F7),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
+                    TextField(
+                      controller: _noteCtrl,
+                      style: const TextStyle(fontSize: 13),
+                      maxLength: 500,
+                      onSubmitted: (_) => _addNote(),
+                      decoration: InputDecoration(
+                        hintText: 'Agregar una nota...',
+                        hintStyle: const TextStyle(
+                            color: AppTheme.mutedLight, fontSize: 13),
+                        filled: true,
+                        fillColor: const Color(0xFFF6F8F7),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
                         ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    GestureDetector(
-                      onTap: _addNote,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _isSavingNote
-                              ? AppTheme.primary.withValues(alpha: 0.5)
-                              : AppTheme.primary,
-                          borderRadius: BorderRadius.circular(10),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: _addNote,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _isSavingNote
+                                ? AppTheme.primary.withValues(alpha: 0.5)
+                                : AppTheme.primary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: _isSavingNote
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.add, color: Colors.white, size: 16),
+                                    SizedBox(width: 4),
+                                    Text('Agregar',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
                         ),
-                        child: _isSavingNote
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Row(
-                                children: [
-                                  Icon(Icons.add, color: Colors.white, size: 16),
-                                  SizedBox(width: 4),
-                                  Text('Agregar',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold)),
-                                ],
-                              ),
                       ),
                     ),
                   ],
