@@ -87,6 +87,11 @@ class OrderModel {
   final String? productImageUrl; // Thumbnail del producto para el albarán
   final int? customerRating;     // 1–5 stars, set by the end customer via the review flow
 
+  // Reparto
+  String? repartidorId;
+  double? deliveryAmount;
+  String? repartidorName; // UI-only: populated by joining with repartidores
+
   OrderModel({
     this.id,
     required this.shopId,
@@ -124,6 +129,9 @@ class OrderModel {
     this.deliveryDate,
     this.productImageUrl,
     this.customerRating,
+    this.repartidorId,
+    this.deliveryAmount,
+    this.repartidorName,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -167,6 +175,8 @@ class OrderModel {
           : null,
       productImageUrl: json['product_image_url'] as String?,
       customerRating: json['customer_rating'] as int?,
+      repartidorId: json['repartidor_id'] as String?,
+      deliveryAmount: (json['delivery_amount'] as num?)?.toDouble(),
       // Map UI colors for displaying correctly in the app
       iconBgColor: const Color(0xFFF5F5F5),
       iconColor: Colors.black87,
@@ -262,6 +272,9 @@ class OrderModel {
     DateTime? deliveryDate,
     String? productImageUrl,
     int? customerRating,
+    String? repartidorId,
+    double? deliveryAmount,
+    String? repartidorName,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -300,6 +313,9 @@ class OrderModel {
       deliveryDate: deliveryDate ?? this.deliveryDate,
       productImageUrl: productImageUrl ?? this.productImageUrl,
       customerRating: customerRating ?? this.customerRating,
+      repartidorId: repartidorId ?? this.repartidorId,
+      deliveryAmount: deliveryAmount ?? this.deliveryAmount,
+      repartidorName: repartidorName ?? this.repartidorName,
     );
   }
 

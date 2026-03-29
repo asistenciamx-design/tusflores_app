@@ -19,6 +19,8 @@ import 'albaran_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/order_model.dart';
 import '../../domain/repositories/order_repository.dart';
+import '../../../profile/domain/repositories/shop_settings_repository.dart';
+import '../../../reparto/presentation/widgets/assign_repartidor_sheet.dart';
 
 // ─── Notification model ───────────────────────────────────────────────────────
 
@@ -88,6 +90,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
   // ── Shop name (for share messages)
   String _shopName = 'Mi Florería';
 
+  // ── Reparto settings
+  bool _autoTransferShipping = false;
+
   // ── Notifications
   final List<_NotificationItem> _notifications = [];
   int _unreadCount = 0;
@@ -127,6 +132,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
             .maybeSingle();
         if (mounted && profile != null) {
           setState(() => _shopName = profile['shop_name'] ?? 'Mi Florería');
+        }
+      } catch (_) {}
+      try {
+        final settings = await ShopSettingsRepository().getSettings(user.id);
+        if (mounted && settings != null) {
+          setState(() => _autoTransferShipping = settings.autoTransferShipping);
         }
       } catch (_) {}
     }
@@ -1076,6 +1087,47 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 6),
+
+            // Repartidor — botón full-width
+            GestureDetector(
+              onTap: () => _showRepartidorSheet(context, order),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: order.repartidorId != null
+                      ? Border.all(
+                          color: Colors.deepOrange.withValues(alpha: 0.35))
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      order.repartidorId != null
+                          ? Icons.delivery_dining_rounded
+                          : Icons.delivery_dining_outlined,
+                      color: Colors.deepOrange,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      order.repartidorId != null
+                          ? (order.repartidorName ?? 'Repartidor asignado')
+                          : 'Repartidor',
+                      style: const TextStyle(
+                        color: Colors.deepOrange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 10),
 
             // Payment + Status row
@@ -1740,6 +1792,32 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showRepartidorSheet(BuildContext context, OrderModel order) async {
+    if (order.id == null) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final result = await showModalBottomSheet<AssignResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AssignRepartidorSheet(
+        orderId: order.id!,
+        shopId: user.id,
+        currentRepartidorId: order.repartidorId,
+        currentDeliveryAmount: order.deliveryAmount,
+        shippingCost: order.shippingCost,
+        autoTransferShipping: _autoTransferShipping,
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        order.repartidorId = result.repartidorId;
+        order.deliveryAmount = result.deliveryAmount;
+        order.repartidorName = result.repartidorName;
+      });
+    }
   }
 
   void _showPhotoSheet(BuildContext context, OrderModel order) {

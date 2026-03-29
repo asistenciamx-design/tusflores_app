@@ -56,6 +56,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
     bool? isUnavailable,
     String? unavailableMessage,
     bool? sellGiftsStandalone,
+    bool? autoTransferShipping,
     String? currencyCode,
     String? currencySymbol,
   }) {
@@ -83,6 +84,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
       isUnavailable: isUnavailable ?? c.isUnavailable,
       unavailableMessage: unavailableMessage ?? c.unavailableMessage,
       sellGiftsStandalone: sellGiftsStandalone ?? c.sellGiftsStandalone,
+      autoTransferShipping: autoTransferShipping ?? c.autoTransferShipping,
       catalogMessage: c.catalogMessage,
       catalogImageUrl: c.catalogImageUrl,
       currencyCode: currencyCode ?? c.currencyCode,
@@ -116,6 +118,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
       trackingLinkEnabled: field == 'trackingLinkEnabled' ? value : null,
       showReviews: field == 'showReviews' ? value : null,
       sellGiftsStandalone: field == 'sellGiftsStandalone' ? value : null,
+      autoTransferShipping: field == 'autoTransferShipping' ? value : null,
     ));
   }
 
@@ -276,6 +279,21 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
                         subtitle: 'Permite que los clientes compren regalos sin incluir un arreglo floral.',
                         value: _settings!.sellGiftsStandalone,
                         onChanged: (v) => _toggle('sellGiftsStandalone', v),
+                        enabled: !_isSaving,
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                    _SectionHeader(title: 'REPARTO'),
+                    const SizedBox(height: 12),
+                    _buildCard(children: [
+                      _ConfigTile(
+                        icon: Icons.delivery_dining_rounded,
+                        iconColor: Colors.deepOrange,
+                        iconBg: Colors.deepOrange.withValues(alpha: 0.1),
+                        title: 'Transferir gasto de envío a repartidor',
+                        subtitle: 'Al asignar un repartidor, el monto de envío de la zona se aplica automáticamente como su pago.',
+                        value: _settings!.autoTransferShipping,
+                        onChanged: (v) => _toggle('autoTransferShipping', v),
                         enabled: !_isSaving,
                       ),
                     ]),

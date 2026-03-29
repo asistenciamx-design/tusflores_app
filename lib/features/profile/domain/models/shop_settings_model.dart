@@ -189,6 +189,9 @@ class ShopSettingsModel {
   // Gifts
   final bool sellGiftsStandalone;
 
+  // Reparto
+  final bool autoTransferShipping;
+
   // Currency / Region
   final String currencyCode;
   final String currencySymbol;
@@ -216,6 +219,7 @@ class ShopSettingsModel {
     this.isUnavailable = false,
     this.unavailableMessage,
     this.sellGiftsStandalone = false,
+    this.autoTransferShipping = false,
     this.catalogMessage,
     this.catalogImageUrl,
     this.currencyCode = 'MXN',
@@ -282,6 +286,7 @@ class ShopSettingsModel {
       isUnavailable: json['is_unavailable'] ?? false,
       unavailableMessage: json['unavailable_message'],
       sellGiftsStandalone: json['sell_gifts_standalone'] ?? false,
+      autoTransferShipping: json['auto_transfer_shipping'] ?? false,
       catalogMessage: json['catalog_message'],
       catalogImageUrl: json['catalog_image_url'],
       currencyCode: json['currency_code'] ?? 'MXN',
@@ -313,6 +318,7 @@ class ShopSettingsModel {
     'is_unavailable': isUnavailable,
     'unavailable_message': unavailableMessage,
     'sell_gifts_standalone': sellGiftsStandalone,
+    'auto_transfer_shipping': autoTransferShipping,
     'catalog_message': catalogMessage,
     'catalog_image_url': catalogImageUrl,
     'currency_code': currencyCode,

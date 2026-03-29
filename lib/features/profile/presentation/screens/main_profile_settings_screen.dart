@@ -11,6 +11,7 @@ import 'profile_branch_edit_screen.dart'; // To navigate to "Sucursal"
 import 'payment_methods_screen.dart'; // To navigate to "Métodos de Pago"
 import 'profile_faq_edit_screen.dart'; // To navigate to "Preguntas Frecuentes"
 import 'shop_config_screen.dart'; // To navigate to "Configuración"
+import '../../../reparto/presentation/screens/reparto_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
@@ -427,6 +428,19 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const PaymentMethodsScreen()),
+                    );
+                  },
+                ),
+                _buildDivider(),
+                _MenuItem(
+                  icon: Icons.delivery_dining_rounded,
+                  iconColor: Colors.deepOrange,
+                  iconBg: Colors.deepOrange.withValues(alpha: 0.1),
+                  title: 'Reparto',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RepartoScreen()),
                     );
                   },
                 ),
