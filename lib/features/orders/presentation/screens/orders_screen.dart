@@ -723,46 +723,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           const SizedBox(height: 12),
 
-          // ── Resumen contextual ──
-          _buildSummaryBanner(),
-          const SizedBox(height: 12),
-
-          // Status tabs
-          Row(
-            children: [
-              _buildStatusTab(0, 'En operación'),
-              const SizedBox(width: 4),
-              _buildStatusTab(1, 'Entregados'),
-            ],
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStatusTab(int index, String label) {
-    final selected = _selectedTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedTab = index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? AppTheme.primary.withValues(alpha: 0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: selected ? AppTheme.primary : const Color(0xFF9E9E9E),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1385,97 +1347,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  // ─── Summary Banner ──────────────────────────────────────────────────────────
-
-  Widget _buildSummaryBanner() {
-    final all = _allOrdersInPeriod;
-
-    // When the user is searching, show a search-specific badge
-    if (_searchQuery.isNotEmpty) {
-      final count = _filteredOrders.length;
-      if (count == 0) return const SizedBox.shrink();
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFF9C27B0).withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: const Color(0xFF9C27B0).withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.search, color: Color(0xFF9C27B0), size: 15),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '$count resultado${count == 1 ? '' : 's'} para «$_searchQuery»',
-                style: const TextStyle(
-                  color: Color(0xFF9C27B0),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (all.isEmpty) return const SizedBox.shrink();
-
-    final Color color;
-    final IconData icon;
-    final String text;
-
-    if (_filterByDelivery) {
-      final operational = all
-          .where((o) =>
-              o.status == OrderStatus.waiting ||
-              o.status == OrderStatus.processing ||
-              o.status == OrderStatus.inTransit)
-          .length;
-      final delivered =
-          all.where((o) => o.status == OrderStatus.delivered).length;
-      text = '$operational en operación  ·  ✅ $delivered entregados';
-      color = const Color(0xFF2196F3);
-      icon = Icons.local_shipping_outlined;
-    } else {
-      final total = all.fold(0.0, (sum, o) => sum + o.price);
-      text = '${all.length} registrados  ·  ${CurrencyCache.symbol}${total.toStringAsFixed(0)} ${CurrencyCache.code}';
-      color = AppTheme.primary;
-      icon = Icons.receipt_long_outlined;
-    }
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 250),
-      child: Container(
-        key: ValueKey(_filterByDelivery),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 15),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ─── Urgency Badge ───────────────────────────────────────────────────────────
 
