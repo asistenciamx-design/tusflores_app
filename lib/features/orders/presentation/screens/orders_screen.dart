@@ -12,6 +12,7 @@ import '../../../../core/utils/currency_cache.dart';
 import 'edit_order_screen.dart';
 import 'confirm_payment_screen.dart';
 import 'order_calendar_screen.dart';
+import 'order_date_filter_screen.dart';
 import 'print_card_screen.dart';
 import 'albaran_screen.dart';
 
@@ -455,23 +456,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _selectDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2023),
-      lastDate: DateTime(2030),
-      initialDateRange: _customDateRange,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppTheme.primary,
-              onPrimary: Colors.white,
-              onSurface: AppTheme.textLight,
-            ),
-          ),
-          child: child!,
-        );
-      },
+    final picked = await Navigator.push<DateTimeRange>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            OrderDateFilterScreen(initialRange: _customDateRange),
+        fullscreenDialog: true,
+      ),
     );
 
     if (picked != null) {
