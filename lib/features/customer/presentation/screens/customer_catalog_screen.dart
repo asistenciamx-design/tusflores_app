@@ -179,6 +179,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               _buildProductsGrid(context),
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              SliverToBoxAdapter(child: _buildLegalFooter(context)),
             ],
           ),
       ),
@@ -597,6 +598,71 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton> {
             size: 16,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLegalFooter(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      child: Column(
+        children: [
+          Divider(height: 1, color: Colors.grey.shade200),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.local_florist,
+                  size: 13, color: AppTheme.mutedLight),
+              const SizedBox(width: 5),
+              Text(
+                'Potenciado por tusflores.app',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => context.push('/privacidad'),
+                child: const Text(
+                  'Privacidad',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.mutedLight,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text('·',
+                    style: TextStyle(color: Colors.grey.shade300)),
+              ),
+              GestureDetector(
+                onTap: () => context.push('/terminos'),
+                child: const Text(
+                  'Términos de uso',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.mutedLight,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '© 2024–2025 tusflores.app',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+          ),
+        ],
       ),
     );
   }

@@ -1,3 +1,5 @@
+// Copyright (c) 2024–2025 tusflores.app — Todos los derechos reservados.
+// Software propietario. Consulta el archivo LICENSE en la raíz del repositorio.
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/app_theme.dart';

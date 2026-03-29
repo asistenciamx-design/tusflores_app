@@ -29,6 +29,8 @@ import '../../features/orders/domain/models/order_model.dart';
 import '../../features/customer/presentation/screens/order_tracking_screen.dart';
 import '../../features/reviews/presentation/screens/review_form_screen.dart';
 import '../../features/reviews/presentation/screens/shop_reviews_manage_screen.dart';
+import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
+import '../../features/legal/presentation/screens/terms_screen.dart';
 import '../services/seo_service.dart';
 
 final appRouter = GoRouter(
@@ -84,6 +86,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/admin',
       builder: (context, state) => const AdminLayout(),
+    ),
+    // ── Rutas legales (públicas, sin autenticación) ────────────────────────
+    GoRoute(
+      path: '/privacidad',
+      builder: (context, state) => const PrivacyPolicyScreen(),
+    ),
+    GoRoute(
+      path: '/terminos',
+      builder: (context, state) => const TermsScreen(),
     ),
     // ── Ruta pública de la tienda ──────────────────────────────────────────
     // Visitantes acceden por: tusflores.app/mx/{slug}
