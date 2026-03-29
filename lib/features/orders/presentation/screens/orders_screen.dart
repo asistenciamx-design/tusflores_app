@@ -33,7 +33,7 @@ class _NotificationItem {
   final String title;
   final String subtitle;
   final DateTime createdAt;
-  bool read;
+  bool read = false;
 
   _NotificationItem({
     required this.id,
@@ -41,7 +41,6 @@ class _NotificationItem {
     required this.title,
     required this.subtitle,
     required this.createdAt,
-    this.read = false,
   });
 }
 
@@ -155,8 +154,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           callback: (payload) {
             try {
-              final newOrder = OrderModel.fromJson(
-                  payload.newRecord as Map<String, dynamic>);
+              final newOrder = OrderModel.fromJson(payload.newRecord);
               if (!mounted) return;
               final alreadyExists =
                   _orders.any((o) => o.id == newOrder.id);
@@ -192,8 +190,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           callback: (payload) {
             try {
-              final updated = OrderModel.fromJson(
-                  payload.newRecord as Map<String, dynamic>);
+              final updated = OrderModel.fromJson(payload.newRecord);
               if (!mounted) return;
               final idx = _orders.indexWhere((o) => o.id == updated.id);
               if (idx >= 0) {
@@ -465,14 +462,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }).toList();
   }
 
-  /// All orders in current period (both tabs) — used for the summary banner.
-  List<OrderModel> get _allOrdersInPeriod => _applyDateFilter(_orders);
-
   /// Orders filtered by mode, date period, and optionally search query.
   List<OrderModel> get _filteredOrders {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
-      return _orders.where((o) {
+      // In entregados mode, search only within delivered orders
+      final pool = _filterMode == _FilterMode.entregados
+          ? _orders.where((o) => o.status == OrderStatus.delivered).toList()
+          : _orders;
+      return pool.where((o) {
         return o.folio.toLowerCase().contains(q) ||
             o.customerName.toLowerCase().contains(q) ||
             o.productName.toLowerCase().contains(q);
@@ -1222,18 +1220,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _iconBtn(IconData icon, Color color) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(icon, color: color, size: 20),
-    );
-  }
-
   Widget _statusChip({IconData? icon, required String label, required Color color, bool outlined = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1251,25 +1237,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ],
           Text(label,
               style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionButton(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(width: 5),
-          Text(label,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -2273,13 +2240,9 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
           ? {'video': {'facingMode': 'environment'}, 'audio': false}
           : {'video': true, 'audio': false};
 
-      mediaDevices!.getUserMedia(constraints).then((stream) {
-        if (stream != null) {
-          activeStream = stream;
-          video.srcObject = stream;
-        } else {
-          stopAndRemove();
-        }
+      mediaDevices.getUserMedia(constraints).then((stream) {
+        activeStream = stream;
+        video.srcObject = stream;
       }).catchError((_) {
         if (preferRear) {
           tryCamera(false);

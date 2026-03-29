@@ -258,7 +258,10 @@ class OrderModel {
     String? buyerName,
     String? buyerWhatsapp,
     String? buyerEmail,
+    String? source,
+    DateTime? deliveryDate,
     String? productImageUrl,
+    int? customerRating,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -293,7 +296,10 @@ class OrderModel {
       buyerName: buyerName ?? this.buyerName,
       buyerWhatsapp: buyerWhatsapp ?? this.buyerWhatsapp,
       buyerEmail: buyerEmail ?? this.buyerEmail,
+      source: source ?? this.source,
+      deliveryDate: deliveryDate ?? this.deliveryDate,
       productImageUrl: productImageUrl ?? this.productImageUrl,
+      customerRating: customerRating ?? this.customerRating,
     );
   }
 

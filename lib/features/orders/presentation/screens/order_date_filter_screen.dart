@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pantalla: Filtro de Ventas (selector de rango de fechas pasadas)
@@ -69,12 +68,6 @@ class _OrderDateFilterScreenState extends State<OrderDateFilterScreen> {
   bool _isEnd(DateTime day)   => _end   != null && _isSameDay(day, _end!);
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
-
-  String _rangeLabel() {
-    if (_start == null) return 'Selecciona la fecha de inicio';
-    if (_end == null)   return 'Selecciona la fecha de fin';
-    return '${_start!.day} ${_meses[_start!.month - 1]} → ${_end!.day} ${_meses[_end!.month - 1]}';
-  }
 
   @override
   Widget build(BuildContext context) {
