@@ -24,6 +24,7 @@ class AdminRepository {
   // ── Global metrics ──────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getGlobalMetrics() async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     final shops = await _db
         .from('profiles')
         .select('id')
@@ -64,6 +65,7 @@ class AdminRepository {
   // ── Shops ───────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getAllShops() async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     final rows = await _db
         .from('profiles')
         .select('id, shop_name, whatsapp_number, created_at, average_rating, review_count')
