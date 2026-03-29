@@ -2114,28 +2114,66 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
       return;
     }
 
-    mediaDevices
-        .getUserMedia({'video': {'facingMode': 'environment'}, 'audio': false})
-        .then((stream) {
-      if (stream != null) {
-        activeStream = stream;
-        video.srcObject = stream;
-      } else {
-        stopAndRemove();
-      }
-    }).catchError((_) {
-      stopAndRemove();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Sin permiso de cámara. Ve a Ajustes → Chrome (o Safari) → Cámara y actívalo.',
-            ),
-            duration: Duration(seconds: 5),
+    // Intenta primero con cámara trasera; si falla, reintenta con cualquier
+    // cámara disponible; si sigue fallando, muestra el diálogo de ayuda.
+    void tryCamera(bool preferRear) {
+      final constraints = preferRear
+          ? {'video': {'facingMode': 'environment'}, 'audio': false}
+          : {'video': true, 'audio': false};
+
+      mediaDevices!.getUserMedia(constraints).then((stream) {
+        if (stream != null) {
+          activeStream = stream;
+          video.srcObject = stream;
+        } else {
+          stopAndRemove();
+        }
+      }).catchError((_) {
+        if (preferRear) {
+          tryCamera(false);
+        } else {
+          stopAndRemove();
+          _showCameraPermissionHelp(index);
+        }
+      });
+    }
+
+    tryCamera(true);
+  }
+
+  void _showCameraPermissionHelp(int index) {
+    if (!mounted) return;
+    final ua = html.window.navigator.userAgent.toLowerCase();
+    final browser = ua.contains('crios') ? 'Chrome' : 'Safari';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cámara sin permiso'),
+        content: Text(
+          'iOS bloqueó el acceso a la cámara de $browser.\n\n'
+          'Para activarla:\n'
+          '1. Cierra el navegador\n'
+          '2. Abre Ajustes de iPhone\n'
+          '3. Busca "$browser"\n'
+          '4. Toca "Cámara" → "Permitir"\n'
+          '5. Regresa y vuelve a intentarlo\n\n'
+          'O usa la Fototeca para subir una foto ya tomada.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _pickFromFileInput(index);
+            },
+            child: const Text('Usar Fototeca'),
           ),
-        );
-      }
-    });
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Extrae los bytes JPEG del canvas capturado y los sube a Supabase.
