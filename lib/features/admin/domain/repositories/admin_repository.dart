@@ -86,12 +86,14 @@ class AdminRepository {
   }
 
   Future<void> createGroup(String name) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db.from('category_groups').insert({'name': name.trim()});
   }
 
   // ── Categories CRUD ─────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getCategories() async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     final rows = await _db
         .from('categories')
         .select()
@@ -101,6 +103,7 @@ class AdminRepository {
   }
 
   Future<void> toggleCategoryActive(String id, {required bool isActive}) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db
         .from('categories')
         .update({'is_active': isActive})
@@ -114,6 +117,7 @@ class AdminRepository {
     String? imageUrl,
     int sortOrder = 999,
   }) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db.from('categories').insert({
       'name': name,
       'group_name': groupName,
@@ -132,6 +136,7 @@ class AdminRepository {
     String? parentId,
     bool clearParent = false,
   }) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db.from('categories').update({
       'name': name,
       'group_name': groupName,
@@ -141,12 +146,14 @@ class AdminRepository {
   }
 
   Future<void> deleteCategory(String id) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db.from('categories').delete().eq('id', id);
   }
 
   // ── Category image upload ───────────────────────────────────────────────────
 
   Future<String> uploadCategoryImage(XFile file) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
     const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp'};
     final ext = file.name.split('.').last.toLowerCase();
     if (!allowedExtensions.contains(ext)) {
