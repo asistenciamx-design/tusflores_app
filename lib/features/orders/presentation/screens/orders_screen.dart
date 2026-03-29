@@ -1940,11 +1940,60 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
     if (mounted) setState(() => _uploading[index] = false);
   }
 
-  /// Crea un <input type="file" accept="image/*"> y lo clickea SINCRÓNICAMENTE
-  /// dentro del callback del gesto. Así iOS Safari no lo bloquea por popup
-  /// blocker y el selector nativo (fototeca + "Tomar foto") funciona
-  /// correctamente sin pantalla negra.
+  /// En web muestra un selector con dos opciones: cámara en vivo o fototeca.
   void _pickPhotoWeb(int index) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 4),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded, color: _pink),
+              title: const Text('Tomar foto'),
+              subtitle: const Text('Preview en vivo de la cámara',
+                  style: TextStyle(fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                // _openCameraOverlay se llama sincrónicamente dentro del
+                // gesto del usuario (onTap del ListTile), por lo que
+                // getUserMedia recibirá el contexto de gesto correcto.
+                _openCameraOverlay(index);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: _pink),
+              title: const Text('Fototeca'),
+              subtitle: const Text('Elegir de tus fotos guardadas',
+                  style: TextStyle(fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickFromFileInput(index);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Abre el selector de archivos nativo del sistema para elegir una imagen.
+  /// El .click() se dispara sincrónicamente dentro del onTap del ListTile.
+  void _pickFromFileInput(int index) {
     final input = html.InputElement()
       ..type = 'file'
       ..accept = 'image/*';
@@ -1998,9 +2047,155 @@ class _OrderPhotoSheetState extends State<_OrderPhotoSheet> {
       }
     });
 
-    // IMPORTANTE: .click() debe ir aquí, sincrónicamente, sin ningún await
-    // previo, para que iOS Safari lo reconozca como gesto del usuario.
     input.click();
+  }
+
+  /// Muestra un overlay HTML full-screen con el stream de cámara en vivo.
+  /// Usa getUserMedia (llamado sincrónicamente dentro del gesto del usuario)
+  /// para obtener permiso de cámara y mostrar el preview. El usuario ve el
+  /// arreglo floral en tiempo real y toca el botón para capturar el frame.
+  void _openCameraOverlay(int index) {
+    final overlay = html.DivElement()
+      ..id = 'tf-camera-overlay'
+      ..setAttribute(
+        'style',
+        'position:fixed;top:0;left:0;width:100%;height:100%;'
+        'background:#000;z-index:999999;display:flex;'
+        'flex-direction:column;align-items:center;overflow:hidden;'
+        '-webkit-user-select:none;user-select:none;',
+      );
+
+    final video = html.VideoElement()
+      ..autoplay = true
+      ..muted = true
+      ..setAttribute('playsinline', '')
+      ..setAttribute(
+        'style',
+        'width:100%;flex:1;object-fit:cover;max-height:calc(100vh - 150px);',
+      );
+
+    final bar = html.DivElement()
+      ..setAttribute(
+        'style',
+        'display:flex;flex-direction:column;align-items:center;'
+        'padding:16px 0 40px;gap:14px;width:100%;',
+      );
+
+    // Botón circular de captura (estilo cámara nativa)
+    final captureBtn = html.DivElement()
+      ..setAttribute(
+        'style',
+        'width:72px;height:72px;border-radius:50%;background:white;'
+        'border:5px solid rgba(255,255,255,0.45);cursor:pointer;'
+        'box-shadow:0 3px 12px rgba(0,0,0,0.5);',
+      );
+
+    final cancelBtn = html.DivElement()
+      ..innerText = 'Cancelar'
+      ..setAttribute(
+        'style',
+        'padding:10px 28px;font-size:15px;color:white;cursor:pointer;'
+        'border:1px solid rgba(255,255,255,0.55);border-radius:50px;'
+        'font-family:-apple-system,BlinkMacSystemFont,sans-serif;',
+      );
+
+    bar
+      ..append(captureBtn)
+      ..append(cancelBtn);
+    overlay
+      ..append(video)
+      ..append(bar);
+    html.document.body?.append(overlay);
+
+    html.MediaStream? activeStream;
+
+    void stopAndRemove() {
+      activeStream?.getTracks().forEach((t) => t.stop());
+      overlay.remove();
+    }
+
+    cancelBtn.onClick.listen((_) => stopAndRemove());
+
+    captureBtn.onClick.listen((_) {
+      final w = (video.videoWidth > 0 ? video.videoWidth : 1280).toInt();
+      final h = (video.videoHeight > 0 ? video.videoHeight : 720).toInt();
+
+      final canvas = html.CanvasElement(width: w, height: h);
+      canvas.context2D.drawImage(video, 0, 0);
+      stopAndRemove();
+
+      _processCanvasCapture(canvas, index);
+    });
+
+    // getUserMedia es invocado sincrónicamente aquí (dentro del contexto
+    // del gesto del usuario) — la Promise se crea de inmediato aunque el
+    // resultado llegue de forma asíncrona vía .then()/.catchError().
+    final mediaDevices = html.window.navigator.mediaDevices;
+    if (mediaDevices == null) {
+      stopAndRemove();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Cámara no disponible en este navegador.')),
+        );
+      }
+      return;
+    }
+
+    mediaDevices
+        .getUserMedia({'video': {'facingMode': 'environment'}, 'audio': false})
+        .then((stream) {
+      if (stream != null) {
+        activeStream = stream;
+        video.srcObject = stream;
+      } else {
+        stopAndRemove();
+      }
+    }).catchError((_) {
+      stopAndRemove();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Sin permiso de cámara. Ve a Ajustes → Chrome (o Safari) → Cámara y actívalo.',
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    });
+  }
+
+  /// Extrae los bytes JPEG del canvas capturado y los sube a Supabase.
+  Future<void> _processCanvasCapture(
+      html.CanvasElement canvas, int index) async {
+    if (!mounted) return;
+    setState(() => _uploading[index] = true);
+
+    try {
+      // toDataUrl devuelve "data:image/jpeg;base64,<datos>"
+      final dataUrl = canvas.toDataUrl('image/jpeg', 0.85);
+      final base64Data = dataUrl.split(',').last;
+      final bytes = Uint8List.fromList(base64Decode(base64Data));
+
+      final url = await widget.orderRepo.uploadOrderPhoto(
+        widget.order.shopId,
+        widget.order.id!,
+        index + 1,
+        bytes,
+      );
+
+      if (url != null && mounted) {
+        _slots[index] = url;
+        final urls = _slots.whereType<String>().toList();
+        await widget.orderRepo.updateCompletionPhotos(widget.order.id!, urls);
+        widget.onPhotosUpdated(urls);
+      }
+    } catch (e) {
+      debugPrint('[photo] Error al procesar captura: $e');
+    } finally {
+      if (mounted) setState(() => _uploading[index] = false);
+    }
   }
 
   Future<void> _deletePhoto(int index) async {
