@@ -128,13 +128,11 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
         elevation: 0,
         scrolledUnderElevation: 2,
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 100),
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-                : Column(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 32),
+        child: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildProfileImage(),
@@ -151,41 +149,21 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
                 _buildTextField(label: 'Correo electrónico', icon: Icons.email, controller: TextEditingController(text: _email), enabled: false),
                 const SizedBox(height: 16),
                 _buildTextField(label: 'WhatsApp principal de pedidos', icon: Icons.chat, controller: _whatsappCtrl, hintText: 'Ej. 55 9876 5432', keyboardType: TextInputType.phone, maxLength: 15, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _saveChanges,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 4,
+                    shadowColor: AppTheme.primary.withValues(alpha: 0.4),
+                  ),
+                  child: const Text('Guardar cambios', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    AppTheme.backgroundLight,
-                    AppTheme.backgroundLight.withValues(alpha: 0.9),
-                    AppTheme.backgroundLight.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveChanges,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 4,
-                  shadowColor: AppTheme.primary.withValues(alpha: 0.4),
-                ),
-                child: const Text('Guardar cambios', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

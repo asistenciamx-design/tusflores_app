@@ -94,19 +94,17 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
         elevation: 0,
         scrolledUnderElevation: 2,
       ),
-      body: _isLoading 
+      body: _isLoading
         ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-        : Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
+        : SingleChildScrollView(
+            padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildSectionHeader('Imagen de Identidad', Icons.image, Colors.purple),
                 _buildIdentityImageUpload(),
                 const SizedBox(height: 32),
-                
+
                 _buildSectionHeader('Biografía del Negocio', Icons.history_edu, Colors.purple),
                 _buildBiographyField(),
                 const SizedBox(height: 32),
@@ -135,70 +133,50 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
                   child: Text('Sube fotos de alta calidad de tu trabajo o instalaciones.', style: TextStyle(color: AppTheme.mutedLight, fontSize: 13)),
                 ),
                 _buildPhotoGallery(),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: _isSaving ? null : () async {
+                    setState(() => _isSaving = true);
+                    try {
+                      final milestonesData = _milestones.map((m) => {
+                        'year': m.year,
+                        'title': m.title,
+                        'description': m.description,
+                      }).toList();
+
+                      await _repo.updateProfile(
+                        logoUrl: _uploadedLogoUrl,
+                        biography: _bioController.text,
+                        yearsOfExperience: yearsOfExperience,
+                        specialties: _selectedSpecialties.toList(),
+                        milestones: milestonesData,
+                        gallery: _galleryPhotos,
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Información guardada exitosamente'), backgroundColor: Colors.green));
+                        Navigator.pop(context);
+                      }
+                    } catch (e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.'), backgroundColor: Colors.red));
+                    } finally {
+                      if (mounted) setState(() => _isSaving = false);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 4,
+                    shadowColor: AppTheme.primary.withValues(alpha: 0.3),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Guardar cambios', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
           ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    AppTheme.backgroundLight,
-                    AppTheme.backgroundLight.withValues(alpha: 0.9),
-                    AppTheme.backgroundLight.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-              child: ElevatedButton(
-                onPressed: _isSaving ? null : () async {
-                  setState(() => _isSaving = true);
-                  try {
-                    final milestonesData = _milestones.map((m) => {
-                      'year': m.year,
-                      'title': m.title,
-                      'description': m.description,
-                    }).toList();
-
-                    await _repo.updateProfile(
-                      logoUrl: _uploadedLogoUrl,
-                      biography: _bioController.text,
-                      yearsOfExperience: yearsOfExperience,
-                      specialties: _selectedSpecialties.toList(),
-                      milestones: milestonesData,
-                      gallery: _galleryPhotos,
-                    );
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Información guardada exitosamente'), backgroundColor: Colors.green));
-                      Navigator.pop(context);
-                    }
-                  } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo guardar. Intenta de nuevo.'), backgroundColor: Colors.red));
-                  } finally {
-                    if (mounted) setState(() => _isSaving = false);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 4,
-                  shadowColor: AppTheme.primary.withValues(alpha: 0.3),
-                ),
-                child: _isSaving
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Guardar cambios', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

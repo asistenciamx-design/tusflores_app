@@ -95,56 +95,67 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> with Single
         scrolledUnderElevation: 2,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
       ),
-      body: _isLoading 
+      body: _isLoading
         ? const Center(child: CircularProgressIndicator())
         : Column(
+            children: [
+              const SizedBox(height: 16),
+              _buildTabPills(),
+              const SizedBox(height: 16),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildTransferenciaTab(),
+                    _buildLinkTab(),
+                    _buildDirectPaymentTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildTabPills() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
         children: [
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: _buildTabBar(),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTransferenciaTab(),
-                _buildLinkTab(),
-                _buildDirectPaymentTab(),
-              ],
-            ),
-          ),
+          _buildTabPill('Transferencia', 0),
+          const SizedBox(width: 8),
+          _buildTabPill('Link de Pago', 1),
+          const SizedBox(width: 8),
+          _buildTabPill('Efectivo/Otros', 2),
         ],
       ),
     );
   }
 
-  Widget _buildTabBar() {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
+  Widget _buildTabPill(String label, int index) {
+    final isSelected = _tabController.index == index;
+    return GestureDetector(
+      onTap: () => _tabController.animateTo(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : Colors.grey[100],
+          borderRadius: BorderRadius.circular(24),
+          border: isSelected ? null : Border.all(color: Colors.grey.shade300),
+          boxShadow: isSelected
+              ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 3))]
+              : null,
         ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: AppTheme.primary,
-        unselectedLabelColor: AppTheme.mutedLight,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-        tabs: const [
-          Tab(text: 'Transferencia'),
-          Tab(text: 'Link de Pago'),
-          Tab(text: 'Efectivo/Otros'),
-        ],
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: isSelected ? Colors.white : AppTheme.mutedLight,
+          ),
+        ),
       ),
     );
   }
