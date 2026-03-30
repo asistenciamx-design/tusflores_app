@@ -443,25 +443,19 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
         const SizedBox(height: 16),
 
         // State
-        Row(
-          children: [
-            Expanded(
-              child: isMexico
-                  ? _buildDropdown('Estado', _statesForCountry, _selectedState, (val) {
-                      setState(() { _selectedState = val; _selectedCity = null; });
-                    })
-                  : _buildTextInputField('Estado / Provincia', null, hint: 'Escribe el estado'),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: isMexico
-                  ? _buildDropdown('Ciudad', _citiesForState, _selectedCity, (val) {
-                      setState(() => _selectedCity = val);
-                    })
-                  : _buildTextInputField('Ciudad', null, hint: 'Escribe la ciudad'),
-            ),
-          ],
-        ),
+        isMexico
+            ? _buildDropdown('Estado', _statesForCountry, _selectedState, (val) {
+                setState(() { _selectedState = val; _selectedCity = null; });
+              })
+            : _buildTextInputField('Estado / Provincia', null, hint: 'Escribe el estado'),
+        const SizedBox(height: 16),
+
+        // City
+        isMexico
+            ? _buildDropdown('Ciudad', _citiesForState, _selectedCity, (val) {
+                setState(() => _selectedCity = val);
+              })
+            : _buildTextInputField('Ciudad', null, hint: 'Escribe la ciudad'),
         const SizedBox(height: 16),
 
         _buildTextInputField('Dirección Completa', _addressCtrl, hint: 'Av. Reforma 250, Col. Juárez, 06600', maxLength: 150),
@@ -938,29 +932,15 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 4,
-                child: _buildSmallDropdown('Estado', _statesForCountry, rate.estado, (val) {
-                  setState(() { rate.estado = val; rate.ciudad = null; });
-                }),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 5,
-                child: _buildSmallDropdown('Ciudad', rate.estado != null ? _mexicanStates[rate.estado] ?? [] : [], rate.ciudad, (val) {
-                  setState(() => rate.ciudad = val);
-                }),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 3,
-                child: _buildSmallCostField(rate),
-              ),
-            ],
-          ),
+          _buildSmallDropdown('Estado', _statesForCountry, rate.estado, (val) {
+            setState(() { rate.estado = val; rate.ciudad = null; });
+          }),
+          const SizedBox(height: 10),
+          _buildSmallDropdown('Ciudad', rate.estado != null ? _mexicanStates[rate.estado] ?? [] : [], rate.ciudad, (val) {
+            setState(() => rate.ciudad = val);
+          }),
+          const SizedBox(height: 10),
+          _buildSmallCostField(rate),
         ],
       ),
     );
