@@ -26,6 +26,9 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
   // Notes editing: orderId → controller
   final Map<String, TextEditingController> _notesCtrl = {};
 
+  // Expanded notes: which order IDs have the note field open
+  final Set<String> _expandedNotes = {};
+
   @override
   void initState() {
     super.initState();
@@ -343,113 +346,187 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
         () => TextEditingController(
             text: o['driver_notes'] as String? ?? ''));
 
+    final ctrl = _notesCtrl[orderId]!;
+    final isExpanded = _expandedNotes.contains(orderId);
+    final hasNote = ctrl.text.trim().isNotEmpty;
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Folio
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'FOLIO $folio',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primary,
+        InkWell(
+          onTap: () => setState(() {
+            isExpanded
+                ? _expandedNotes.remove(orderId)
+                : _expandedNotes.add(orderId);
+          }),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Folio
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'FOLIO $folio',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primary,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Fecha
+                    const SizedBox(width: 8),
+                    // Fecha
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_today_rounded,
+                            size: 11, color: Color(0xFF9E9E9E)),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatDate(deliveryDate),
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFF9E9E9E)),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Monto
+                    Text(
+                      '${CurrencyCache.symbol}${monto.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textLight,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Note icon button
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          isExpanded
+                              ? Icons.sticky_note_2_rounded
+                              : Icons.sticky_note_2_outlined,
+                          size: 18,
+                          color: hasNote
+                              ? AppTheme.primary
+                              : const Color(0xFFBDBDBD),
+                        ),
+                        if (hasNote && !isExpanded)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 12, color: Color(0xFF9E9E9E)),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        zona,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF9E9E9E)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                // Note preview when collapsed and has content
+                if (!isExpanded && hasNote) ...[
+                  const SizedBox(height: 5),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_rounded,
-                          size: 11, color: Color(0xFF9E9E9E)),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatDate(deliveryDate),
-                        style: const TextStyle(
-                            fontSize: 11, color: Color(0xFF9E9E9E)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          ctrl.text.trim(),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF9E9E9E),
+                              fontStyle: FontStyle.italic),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
-                  const Spacer(),
-                  // Monto
-                  Text(
-                    '${CurrencyCache.symbol}${monto.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textLight,
-                    ),
-                  ),
                 ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.location_on_outlined,
-                      size: 12, color: Color(0xFF9E9E9E)),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      zona,
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF9E9E9E)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Notes field
-              TextField(
-                controller: _notesCtrl[orderId],
-                decoration: InputDecoration(
-                  hintText: 'Notas de entrega…',
-                  hintStyle:
-                      const TextStyle(fontSize: 12, color: Color(0xFFBDBDBD)),
-                  filled: true,
-                  fillColor: const Color(0xFFF9F9F9),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        BorderSide(color: Colors.grey.shade200),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: AppTheme.primary),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  isDense: true,
+                // Expandable notes field
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  child: isExpanded
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: TextField(
+                            controller: ctrl,
+                            autofocus: true,
+                            decoration: InputDecoration(
+                              hintText: 'Nota de entrega…',
+                              hintStyle: const TextStyle(
+                                  fontSize: 12, color: Color(0xFFBDBDBD)),
+                              filled: true,
+                              fillColor: const Color(0xFFF9F9F9),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade200),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade200),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide:
+                                    const BorderSide(color: AppTheme.primary),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              isDense: true,
+                            ),
+                            style: const TextStyle(fontSize: 12),
+                            maxLines: 3,
+                            minLines: 1,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (v) {
+                              _saveNote(orderId, v);
+                              setState(() => _expandedNotes.remove(orderId));
+                            },
+                            onEditingComplete: () {
+                              _saveNote(orderId, ctrl.text);
+                              setState(() => _expandedNotes.remove(orderId));
+                            },
+                          ),
+                        )
+                      : const SizedBox.shrink(),
                 ),
-                style: const TextStyle(fontSize: 12),
-                maxLines: 2,
-                minLines: 1,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (v) => _saveNote(orderId, v),
-                onEditingComplete: () =>
-                    _saveNote(orderId, _notesCtrl[orderId]!.text),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         if (idx < total - 1)
