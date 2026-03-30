@@ -297,7 +297,9 @@ class _CustomerOrderSummaryScreenState
       // Pass newOrder.folio explicitly so it doesn't depend on setState timing.
       String? whatsappUrl;
       if (_shopPhone.isNotEmpty) {
-        final cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
+        var cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
+        // If stored without country code (10 digits = Mexico number), prepend 52
+        if (cleanPhone.length == 10) cleanPhone = '52$cleanPhone';
         final text = Uri.encodeComponent(
             _buildWhatsAppMessage(folioOverride: newOrder.folio));
         whatsappUrl = 'https://api.whatsapp.com/send?phone=$cleanPhone&text=$text';
