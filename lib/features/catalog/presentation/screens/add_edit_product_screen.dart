@@ -111,7 +111,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           initialQty: (item['qty'] as num?)?.toInt(),
           initialName: item['name'] as String?,
           initialColor: item['color'] as String?,
-          initialQuality: item['quality'] as String?,
+          initialQuality: _normalizeQuality(item['quality'] as String?),
           initialType: item['type'] as String?,
         ));
       }
@@ -253,12 +253,20 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     'champagne', 'champán', 'bicolor',
   };
 
-  static const _kQualities = {
-    'estándar', 'estandar', 'standard',
-    'premium', 'nacional', 'importado', 'importada',
-    'lujo', 'económico', 'economico',
-    'selecta', 'selecto',
+  static const _kQualityMap = <String, String>{
+    'estándar': 'Estándar', 'estandar': 'Estándar', 'standard': 'Estándar',
+    'económico': 'Estándar', 'economico': 'Estándar',
+    'primera': 'Primera',
+    'premium': 'Premium', 'lujo': 'Premium',
+    'importado': 'Premium', 'importada': 'Premium',
+    'campo': 'Campo', 'nacional': 'Campo',
+    'selecta': 'Primera', 'selecto': 'Primera',
   };
+
+  static String _normalizeQuality(String? q) {
+    if (q == null || q.trim().isEmpty) return '';
+    return _kQualityMap[q.trim().toLowerCase()] ?? '';
+  }
 
   static const _kFollaje = {
     'eucalipto', 'helecho', 'ruscus', 'pittosporum', 'solidago',
@@ -269,6 +277,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   static const _kFlorero = {
     'florero', 'jarrón', 'jarron', 'vaso', 'base', 'maceta',
     'canasta', 'caja', 'contenedor', 'urna', 'bowl', 'pecera',
+  };
+
+  static String _typeEmoji(String type) => switch (type) {
+    'follaje' => '🌿', 'florero' => '🏺', 'extra' => '✨', _ => '🌸',
   };
 
   String _detectType(String name) {
@@ -303,8 +315,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       // First word is always part of the name (avoids "Rosa" matching as color)
       if (i > 0 && color == null && _kColors.contains(lower)) {
         color = word;
-      } else if (i > 0 && quality == null && _kQualities.contains(lower)) {
-        quality = word;
+      } else if (i > 0 && quality == null && _kQualityMap.containsKey(lower)) {
+        quality = _kQualityMap[lower];
       } else {
         nameWords.add(word);
       }
@@ -676,134 +688,134 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           ...List.generate(_recipeRows.length, (i) {
             final row = _recipeRows[i];
             return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.fromLTRB(4, 6, 0, 6),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            for (final t in [
-                              ('flor', '🌸', 'Flor'),
-                              ('follaje', '🌿', 'Follaje'),
-                              ('florero', '🏺', 'Florero'),
-                              ('extra', '✨', 'Extra'),
-                            ])
-                              GestureDetector(
-                                onTap: () => setState(() => row.type = t.$1),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: row.type == t.$1
-                                        ? AppTheme.primary.withValues(alpha: 0.12)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: row.type == t.$1
-                                          ? AppTheme.primary.withValues(alpha: 0.4)
-                                          : Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    '${t.$2} ${t.$3}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: row.type == t.$1
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
-                                      color: row.type == t.$1
-                                          ? AppTheme.primary
-                                          : Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, size: 18, color: Colors.grey.shade400),
-                        onPressed: () => _removeRecipeRow(i),
-                        padding: const EdgeInsets.all(4),
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
+                  // Type (emoji popup)
+                  PopupMenuButton<String>(
+                    initialValue: row.type,
+                    onSelected: (v) => setState(() => row.type = v),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    position: PopupMenuPosition.under,
+                    itemBuilder: (_) => [
+                      for (final t in [('flor', '🌸 Flor'), ('follaje', '🌿 Follaje'), ('florero', '🏺 Florero'), ('extra', '✨ Extra')])
+                        PopupMenuItem(value: t.$1, height: 40,
+                          child: Text(t.$2, style: const TextStyle(fontSize: 13))),
                     ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_typeEmoji(row.type), style: const TextStyle(fontSize: 15)),
+                          Icon(Icons.arrow_drop_down, size: 14, color: Colors.grey.shade400),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 52,
-                        child: TextField(
-                          controller: row.qty,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          maxLength: 3,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          decoration: _inputDeco('Cant.').copyWith(
-                            counterText: '',
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                          ),
-                          style: const TextStyle(fontSize: 14),
-                        ),
+                  const SizedBox(width: 4),
+                  // Qty
+                  SizedBox(
+                    width: 44,
+                    child: TextField(
+                      controller: row.qty,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      maxLength: 3,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: _inputDeco('C.').copyWith(
+                        counterText: '',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 3,
-                        child: TextField(
-                          controller: row.name,
-                          maxLength: 60,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: _inputDeco('Rosa, Eucalipto...').copyWith(
-                            counterText: '',
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
-                          style: const TextStyle(fontSize: 13),
-                        ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Name
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: row.name,
+                      maxLength: 60,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: _inputDeco('Nombre...').copyWith(
+                        counterText: '',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 2,
-                        child: TextField(
-                          controller: row.color,
-                          maxLength: 40,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: _inputDeco('Rojo...').copyWith(
-                            counterText: '',
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
-                          style: const TextStyle(fontSize: 13),
-                        ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Color
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: row.color,
+                      maxLength: 40,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: _inputDeco('Color...').copyWith(
+                        counterText: '',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 2,
-                        child: TextField(
-                          controller: row.quality,
-                          maxLength: 40,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: _inputDeco('Premium...').copyWith(
-                            counterText: '',
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Quality dropdown
+                  PopupMenuButton<String>(
+                    initialValue: row.quality.isNotEmpty ? row.quality : null,
+                    onSelected: (v) => setState(() => row.quality = v),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    position: PopupMenuPosition.under,
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: '', height: 36,
+                        child: Text('— Ninguna', style: TextStyle(fontSize: 12, color: Colors.grey.shade500))),
+                      for (final q in ['Estándar', 'Primera', 'Premium', 'Campo'])
+                        PopupMenuItem(value: q, height: 36,
+                          child: Text(q, style: const TextStyle(fontSize: 13))),
                     ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            row.quality.isNotEmpty ? row.quality : 'Cal.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: row.quality.isNotEmpty ? Colors.black87 : Colors.grey.shade400,
+                            ),
+                          ),
+                          Icon(Icons.arrow_drop_down, size: 14, color: Colors.grey.shade400),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Delete
+                  GestureDetector(
+                    onTap: () => _removeRecipeRow(i),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Icon(Icons.close, size: 16, color: Colors.grey.shade400),
+                    ),
                   ),
                 ],
               ),
@@ -1300,7 +1312,7 @@ class _RecipeRow {
   final TextEditingController qty;
   final TextEditingController name;
   final TextEditingController color;
-  final TextEditingController quality;
+  String quality;
   String type;
 
   _RecipeRow({
@@ -1312,21 +1324,20 @@ class _RecipeRow {
   })  : qty = TextEditingController(text: initialQty != null ? initialQty.toString() : ''),
         name = TextEditingController(text: initialName ?? ''),
         color = TextEditingController(text: initialColor ?? ''),
-        quality = TextEditingController(text: initialQuality ?? ''),
+        quality = initialQuality ?? '',
         type = initialType ?? 'flor';
 
   void dispose() {
     qty.dispose();
     name.dispose();
     color.dispose();
-    quality.dispose();
   }
 
   Map<String, dynamic> toJson() => {
         'qty': int.tryParse(qty.text.trim()) ?? 0,
         'name': name.text.trim(),
         'color': color.text.trim(),
-        'quality': quality.text.trim(),
+        'quality': quality,
         'type': type,
       };
 }
