@@ -121,9 +121,9 @@ class RepartidorRepository {
               'customer_name, price, quantity, shipping_cost')
           .eq('shop_id', shopId)
           .not('repartidor_id', 'is', null)
-          .gte('sale_date', from.toIso8601String())
-          .lte('sale_date', to.add(const Duration(hours: 23, minutes: 59)).toIso8601String())
-          .order('sale_date', ascending: false);
+          .gte('delivery_date', from.toIso8601String())
+          .lte('delivery_date', to.add(const Duration(hours: 23, minutes: 59)).toIso8601String())
+          .order('delivery_date', ascending: false);
       return List<Map<String, dynamic>>.from(rows);
     } catch (_) {
       return [];
