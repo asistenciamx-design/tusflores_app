@@ -85,6 +85,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   bool _isLoading = false;
   final _repo = ProductRepository();
 
+  // Smart ingredient input
+  final _smartCtrl = TextEditingController();
+  final _smartFocus = FocusNode();
+  List<String> _ingredientHistory = [];
+
   // Categories
   List<_Category> _allCategories = [];
   final Set<String> _selectedIds = {};
@@ -112,6 +117,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       }
     }
     _loadCategories();
+    _loadIngredientHistory();
   }
 
   @override
@@ -119,6 +125,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _nameCtrl.dispose();
     _priceCtrl.dispose();
     _descCtrl.dispose();
+    _smartCtrl.dispose();
+    _smartFocus.dispose();
     for (final row in _recipeRows) {
       row.dispose();
     }
@@ -189,6 +197,141 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   void _removeImage(int index) => setState(() => _images.removeAt(index));
 
   void _addRecipeRow() => setState(() => _recipeRows.add(_RecipeRow()));
+
+  // ── Smart ingredient input ────────────────────────────────────────────────
+
+  Future<void> _loadIngredientHistory() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final data = await Supabase.instance.client
+          .from('products')
+          .select('recipe')
+          .eq('florist_id', user.id)
+          .not('recipe', 'is', null);
+      final counts = <String, int>{};
+      for (final row in data) {
+        final recipe = row['recipe'];
+        if (recipe is List) {
+          for (final item in recipe) {
+            final n = (item['name'] as String?)?.trim();
+            if (n != null && n.isNotEmpty) {
+              counts[n] = (counts[n] ?? 0) + 1;
+            }
+          }
+        }
+      }
+      if (mounted && counts.isNotEmpty) {
+        // Sort by frequency (most used first), limit to 15
+        final sorted = counts.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        setState(() {
+          _ingredientHistory = sorted.take(15).map((e) => e.key).toList();
+        });
+      }
+    } catch (_) {}
+  }
+
+  static const _kColors = {
+    'rojo', 'roja', 'rojos', 'rojas',
+    'rosa', 'rosado', 'rosada', 'rosados', 'rosadas',
+    'blanco', 'blanca', 'blancos', 'blancas',
+    'amarillo', 'amarilla', 'amarillos', 'amarillas',
+    'naranja', 'naranjas', 'anaranjado',
+    'morado', 'morada', 'morados', 'moradas',
+    'púrpura', 'purpura',
+    'azul', 'azules',
+    'verde', 'verdes',
+    'coral', 'crema',
+    'lila', 'lilas',
+    'magenta', 'fucsia',
+    'durazno', 'melocotón', 'salmón', 'salmon',
+    'borgoña', 'vino', 'tinto',
+    'lavanda',
+    'natural', 'naturales',
+    'mixto', 'mixtos', 'mixta', 'mixtas', 'surtido', 'surtidos',
+    'champagne', 'champán', 'bicolor',
+  };
+
+  static const _kQualities = {
+    'estándar', 'estandar', 'standard',
+    'premium', 'nacional', 'importado', 'importada',
+    'lujo', 'económico', 'economico',
+    'selecta', 'selecto',
+  };
+
+  static const _kFollaje = {
+    'eucalipto', 'helecho', 'ruscus', 'pittosporum', 'solidago',
+    'hypericum', 'panicum', 'aspidistra', 'aralia', 'monstera',
+    'palma', 'follaje', 'hoja', 'hojas', 'musgo', 'pino',
+  };
+
+  static const _kFlorero = {
+    'florero', 'jarrón', 'jarron', 'vaso', 'base', 'maceta',
+    'canasta', 'caja', 'contenedor', 'urna', 'bowl', 'pecera',
+  };
+
+  String _detectType(String name) {
+    final lower = name.toLowerCase();
+    if (_kFollaje.any((f) => lower.contains(f))) return 'follaje';
+    if (_kFlorero.any((f) => lower.contains(f))) return 'florero';
+    return 'flor';
+  }
+
+  _RecipeRow _parseInput(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return _RecipeRow();
+
+    int? qty;
+    String remaining = trimmed;
+
+    // Extract leading number (1-3 digits)
+    final numMatch = RegExp(r'^(\d{1,3})\s+').firstMatch(trimmed);
+    if (numMatch != null) {
+      qty = int.tryParse(numMatch.group(1)!);
+      remaining = trimmed.substring(numMatch.end);
+    }
+
+    final words = remaining.split(RegExp(r'\s+'));
+    final nameWords = <String>[];
+    String? color;
+    String? quality;
+
+    for (int i = 0; i < words.length; i++) {
+      final word = words[i];
+      final lower = word.toLowerCase();
+      // First word is always part of the name (avoids "Rosa" matching as color)
+      if (i > 0 && color == null && _kColors.contains(lower)) {
+        color = word;
+      } else if (i > 0 && quality == null && _kQualities.contains(lower)) {
+        quality = word;
+      } else {
+        nameWords.add(word);
+      }
+    }
+
+    final name = nameWords.join(' ');
+
+    return _RecipeRow(
+      initialQty: qty,
+      initialName: name.isNotEmpty ? name : null,
+      initialColor: color,
+      initialQuality: quality,
+      initialType: _detectType(name),
+    );
+  }
+
+  void _addFromSmartInput() {
+    final text = _smartCtrl.text.trim();
+    if (text.isEmpty) {
+      _addRecipeRow();
+      return;
+    }
+    final row = _parseInput(text);
+    setState(() => _recipeRows.add(row));
+    _smartCtrl.clear();
+    _smartFocus.requestFocus();
+  }
 
   void _removeRecipeRow(int index) {
     setState(() {
@@ -668,30 +811,86 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           }),
           const SizedBox(height: 4),
         ],
-        GestureDetector(
-          onTap: _addRecipeRow,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.add, size: 18, color: AppTheme.primary.withValues(alpha: 0.8)),
-                const SizedBox(width: 8),
-                Text(
-                  'Agregar Flor / Material',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primary.withValues(alpha: 0.8),
+        // ── Recent ingredients chips ──
+        if (_ingredientHistory.isNotEmpty) ...[
+          SizedBox(
+            height: 30,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _ingredientHistory.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (_, i) {
+                final name = _ingredientHistory[i];
+                return GestureDetector(
+                  onTap: () => setState(() => _recipeRows.add(
+                    _RecipeRow(initialName: name, initialType: _detectType(name)),
+                  )),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 12, color: AppTheme.primary.withValues(alpha: 0.6)),
+                        const SizedBox(width: 4),
+                        Text(name, style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.primary.withValues(alpha: 0.8),
+                        )),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        // ── Smart input ──
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _smartCtrl,
+                  focusNode: _smartFocus,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'Ej: 12 Rosas rojas premium',
+                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    prefixIcon: Icon(Icons.local_florist, size: 18,
+                        color: AppTheme.primary.withValues(alpha: 0.5)),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 40),
+                  ),
+                  style: const TextStyle(fontSize: 14),
+                  onSubmitted: (_) => _addFromSmartInput(),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.add_circle, size: 28,
+                    color: AppTheme.primary.withValues(alpha: 0.8)),
+                onPressed: _addFromSmartInput,
+                padding: const EdgeInsets.only(right: 8),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6, left: 4),
+          child: Text(
+            'Escribe cantidad, flor, color y calidad — o toca + para agregar vacío',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
           ),
         ),
       ],
