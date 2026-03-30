@@ -29,6 +29,10 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
   // Expanded notes: which order IDs have the note field open
   final Set<String> _expandedNotes = {};
 
+  // Search
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +45,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
     for (final c in _notesCtrl.values) {
       c.dispose();
     }
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -178,6 +183,40 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                         }),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    // Search bar
+                    TextField(
+                      controller: _searchCtrl,
+                      onChanged: (v) =>
+                          setState(() => _searchQuery = v.toLowerCase().trim()),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar folio u operador…',
+                        hintStyle: const TextStyle(
+                            fontSize: 13, color: Color(0xFFBDBDBD)),
+                        prefixIcon: const Icon(Icons.search_rounded,
+                            size: 18, color: Color(0xFFBDBDBD)),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () => setState(() {
+                                  _searchCtrl.clear();
+                                  _searchQuery = '';
+                                }),
+                                child: const Icon(Icons.close_rounded,
+                                    size: 16, color: Color(0xFFBDBDBD)),
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: const Color(0xFFF5F5F5),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
                     const SizedBox(height: 4),
                   ],
                 ),
@@ -197,7 +236,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate(
-                    _repartidores
+                    _filteredRepartidores
                         .map((r) => _buildRepartidorSection(r))
                         .toList(),
                   ),
@@ -209,9 +248,30 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
     );
   }
 
+  List<RepartidorModel> get _filteredRepartidores {
+    if (_searchQuery.isEmpty) return _repartidores;
+    return _repartidores.where((r) {
+      final nameMatch =
+          r.name.toLowerCase().contains(_searchQuery);
+      final orderMatch = r.id != null &&
+          _ordersFor(r.id!).any((o) =>
+              (o['folio'] as String? ?? '').toLowerCase().contains(_searchQuery));
+      return nameMatch || orderMatch;
+    }).toList();
+  }
+
   Widget _buildRepartidorSection(RepartidorModel r) {
     if (r.id == null) return const SizedBox.shrink();
-    final orders = _ordersFor(r.id!);
+    // In search mode, filter orders by folio too
+    final orders = _searchQuery.isEmpty
+        ? _ordersFor(r.id!)
+        : _ordersFor(r.id!)
+            .where((o) =>
+                (o['folio'] as String? ?? '')
+                    .toLowerCase()
+                    .contains(_searchQuery) ||
+                r.name.toLowerCase().contains(_searchQuery))
+            .toList();
     if (orders.isEmpty) return const SizedBox.shrink();
 
     final totalPedidos = orders.length;
@@ -376,7 +436,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                       child: Text(
                         'FOLIO $folio',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primary,
                         ),
@@ -392,7 +452,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                         Text(
                           _formatDate(deliveryDate),
                           style: const TextStyle(
-                              fontSize: 11, color: Color(0xFF9E9E9E)),
+                              fontSize: 13, color: Color(0xFF9E9E9E)),
                         ),
                       ],
                     ),
@@ -401,7 +461,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                     Text(
                       '${CurrencyCache.symbol}${monto.toStringAsFixed(0)}',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textLight,
                       ),
@@ -447,7 +507,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                       child: Text(
                         zona,
                         style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF9E9E9E)),
+                            fontSize: 14, color: Color(0xFF9E9E9E)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
