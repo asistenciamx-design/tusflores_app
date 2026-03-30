@@ -187,12 +187,10 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
         scrolledUnderElevation: 2,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
       ),
-      body: _isLoading 
+      body: _isLoading
         ? const Center(child: CircularProgressIndicator())
-        : Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 120),
+        : SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -216,42 +214,29 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
                       const SizedBox(height: 32),
                       _buildSectionHeader('Horarios', null, null),
                       _buildSchedulesForm(),
+                      const SizedBox(height: 32),
+                      // Save button — fluye con el contenido
+                      ElevatedButton.icon(
+                        onPressed: _isSaving ? null : _saveLocation,
+                        icon: _isSaving
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.save),
+                        label: Text(_isSaving ? 'Guardando...' : 'Guardar', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 4,
+                          shadowColor: AppTheme.primary.withValues(alpha: 0.3),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-
-          // Save button
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), offset: const Offset(0,-4), blurRadius: 6)],
-              ),
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveLocation,
-                icon: _isSaving 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Guardando...' : 'Guardar', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 4,
-                  shadowColor: AppTheme.primary.withValues(alpha: 0.3),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
