@@ -609,35 +609,21 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
           _buildAddScheduleButton(),
         ]),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
 
-        // Rangos de Entrega
-        _buildCard(children: [
-          const Row(children: [
-            Icon(Icons.local_shipping, color: AppTheme.primary, size: 24),
-            SizedBox(width: 8),
-            Text('Rangos de Entrega', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 20),
-          ..._deliveryRanges.asMap().entries.map((e) => _buildDeliveryRangeCard(e.key, e.value)),
-          const SizedBox(height: 8),
-          _buildAddDeliveryRangeButton(),
-        ]),
+        // Rangos de Entrega — flat
+        _buildSectionHeader('Rangos de Entrega', Icons.local_shipping, AppTheme.primary),
+        ..._deliveryRanges.asMap().entries.map((e) => _buildDeliveryRangeCard(e.key, e.value)),
+        const SizedBox(height: 8),
+        _buildAddDeliveryRangeButton(),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
 
-        // Tarifas de Envío
-        _buildCard(children: [
-          const Row(children: [
-            Icon(Icons.monetization_on, color: AppTheme.primary, size: 24),
-            SizedBox(width: 8),
-            Text('Tarifas de Envío', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 20),
-          ..._shippingRates.asMap().entries.map((e) => _buildShippingRateCard(e.key, e.value)),
-          const SizedBox(height: 8),
-          _buildAddShippingRateButton(),
-        ]),
+        // Tarifas de Envío — flat
+        _buildSectionHeader('Tarifas de Envío', Icons.monetization_on, AppTheme.primary),
+        ..._shippingRates.asMap().entries.map((e) => _buildShippingRateCard(e.key, e.value)),
+        const SizedBox(height: 8),
+        _buildAddShippingRateButton(),
       ],
     );
   }
@@ -769,82 +755,73 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
 
   Widget _buildDeliveryRangeCard(int idx, DeliveryRange range) {
     final isEditing = _editingDeliveryRangeIndices.contains(idx);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              // ── Label (editable only when pencil pressed) ───────────
-              Expanded(
-                child: TextFormField(
-                  key: ValueKey('dr_label_${idx}_$isEditing'),
-                  initialValue: range.label,
-                  readOnly: !isEditing,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[800], fontSize: 14),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                    hintText: 'Ej. Matutino',
-                    hintStyle: TextStyle(color: Colors.green[200], fontWeight: FontWeight.normal),
-                    suffixIcon: GestureDetector(
-                      onTap: () => setState(() {
-                        if (isEditing) {
-                          _editingDeliveryRangeIndices.remove(idx);
-                        } else {
-                          _editingDeliveryRangeIndices.add(idx);
-                        }
-                      }),
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Icon(
-                          isEditing ? Icons.check : Icons.edit,
-                          size: 13,
-                          color: isEditing ? AppTheme.primary : AppTheme.mutedLight,
-                        ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (idx > 0) const Divider(height: 32, color: Colors.black12),
+        Row(
+          children: [
+            Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                key: ValueKey('dr_label_${idx}_$isEditing'),
+                initialValue: range.label,
+                readOnly: !isEditing,
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[800], fontSize: 14),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'Ej. Matutino',
+                  hintStyle: TextStyle(color: Colors.green[200], fontWeight: FontWeight.normal),
+                  suffixIcon: GestureDetector(
+                    onTap: () => setState(() {
+                      if (isEditing) {
+                        _editingDeliveryRangeIndices.remove(idx);
+                      } else {
+                        _editingDeliveryRangeIndices.add(idx);
+                      }
+                    }),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Icon(
+                        isEditing ? Icons.check : Icons.edit,
+                        size: 13,
+                        color: isEditing ? AppTheme.primary : AppTheme.mutedLight,
                       ),
                     ),
-                    suffixIconConstraints: const BoxConstraints(maxWidth: 22, maxHeight: 22),
                   ),
-                  onChanged: (val) => range.label = val.isEmpty ? 'Rango ${idx + 1}' : val,
+                  suffixIconConstraints: const BoxConstraints(maxWidth: 22, maxHeight: 22),
                 ),
+                onChanged: (val) => range.label = val.isEmpty ? 'Rango ${idx + 1}' : val,
               ),
-              // ── Delete button ───────────────────────────────────────
-              GestureDetector(
-                onTap: () => setState(() {
-                  _editingDeliveryRangeIndices.remove(idx);
-                  _deliveryRanges.removeAt(idx);
-                }),
-                child: const Icon(Icons.close, color: Colors.grey, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(child: _buildTimeTile('Inicio', range.start, (t) => setState(() => range.start = t))),
-            const SizedBox(width: 12),
-            Expanded(child: _buildTimeTile('Fin', range.end, (t) => setState(() => range.end = t))),
-          ]),
-          const SizedBox(height: 12),
-          _buildDayToggles(range.days, (i) => setState(() {
-            if (range.days.contains(i)) {
-              range.days.remove(i);
-            } else {
-              range.days.add(i);
-            }
-          })),
-        ],
-      ),
+            ),
+            GestureDetector(
+              onTap: () => setState(() {
+                _editingDeliveryRangeIndices.remove(idx);
+                _deliveryRanges.removeAt(idx);
+              }),
+              child: const Icon(Icons.close, color: Colors.grey, size: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _buildTimeTile('Inicio', range.start, (t) => setState(() => range.start = t))),
+          const SizedBox(width: 12),
+          Expanded(child: _buildTimeTile('Fin', range.end, (t) => setState(() => range.end = t))),
+        ]),
+        const SizedBox(height: 12),
+        _buildDayToggles(range.days, (i) => setState(() {
+          if (range.days.contains(i)) {
+            range.days.remove(i);
+          } else {
+            range.days.add(i);
+          }
+        })),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -876,58 +853,51 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
   }
 
   Widget _buildShippingRateCard(int idx, ShippingRate rate) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  initialValue: rate.label ?? 'Tarifa ${idx + 1}',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[800], fontSize: 14),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                    hintText: 'Ej. Zona 1',
-                    hintStyle: TextStyle(color: Colors.green[200], fontWeight: FontWeight.normal),
-                    suffixIcon: const Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.edit, size: 13, color: AppTheme.mutedLight),
-                    ),
-                    suffixIconConstraints: const BoxConstraints(maxWidth: 22, maxHeight: 22),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (idx > 0) const Divider(height: 32, color: Colors.black12),
+        Row(
+          children: [
+            Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                initialValue: rate.label ?? 'Tarifa ${idx + 1}',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[800], fontSize: 14),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'Ej. Zona 1',
+                  hintStyle: TextStyle(color: Colors.green[200], fontWeight: FontWeight.normal),
+                  suffixIcon: const Padding(
+                    padding: EdgeInsets.only(right: 4),
+                    child: Icon(Icons.edit, size: 13, color: AppTheme.mutedLight),
                   ),
-                  onChanged: (val) => rate.label = val.isEmpty ? 'Tarifa ${idx + 1}' : val,
+                  suffixIconConstraints: const BoxConstraints(maxWidth: 22, maxHeight: 22),
                 ),
+                onChanged: (val) => rate.label = val.isEmpty ? 'Tarifa ${idx + 1}' : val,
               ),
-              GestureDetector(
-                onTap: () => setState(() => _shippingRates.removeAt(idx)),
-                child: const Icon(Icons.close, color: Colors.grey, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildSmallDropdown('Estado', _statesForCountry, rate.estado, (val) {
-            setState(() { rate.estado = val; rate.ciudad = null; });
-          }),
-          const SizedBox(height: 10),
-          _buildSmallDropdown('Ciudad', rate.estado != null ? _mexicanStates[rate.estado] ?? [] : [], rate.ciudad, (val) {
-            setState(() => rate.ciudad = val);
-          }),
-          const SizedBox(height: 10),
-          _buildSmallCostField(rate),
-        ],
-      ),
+            ),
+            GestureDetector(
+              onTap: () => setState(() => _shippingRates.removeAt(idx)),
+              child: const Icon(Icons.close, color: Colors.grey, size: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildDropdown('Estado', _statesForCountry, rate.estado, (val) {
+          setState(() { rate.estado = val; rate.ciudad = null; });
+        }),
+        const SizedBox(height: 16),
+        _buildDropdown('Ciudad', rate.estado != null ? _mexicanStates[rate.estado] ?? [] : [], rate.ciudad, (val) {
+          setState(() => rate.ciudad = val);
+        }),
+        const SizedBox(height: 16),
+        _buildSmallCostField(rate),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -984,29 +954,28 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
 
   Widget _buildSmallCostField(ShippingRate rate) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Costo', style: TextStyle(fontSize: 10, color: AppTheme.mutedLight, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 2),
+          const Text('Costo', style: TextStyle(fontSize: 12, color: AppTheme.mutedLight, fontWeight: FontWeight.w500)),
           TextFormField(
-             initialValue: rate.costo > 0 ? rate.costo.toStringAsFixed(0) : '',
-             keyboardType: TextInputType.number,
-             style: const TextStyle(fontSize: 12, color: AppTheme.textLight, fontWeight: FontWeight.bold),
-             decoration: const InputDecoration(
-               prefixText: '\$ ',
-               prefixStyle: TextStyle(fontSize: 12, color: AppTheme.textLight),
-               isDense: true,
-               contentPadding: EdgeInsets.zero,
-               border: InputBorder.none,
-             ),
-             onChanged: (val) => rate.costo = double.tryParse(val) ?? 0,
+            initialValue: rate.costo > 0 ? rate.costo.toStringAsFixed(0) : '',
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 14, color: AppTheme.textLight, fontWeight: FontWeight.w500),
+            decoration: const InputDecoration(
+              prefixText: '\$ ',
+              prefixStyle: TextStyle(fontSize: 14, color: AppTheme.textLight),
+              isDense: true,
+              contentPadding: EdgeInsets.only(top: 4, bottom: 4),
+              border: InputBorder.none,
+            ),
+            onChanged: (val) => rate.costo = double.tryParse(val) ?? 0,
           ),
         ],
       ),
