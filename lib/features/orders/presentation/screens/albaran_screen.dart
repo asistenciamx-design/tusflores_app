@@ -35,6 +35,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
   bool _showFoto = true;
   bool _showPrecio = false;
   bool _showSku = true;
+  bool _showRepartidor = true;
 
   // ── Format options ───────────────────────────────────────────────────────
   bool _isHorizontal = false;
@@ -206,6 +207,18 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                 pw.SizedBox(height: 3),
                 pw.Text('Fecha/Hora: ${widget.order.deliveryInfo}',
                     style: smallStyle),
+                if (_showRepartidor && widget.order.repartidorName?.isNotEmpty == true) ...[
+                  pw.SizedBox(height: 3),
+                  pw.Text('Reparto: ${widget.order.repartidorName}',
+                      style: pw.TextStyle(font: boldFont, fontSize: 10, color: PdfColors.black)),
+                ],
+                pw.SizedBox(height: 14),
+              ],
+
+              // ── Repartidor (standalone when address is hidden) ──────────
+              if (_showRepartidor && !_showDireccion && widget.order.repartidorName?.isNotEmpty == true) ...[
+                pw.Text('Reparto: ${widget.order.repartidorName}',
+                    style: pw.TextStyle(font: boldFont, fontSize: 10, color: PdfColors.black)),
                 pw.SizedBox(height: 14),
               ],
 
@@ -502,6 +515,22 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
             Text('Entrega: ${widget.order.deliveryInfo}',
                 style:
                     const TextStyle(fontSize: 6, color: Colors.black87)),
+            if (_showRepartidor && widget.order.repartidorName?.isNotEmpty == true)
+              Text('Reparto: ${widget.order.repartidorName}',
+                  style: const TextStyle(
+                      fontSize: 6.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87)),
+            const SizedBox(height: 8),
+          ],
+
+          // Repartidor (standalone when address is hidden)
+          if (_showRepartidor && !_showDireccion && widget.order.repartidorName?.isNotEmpty == true) ...[
+            Text('Reparto: ${widget.order.repartidorName}',
+                style: const TextStyle(
+                    fontSize: 6.5,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87)),
             const SizedBox(height: 8),
           ],
 
@@ -788,6 +817,11 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
           value: _showFoto,
           onChanged: (v) => setState(() => _showFoto = v),
           disabled: !_showProducto),
+      _ToggleItem(
+          icon: Icons.delivery_dining_rounded,
+          label: 'Nombre del Repartidor',
+          value: _showRepartidor,
+          onChanged: (v) => setState(() => _showRepartidor = v)),
       _ToggleItem(
           icon: Icons.qr_code_2_rounded,
           label: 'Mostrar SKU',
