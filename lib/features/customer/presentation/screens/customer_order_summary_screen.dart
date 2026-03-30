@@ -298,7 +298,8 @@ class _CustomerOrderSummaryScreenState
       String? whatsappUrl;
       if (_shopPhone.isNotEmpty) {
         var cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
-        // If stored without country code (10 digits = Mexico number), prepend 52
+        // If stored without country code (10 digits = Mexico number), prepend 52.
+        // Numbers already with country code (≥11 digits) are used as-is.
         if (cleanPhone.length == 10) cleanPhone = '52$cleanPhone';
         final text = Uri.encodeComponent(
             _buildWhatsAppMessage(folioOverride: newOrder.folio));

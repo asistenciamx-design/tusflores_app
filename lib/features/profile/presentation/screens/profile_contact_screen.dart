@@ -6,6 +6,36 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
 
+// ── Country code data ────────────────────────────────────────────────────────
+class _CC {
+  final String flag;
+  final String name;
+  final String dial;
+  const _CC(this.flag, this.name, this.dial);
+}
+
+const _kCountryCodes = [
+  _CC('🇲🇽', 'México',       '+52'),
+  _CC('🇺🇸', 'Estados Unidos', '+1'),
+  _CC('🇨🇴', 'Colombia',     '+57'),
+  _CC('🇪🇸', 'España',       '+34'),
+  _CC('🇦🇷', 'Argentina',    '+54'),
+  _CC('🇨🇱', 'Chile',        '+56'),
+  _CC('🇵🇪', 'Perú',         '+51'),
+  _CC('🇬🇹', 'Guatemala',    '+502'),
+  _CC('🇭🇳', 'Honduras',     '+504'),
+  _CC('🇸🇻', 'El Salvador',  '+503'),
+  _CC('🇨🇷', 'Costa Rica',   '+506'),
+  _CC('🇩🇴', 'Rep. Dominicana', '+1809'),
+  _CC('🇵🇦', 'Panamá',       '+507'),
+  _CC('🇧🇴', 'Bolivia',      '+591'),
+  _CC('🇵🇾', 'Paraguay',     '+595'),
+  _CC('🇺🇾', 'Uruguay',      '+598'),
+  _CC('🇻🇪', 'Venezuela',    '+58'),
+  _CC('🇧🇷', 'Brasil',       '+55'),
+  _CC('🇨🇦', 'Canadá',       '+1'),
+];
+
 class ProfileContactScreen extends StatefulWidget {
   const ProfileContactScreen({super.key});
 
@@ -21,6 +51,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
   final _ownerNameCtrl = TextEditingController();
   final _shopNameCtrl = TextEditingController();
   final _whatsappCtrl = TextEditingController();
+  String _countryDial = '+52'; // default México
 
   final ImagePicker _picker = ImagePicker();
   String? _logoUrl;
@@ -43,7 +74,8 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
         final profile = await _repo.getProfile();
         if (profile != null) {
           _shopNameCtrl.text = profile['shop_name'] ?? '';
-          _whatsappCtrl.text = profile['whatsapp_number'] ?? '';
+          final raw = (profile['whatsapp_number'] as String?) ?? '';
+          _parseWhatsappNumber(raw);
           _logoUrl = profile['logo_url'];
         }
       }
@@ -65,7 +97,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
       
       await _repo.updateProfile(
         shopName: _shopNameCtrl.text.trim(),
-        whatsappNumber: _whatsappCtrl.text.trim(),
+        whatsappNumber: '$_countryDial${_whatsappCtrl.text.trim()}',
         logoUrl: _logoUrl,
       );
       if (mounted) {
@@ -148,7 +180,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
                 _buildSectionHeader('CONTACTO DIRECTO'),
                 _buildTextField(label: 'Correo electrónico', icon: Icons.email, controller: TextEditingController(text: _email), enabled: false),
                 const SizedBox(height: 16),
-                _buildTextField(label: 'WhatsApp principal de pedidos', icon: Icons.chat, controller: _whatsappCtrl, hintText: 'Ej. 55 9876 5432', keyboardType: TextInputType.phone, maxLength: 15, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                _buildWhatsappField(),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _saveChanges,
@@ -165,6 +197,170 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
               ],
             ),
       ),
+    );
+  }
+
+  void _parseWhatsappNumber(String raw) {
+    if (raw.isEmpty) return;
+    // Try to match a known dial code (longest first to avoid +1 eating +1809)
+    final sorted = List<_CC>.from(_kCountryCodes)
+      ..sort((a, b) => b.dial.length.compareTo(a.dial.length));
+    for (final cc in sorted) {
+      if (raw.startsWith(cc.dial)) {
+        _countryDial = cc.dial;
+        _whatsappCtrl.text = raw.substring(cc.dial.length);
+        return;
+      }
+    }
+    // No prefix found — keep default +52, use raw as number
+    _whatsappCtrl.text = raw;
+  }
+
+  Future<void> _pickCountryCode() async {
+    final picked = await showModalBottomSheet<_CC>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Código de país',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _kCountryCodes.length,
+                itemBuilder: (ctx, i) {
+                  final cc = _kCountryCodes[i];
+                  final isSelected = cc.dial == _countryDial &&
+                      cc.name == (_kCountryCodes.firstWhere(
+                          (c) => c.dial == _countryDial,
+                          orElse: () => _kCountryCodes[0]).name);
+                  return ListTile(
+                    leading: Text(cc.flag, style: const TextStyle(fontSize: 24)),
+                    title: Text(cc.name,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    trailing: Text(cc.dial,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? AppTheme.primary : Colors.grey[600],
+                        )),
+                    selected: isSelected,
+                    selectedTileColor: AppTheme.primary.withValues(alpha: 0.06),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    onTap: () => Navigator.pop(ctx, cc),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) setState(() => _countryDial = picked.dial);
+  }
+
+  Widget _buildWhatsappField() {
+    final cc = _kCountryCodes.firstWhere(
+      (c) => c.dial == _countryDial,
+      orElse: () => _kCountryCodes[0],
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'WhatsApp principal de pedidos',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.textLight),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              // Country code picker
+              GestureDetector(
+                onTap: _pickCountryCode,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.backgroundLight,
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                    border: Border(
+                      right: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(cc.flag, style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 6),
+                      Text(
+                        _countryDial,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textLight,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_drop_down, size: 18, color: Colors.grey[500]),
+                    ],
+                  ),
+                ),
+              ),
+              // Phone number input
+              Expanded(
+                child: TextFormField(
+                  controller: _whatsappCtrl,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
+                  decoration: InputDecoration(
+                    hintText: 'Número sin código de país',
+                    hintStyle: const TextStyle(color: AppTheme.mutedLight, fontSize: 13),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, top: 6),
+          child: Text(
+            'Ej. para México: +52 · 5548840937',
+            style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+          ),
+        ),
+      ],
     );
   }
 
