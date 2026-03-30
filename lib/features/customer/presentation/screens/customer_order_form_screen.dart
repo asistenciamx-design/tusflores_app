@@ -1504,39 +1504,21 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               maxLength: 200,
               autofillHints: const [AutofillHints.streetAddressLine1]),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInputLabel('COLONIA / BARRIO'),
-                    _buildTextField(
-                        controller: _suburbCtrl,
-                        hint: 'Col. Juárez',
-                        maxLength: 150,
-                        autofillHints: const [AutofillHints.addressCity]),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInputLabel('CÓDIGO POSTAL'),
-                    _buildTextField(
-                        controller: _zipCtrl,
-                        hint: '06600',
-                        maxLength: 10,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        autofillHints: const [AutofillHints.postalCode]),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          _buildInputLabel('COLONIA / BARRIO'),
+          _buildTextField(
+              controller: _suburbCtrl,
+              hint: 'Col. Juárez',
+              maxLength: 150,
+              autofillHints: const [AutofillHints.addressCity]),
+          const SizedBox(height: 16),
+          _buildInputLabel('CÓDIGO POSTAL'),
+          _buildTextField(
+              controller: _zipCtrl,
+              hint: '06600',
+              maxLength: 10,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              autofillHints: const [AutofillHints.postalCode]),
           const SizedBox(height: 16),
           _buildDropdown('ESTADO / PROVINCIA / DEPARTAMENTO', _availableStates,
               _selectedState, (val) {
