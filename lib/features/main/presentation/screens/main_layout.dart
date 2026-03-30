@@ -27,13 +27,17 @@ class _MainLayoutState extends State<MainLayout>
   OverlayEntry? _bannerEntry;
   late AnimationController _bannerController;
 
+  // ── OrdersScreen key — lets us call resetToToday() from the banner ────────
+  final _ordersKey = GlobalKey<OrdersScreenState>();
+  late final OrdersScreen _ordersScreen = OrdersScreen(key: _ordersKey);
+
   List<Widget> get _screens => [
         DashboardScreen(
           onNavigateToOrders: () => setState(() => _currentIndex = 2),
           onNavigateToCatalog: () => setState(() => _currentIndex = 1),
         ),
         const CatalogScreen(),
-        const OrdersScreen(),
+        _ordersScreen,
         const CrmScreen(),
         const MainProfileSettingsScreen(),
       ];
@@ -149,6 +153,10 @@ class _MainLayoutState extends State<MainLayout>
               onTap: () {
                 _dismissBanner();
                 setState(() => _currentIndex = 2);
+                // Forzar filtro "Hoy" para que el nuevo pedido sea visible
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _ordersKey.currentState?.resetToToday();
+                });
               },
               onDismiss: _dismissBanner,
             ),

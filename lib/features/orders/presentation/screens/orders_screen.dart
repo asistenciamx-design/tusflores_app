@@ -53,10 +53,10 @@ class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key, this.initialTab = 0});
 
   @override
-  State<OrdersScreen> createState() => _OrdersScreenState();
+  State<OrdersScreen> createState() => OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen> {
+class OrdersScreenState extends State<OrdersScreen> {
   // Active display mode
   _FilterMode _filterMode = _FilterMode.byVenta;
 
@@ -397,6 +397,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
         );
       },
     );
+  }
+
+  /// Resets filters to "Hoy" (venta mode, chip index 3).
+  /// Called externally by MainLayout when the new-order banner is tapped.
+  void resetToToday() {
+    setState(() {
+      _filterMode = _FilterMode.byVenta;
+      _selectedDateIndex = 3; // "Hoy"
+      _customDateRange = null;
+      _searchQuery = '';
+      _searchCtrl.clear();
+    });
   }
 
   String _timeAgo(DateTime dt) {
