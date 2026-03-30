@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -158,6 +159,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         _products = prodData.map((json) => ProductItem.fromJson(json)).toList();
       }
     } catch (e) {
+      debugPrint('[CustomerCatalog] Error fetching products: $e');
     }
   }
 
