@@ -523,15 +523,15 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         'FOLIO $folio',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primary,
+                          color: Color(0xFF7C3AED),
                         ),
                       ),
                     ),
@@ -545,7 +545,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                         Text(
                           _formatDate(deliveryDate),
                           style: const TextStyle(
-                              fontSize: 13, color: Color(0xFF9E9E9E)),
+                              fontSize: 15, color: Color(0xFF9E9E9E)),
                         ),
                       ],
                     ),
@@ -600,7 +600,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                       child: Text(
                         zona,
                         style: const TextStyle(
-                            fontSize: 14, color: Color(0xFF9E9E9E)),
+                            fontSize: 18, color: Color(0xFF9E9E9E)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
