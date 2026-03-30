@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/currency_cache.dart';
 import '../../domain/models/repartidor_model.dart';
 import '../../domain/repositories/repartidor_repository.dart';
+import '../../../orders/presentation/screens/order_date_filter_screen.dart';
 
 class RepartoHistoricoScreen extends StatefulWidget {
   const RepartoHistoricoScreen({super.key});
@@ -32,6 +33,9 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
   // Search
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
+
+  // Custom date range (overrides chip selection when set)
+  DateTimeRange? _customDateRange;
 
   @override
   void initState() {
@@ -72,9 +76,35 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
     }
   }
 
+  Future<void> _selectDateRange() async {
+    final picked = await Navigator.push<DateTimeRange>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            OrderDateFilterScreen(initialRange: _customDateRange),
+        fullscreenDialog: true,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        _customDateRange = picked;
+        _chipIndex = -1; // deselect chips
+      });
+      _load();
+    }
+  }
+
+  String _formatDateLabel(DateTime dt) {
+    const meses = [
+      'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+      'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+    ];
+    return '${dt.day} ${meses[dt.month - 1]} ${dt.year}';
+  }
+
   Future<void> _load() async {
     setState(() => _isLoading = true);
-    final range = _rangeFor(_chipIndex);
+    final range = _customDateRange ?? _rangeFor(_chipIndex);
     final results = await Future.wait([
       _repo.getRepartidores(_shopId),
       _repo.getHistoricoOrders(
@@ -154,7 +184,10 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                           final sel = i == _chipIndex;
                           return GestureDetector(
                             onTap: () {
-                              setState(() => _chipIndex = i);
+                              setState(() {
+                                _chipIndex = i;
+                                _customDateRange = null;
+                              });
                               _load();
                             },
                             child: AnimatedContainer(
@@ -216,6 +249,66 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                         isDense: true,
                       ),
                       style: const TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 10),
+                    // Date range picker button
+                    GestureDetector(
+                      onTap: _selectDateRange,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: _customDateRange != null
+                              ? AppTheme.primary.withValues(alpha: 0.08)
+                              : const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _customDateRange != null
+                                ? AppTheme.primary.withValues(alpha: 0.5)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_month_rounded,
+                              size: 17,
+                              color: _customDateRange != null
+                                  ? AppTheme.primary
+                                  : const Color(0xFFBDBDBD),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _customDateRange == null
+                                    ? 'Seleccionar rango de fechas'
+                                    : '${_formatDateLabel(_customDateRange!.start)}  →  ${_formatDateLabel(_customDateRange!.end)}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: _customDateRange == null
+                                      ? const Color(0xFFBDBDBD)
+                                      : AppTheme.primary,
+                                ),
+                              ),
+                            ),
+                            if (_customDateRange != null)
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  setState(() {
+                                    _customDateRange = null;
+                                    _chipIndex = 3; // Hoy
+                                  });
+                                  _load();
+                                },
+                                child: const Icon(Icons.close_rounded,
+                                    size: 16, color: Color(0xFF9E9E9E)),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 4),
                   ],
