@@ -217,50 +217,110 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  storeLink,
-                  style: const TextStyle(color: AppTheme.mutedLight, fontSize: 13),
-                ),
-                const SizedBox(width: 12),
-                Container(width: 1, height: 20, color: Colors.grey.withValues(alpha: 0.3)),
-                const SizedBox(width: 8),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary, size: 18),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: storeLink));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Enlace copiado al portapapeles'),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 400;
+                if (isMobile) {
+                  // Mobile: botones centrados debajo de la URL
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        storeLink,
+                        style: const TextStyle(color: AppTheme.mutedLight, fontSize: 13),
+                        textAlign: TextAlign.center,
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary, size: 18),
-                  onPressed: () {
-                    Share.share('Visita nuestra florería en línea: $storeLink');
-                  },
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.open_in_new, color: Theme.of(context).colorScheme.primary, size: 18),
-                  onPressed: () {
-                    context.push('/shop/catalog');
-                  },
-                ),
-              ],
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary, size: 18),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: storeLink));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Enlace copiado al portapapeles'),
+                                  backgroundColor: Colors.green,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary, size: 18),
+                            onPressed: () {
+                              Share.share('Visita nuestra florería en línea: $storeLink');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: Icon(Icons.open_in_new, color: Theme.of(context).colorScheme.primary, size: 18),
+                            onPressed: () {
+                              context.push('/shop/catalog');
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                } else {
+                  // Desktop: botones al lado de la URL
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        storeLink,
+                        style: const TextStyle(color: AppTheme.mutedLight, fontSize: 13),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(width: 1, height: 20, color: Colors.grey.withValues(alpha: 0.3)),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary, size: 18),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: storeLink));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Enlace copiado al portapapeles'),
+                              backgroundColor: Colors.green,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary, size: 18),
+                        onPressed: () {
+                          Share.share('Visita nuestra florería en línea: $storeLink');
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(Icons.open_in_new, color: Theme.of(context).colorScheme.primary, size: 18),
+                        onPressed: () {
+                          context.push('/shop/catalog');
+                        },
+                      ),
+                    ],
+                  );
+                }
+              },
             ),
           ),
         ],
