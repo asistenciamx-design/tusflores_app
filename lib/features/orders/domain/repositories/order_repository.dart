@@ -114,6 +114,22 @@ class OrderRepository {
     }
   }
 
+  // Update only the dedication message for a given order.
+  Future<bool> updateDedicationMessage(String orderId, String message) async {
+    final uid = _supabase.auth.currentUser?.id;
+    if (uid == null) return false;
+    try {
+      await _supabase
+          .from('orders')
+          .update({'dedication_message': message})
+          .eq('id', orderId)
+          .eq('shop_id', uid);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Update entire order (e.g. from the Edit Order screen)
   Future<bool> updateOrder(OrderModel order) async {
     final uid = _supabase.auth.currentUser?.id;

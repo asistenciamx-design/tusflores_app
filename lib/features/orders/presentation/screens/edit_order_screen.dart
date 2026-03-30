@@ -437,6 +437,9 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                           MaterialPageRoute(
                             builder: (context) => PrintCardScreen(
                               initialMessage: _cardMessageCtrl.text,
+                              orderId: widget.order.id,
+                              onSaveDedication: (id, message) =>
+                                  _orderRepo.updateDedicationMessage(id, message),
                             ),
                           ),
                         );

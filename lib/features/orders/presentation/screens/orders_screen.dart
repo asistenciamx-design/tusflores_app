@@ -1032,7 +1032,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   onTap: () {
                     final msg = order.dedicationMessage ?? '';
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => PrintCardScreen(initialMessage: msg)));
+                        MaterialPageRoute(builder: (_) => PrintCardScreen(
+                          initialMessage: msg,
+                          orderId: order.id,
+                          onSaveDedication: (id, message) =>
+                              _orderRepo.updateDedicationMessage(id, message),
+                        )));
                   },
                 ),
                 const SizedBox(width: 7),

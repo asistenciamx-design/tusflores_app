@@ -71,7 +71,15 @@ class _Template {
 // ── Screen ────────────────────────────────────────────────────────────────────
 class PrintCardScreen extends StatefulWidget {
   final String initialMessage;
-  const PrintCardScreen({super.key, required this.initialMessage});
+  /// When provided, the screen can persist the edited dedication to the DB.
+  final String? orderId;
+  final Future<bool> Function(String orderId, String message)? onSaveDedication;
+  const PrintCardScreen({
+    super.key,
+    required this.initialMessage,
+    this.orderId,
+    this.onSaveDedication,
+  });
 
   @override
   State<PrintCardScreen> createState() => _PrintCardScreenState();
@@ -97,7 +105,18 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
 
   bool _isPrinting = false;
 
+  // Dedication persistence state
+  bool _dedicationDirty = false;
+  bool _savingDedication = false;
+  String _lastSavedMessage = '';
+
+  // Membrete / florería name
+  bool _showShopName = false;
+  late final TextEditingController _shopNameCtrl;
+
   static const _prefTmplPrefix = 'print_template_';
+  static const _prefShopName = 'print_shop_name';
+  static const _prefShowShopName = 'print_show_shop_name';
 
   // ── Font catalogue ──────────────────────────────────────────────────────────
   static const _sansFonts = ['Manrope', 'Montserrat', 'Poppins', 'Lato', 'Roboto'];
@@ -120,8 +139,11 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   void initState() {
     super.initState();
     _messageCtrl = TextEditingController(text: widget.initialMessage);
+    _lastSavedMessage = widget.initialMessage;
+    _shopNameCtrl = TextEditingController();
     _loadTemplates();
     _loadBundledFonts();
+    _loadShopNamePrefs();
   }
 
   /// Pre-loads bundled script TTF assets into Flutter's font system so the
@@ -147,7 +169,44 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
   @override
   void dispose() {
     _messageCtrl.dispose();
+    _shopNameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadShopNamePrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _showShopName = prefs.getBool(_prefShowShopName) ?? false;
+      _shopNameCtrl.text = prefs.getString(_prefShopName) ?? '';
+    });
+  }
+
+  Future<void> _persistShopNamePrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefShowShopName, _showShopName);
+    await prefs.setString(_prefShopName, _shopNameCtrl.text);
+  }
+
+  Future<void> _saveDedication() async {
+    final id = widget.orderId;
+    final save = widget.onSaveDedication;
+    if (id == null || save == null) return;
+    setState(() => _savingDedication = true);
+    final ok = await save(id, _messageCtrl.text);
+    if (!mounted) return;
+    setState(() {
+      _savingDedication = false;
+      if (ok) {
+        _dedicationDirty = false;
+        _lastSavedMessage = _messageCtrl.text;
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? 'Dedicatoria guardada' : 'Error al guardar'),
+      backgroundColor: ok ? AppTheme.primary : Colors.red,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   // ── Persistence ─────────────────────────────────────────────────────────────
@@ -302,20 +361,43 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
           right: _marginRightCm * cmPt,
           bottom: 20,
         ),
-        build: (_) => pw.SizedBox(
-          width: double.infinity,
-          child: pw.Text(
-            _messageCtrl.text,
-            textAlign: pdfAlign,
-            style: pw.TextStyle(
-              font: f,
-              fontSize: _fontSize,
-              decoration:
-                  _isStrikethrough ? pw.TextDecoration.lineThrough : null,
-              fontFallback: emojiFont != null ? [emojiFont] : [],
+        build: (_) {
+          final children = <pw.Widget>[];
+
+          // Membrete / shop name at top-left
+          if (_showShopName && _shopNameCtrl.text.isNotEmpty) {
+            children.add(pw.Text(
+              _shopNameCtrl.text,
+              textAlign: pw.TextAlign.left,
+              style: pw.TextStyle(
+                font: pw.Font.helveticaBold(),
+                fontSize: _fontSize * 0.85,
+              ),
+            ));
+            // 2 cm spacing between membrete and dedication
+            children.add(pw.SizedBox(height: 2.0 * cmPt));
+          }
+
+          children.add(pw.SizedBox(
+            width: double.infinity,
+            child: pw.Text(
+              _messageCtrl.text,
+              textAlign: pdfAlign,
+              style: pw.TextStyle(
+                font: f,
+                fontSize: _fontSize,
+                decoration:
+                    _isStrikethrough ? pw.TextDecoration.lineThrough : null,
+                fontFallback: emojiFont != null ? [emojiFont] : [],
+              ),
             ),
-          ),
-        ),
+          ));
+
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: children,
+          );
+        },
       ));
       return Uint8List.fromList(await doc.save());
     }
@@ -533,6 +615,8 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
           children: [
             _buildTemplateDropdown(),
             const SizedBox(height: 14),
+            _buildShopNameSection(),
+            const SizedBox(height: 14),
             _buildPreview(),
             const SizedBox(height: 18),
             _buildTextarea(),
@@ -668,6 +752,18 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
                   Text('Márgenes de impresión',
                       style: TextStyle(
                           color: Colors.grey[400], fontSize: 9)),
+                  if (_showShopName && _shopNameCtrl.text.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _shopNameCtrl.text,
+                      textAlign: TextAlign.left,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
                   Expanded(
                     child: Center(
                       child: _messageCtrl.text.isEmpty
@@ -698,14 +794,38 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
 
   // ── Textarea ────────────────────────────────────────────────────────────────
   Widget _buildTextarea() {
+    final canSave = widget.orderId != null && widget.onSaveDedication != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Contenido de la dedicatoria',
-            style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: Colors.black87)),
+        Row(
+          children: [
+            const Expanded(
+              child: Text('Contenido de la dedicatoria',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Colors.black87)),
+            ),
+            if (canSave && _dedicationDirty)
+              _savingDedication
+                  ? const SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : TextButton.icon(
+                      onPressed: _saveDedication,
+                      icon: const Icon(Icons.save, size: 16),
+                      label: const Text('Guardar',
+                          style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+          ],
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -719,7 +839,9 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
             maxLines: 4,
             minLines: 3,
             maxLength: 500,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(() {
+              _dedicationDirty = _messageCtrl.text != _lastSavedMessage;
+            }),
             style: const TextStyle(fontSize: 14, color: Colors.black87),
             decoration: const InputDecoration(
               hintText: 'Escribe tu dedicatoria aquí... 🌹✨',
@@ -730,6 +852,87 @@ class _PrintCardScreenState extends State<PrintCardScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ── Shop name / membrete ─────────────────────────────────────────────────────
+  Widget _buildShopNameSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.storefront, size: 18, color: AppTheme.primary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Incluir nombre de floreria',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Colors.black87)),
+              ),
+              SizedBox(
+                height: 28,
+                child: Switch.adaptive(
+                  value: _showShopName,
+                  activeColor: AppTheme.primary,
+                  onChanged: (v) {
+                    setState(() => _showShopName = v);
+                    _persistShopNamePrefs();
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (_showShopName) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _shopNameCtrl,
+              maxLength: 60,
+              onChanged: (_) {
+                setState(() {});
+                _persistShopNamePrefs();
+              },
+              style: const TextStyle(fontSize: 13, color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'Ej: Floreria Las Rosas',
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                counterText: '',
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: AppTheme.primary.withValues(alpha: 0.2)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: AppTheme.primary.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppTheme.primary),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text('Aparece en la parte superior izquierda del documento impreso.',
+                style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[500],
+                    fontStyle: FontStyle.italic)),
+          ],
+        ],
+      ),
     );
   }
 
