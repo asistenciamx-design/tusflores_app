@@ -34,6 +34,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
   bool _showProducto = true;
   bool _showFoto = true;
   bool _showPrecio = false;
+  bool _showSku = true;
 
   // ── Format options ───────────────────────────────────────────────────────
   bool _isHorizontal = false;
@@ -136,20 +137,22 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
 
     final fs = _fontSize;
     final baseStyle = pw.TextStyle(
-        font: regularFont, fontSize: fs, color: PdfColors.grey700);
+        font: regularFont, fontSize: fs, color: PdfColors.black);
     final labelStyle = pw.TextStyle(
         font: boldFont,
         fontSize: (fs * 0.7).clamp(6, 10).toDouble(),
-        color: PdfColors.grey400,
+        color: PdfColors.black,
         letterSpacing: 1.2);
     final titleStyle = pw.TextStyle(
         font: boldFont,
         fontSize: (fs * 1.3).clamp(10, 20).toDouble(),
-        color: const PdfColor.fromInt(0xFF11d493));
+        color: PdfColors.black);
     final boldStyle = pw.TextStyle(
-        font: boldFont, fontSize: (fs * 1.1).clamp(8, 16).toDouble(), color: PdfColors.grey900);
+        font: boldFont, fontSize: (fs * 1.1).clamp(8, 16).toDouble(), color: PdfColors.black);
     final smallStyle = pw.TextStyle(
-        font: regularFont, fontSize: (fs * 0.85).clamp(6, 12).toDouble(), color: PdfColors.grey600);
+        font: regularFont, fontSize: (fs * 0.85).clamp(6, 12).toDouble(), color: PdfColors.black);
+    final skuStyle = pw.TextStyle(
+        font: regularFont, fontSize: (fs * 0.75).clamp(6, 10).toDouble(), color: PdfColors.black);
 
     pdf.addPage(
       pw.Page(
@@ -208,7 +211,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
 
               // ── Divider ──────────────────────────────────────────────────
               if (_showProducto) ...[
-                pw.Divider(color: PdfColors.grey200),
+                pw.Divider(color: PdfColors.black),
                 pw.SizedBox(height: 8),
                 pw.Text('DETALLE DEL PEDIDO', style: labelStyle),
                 pw.SizedBox(height: 8),
@@ -247,9 +250,16 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                               ),
                           ],
                           pw.Expanded(
-                            child: pw.Text(
-                                '${p['qty'] ?? 1}x  ${p['name'] ?? ''}',
-                                style: boldStyle),
+                            child: pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text(
+                                    '${p['qty'] ?? 1}x  ${p['name'] ?? ''}',
+                                    style: boldStyle),
+                                if (_showSku && (p['sku'] as String?)?.isNotEmpty == true)
+                                  pw.Text('SKU: ${p['sku']}', style: skuStyle),
+                              ],
+                            ),
                           ),
                           if (_showPrecio)
                             pw.Text(
@@ -268,7 +278,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
               // ── Signature footer ─────────────────────────────────────────
               pw.Spacer(),
               pw.Divider(
-                  color: PdfColors.grey300, borderStyle: pw.BorderStyle.dashed),
+                  color: PdfColors.black, borderStyle: pw.BorderStyle.dashed),
               pw.SizedBox(height: 12),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -279,7 +289,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                       pw.Container(
                           width: 100,
                           height: 0.5,
-                          color: PdfColors.grey400),
+                          color: PdfColors.black),
                       pw.SizedBox(height: 4),
                       pw.Text('Firma de recibido', style: smallStyle),
                     ],
@@ -288,7 +298,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                       style: pw.TextStyle(
                           font: regularFont,
                           fontSize: 8,
-                          color: PdfColors.grey300)),
+                          color: PdfColors.black)),
                 ],
               ),
             ],
@@ -442,12 +452,12 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                       style: const TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF11d493),
+                          color: Colors.black,
                           letterSpacing: 0.2)),
                   if (widget.shopTagline != null)
                     Text(widget.shopTagline!,
                         style: const TextStyle(
-                            fontSize: 6, color: Color(0xFF94A3B8))),
+                            fontSize: 6, color: Colors.black87)),
                 ],
               ),
               if (_showFolio)
@@ -466,7 +476,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                 style: TextStyle(
                     fontSize: 5.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF94A3B8),
+                    color: Colors.black54,
                     letterSpacing: 0.8)),
             const SizedBox(height: 2),
             Text(_recipientName,
@@ -481,17 +491,17 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                 style: TextStyle(
                     fontSize: 5.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF94A3B8),
+                    color: Colors.black54,
                     letterSpacing: 0.8)),
             const SizedBox(height: 2),
             Text(_deliveryAddress,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style:
-                    const TextStyle(fontSize: 7, color: Color(0xFF475569))),
+                    const TextStyle(fontSize: 7, color: Colors.black87)),
             Text('Entrega: ${widget.order.deliveryInfo}',
                 style:
-                    const TextStyle(fontSize: 6, color: Color(0xFF94A3B8))),
+                    const TextStyle(fontSize: 6, color: Colors.black87)),
             const SizedBox(height: 8),
           ],
 
@@ -502,7 +512,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                 style: TextStyle(
                     fontSize: 5.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF94A3B8),
+                    color: Colors.black54,
                     letterSpacing: 0.8)),
             const SizedBox(height: 6),
             ...productList.map((p) => Padding(
@@ -543,6 +553,11 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                                 style: const TextStyle(
                                     fontSize: 7.5,
                                     fontWeight: FontWeight.bold)),
+                            if (_showSku && (p['sku'] as String?)?.isNotEmpty == true)
+                              Text('SKU: ${p['sku']}',
+                                  style: const TextStyle(
+                                      fontSize: 5.5,
+                                      color: Colors.black54)),
                           ],
                         ),
                       ),
@@ -558,7 +573,7 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
                                 '${CurrencyCache.symbol}${_total.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                     fontSize: 7,
-                                    color: Color(0xFF11d493),
+                                    color: Colors.black,
                                     fontWeight: FontWeight.bold)),
                         ],
                       ),
@@ -577,9 +592,9 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(width: 50, height: 0.5, color: const Color(0xFF94A3B8)),
+                  Container(width: 50, height: 0.5, color: Colors.black54),
                   const SizedBox(height: 2),
-                  const Text('Firma', style: TextStyle(fontSize: 5.5, color: Color(0xFF94A3B8))),
+                  const Text('Firma', style: TextStyle(fontSize: 5.5, color: Colors.black54)),
                 ],
               ),
               const Text('tusflores.app',
@@ -772,6 +787,12 @@ class _AlbaranScreenState extends State<AlbaranScreen> {
           label: 'Incluir Foto en Producto',
           value: _showFoto,
           onChanged: (v) => setState(() => _showFoto = v),
+          disabled: !_showProducto),
+      _ToggleItem(
+          icon: Icons.qr_code_2_rounded,
+          label: 'Mostrar SKU',
+          value: _showSku,
+          onChanged: (v) => setState(() => _showSku = v),
           disabled: !_showProducto),
       _ToggleItem(
           icon: Icons.attach_money_rounded,

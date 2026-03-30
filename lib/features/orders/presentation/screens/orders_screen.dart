@@ -888,12 +888,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ...() {
                         try {
                           final List<dynamic> productsData = jsonDecode(order.productName);
-                          // We build a single elegant string to display the products in the card e.g. "2x Rosas, 1x Peluche"
                           final parts = <String>[];
+                          final skus = <String>[];
                           for (var p in productsData) {
                              final name = p['name'] as String? ?? 'Producto';
                              final qty = p['qty'] as int? ?? 1;
                              parts.add('${qty}x $name');
+                             final sku = p['sku'] as String?;
+                             if (sku != null && sku.isNotEmpty) skus.add(sku);
                           }
                           return [
                             Text(
@@ -906,9 +908,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            if (skus.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  'SKU: ${skus.join(', ')}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
                           ];
                         } catch (e) {
-                          // Fallback for old orders where productName is just a plain string
                           return [
                             Text(
                               '${order.quantity}× ${order.productName}',
@@ -1094,19 +1107,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ),
             const SizedBox(height: 6),
 
-            // Repartidor — botón full-width
+            // Repartidor — botón full-width (gris sin asignar, verde asignado)
             GestureDetector(
               onTap: () => _showRepartidorSheet(context, order),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.deepOrange.withValues(alpha: 0.08),
+                  color: order.repartidorId != null
+                      ? const Color(0xFF2E7D52).withValues(alpha: 0.08)
+                      : Colors.grey.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: order.repartidorId != null
-                      ? Border.all(
-                          color: Colors.deepOrange.withValues(alpha: 0.35))
-                      : null,
+                  border: Border.all(
+                    color: order.repartidorId != null
+                        ? const Color(0xFF2E7D52).withValues(alpha: 0.35)
+                        : Colors.grey.withValues(alpha: 0.25),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1115,7 +1131,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       order.repartidorId != null
                           ? Icons.delivery_dining_rounded
                           : Icons.delivery_dining_outlined,
-                      color: Colors.deepOrange,
+                      color: order.repartidorId != null
+                          ? const Color(0xFF2E7D52)
+                          : Colors.grey,
                       size: 16,
                     ),
                     const SizedBox(width: 6),
@@ -1123,8 +1141,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       order.repartidorId != null
                           ? (order.repartidorName ?? 'Repartidor asignado')
                           : 'Repartidor',
-                      style: const TextStyle(
-                        color: Colors.deepOrange,
+                      style: TextStyle(
+                        color: order.repartidorId != null
+                            ? const Color(0xFF2E7D52)
+                            : Colors.grey,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1135,97 +1155,94 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ),
             const SizedBox(height: 10),
 
-            // Payment + Status row
-            Row(
-              children: [
-                // Pagado chip
-                GestureDetector(
-                  onTap: () async {
-                    if (order.id == null) return;
-                    final result = await Navigator.push<String>(context,
-                        MaterialPageRoute(builder: (_) => ConfirmPaymentScreen(order: order)));
-                    if (result != null && mounted) {
-                      final success = await _orderRepo.updatePaymentStatus(order.id!, true, result);
-                      if (success) {
-                        setState(() {
-                          order.isPaid = true;
-                          order.paymentMethod = result;
-                        });
-                      }
+            // Payment row
+            SizedBox(
+              width: double.infinity,
+              child: GestureDetector(
+                onTap: () async {
+                  if (order.id == null) return;
+                  final result = await Navigator.push<String>(context,
+                      MaterialPageRoute(builder: (_) => ConfirmPaymentScreen(order: order)));
+                  if (result != null && mounted) {
+                    final success = await _orderRepo.updatePaymentStatus(order.id!, true, result);
+                    if (success) {
+                      setState(() {
+                        order.isPaid = true;
+                        order.paymentMethod = result;
+                      });
                     }
-                  },
-                  child: _statusChip(
-                    icon: order.isPaid ? null : Icons.account_balance_wallet_outlined,
-                    label: order.isPaid
-                        ? (order.paymentMethod != null
-                            ? '\u2713 ${order.paymentMethod!.replaceFirst(RegExp(r'^Activa\s+', caseSensitive: false), '')}'
-                            : 'Pagado')
-                        : '¿Pagado?',
-                    color: order.isPaid ? const Color(0xFF2E7D52) : const Color(0xFFD4790A),
-                    outlined: true,
-                  ),
+                  }
+                },
+                child: _statusChip(
+                  icon: order.isPaid ? null : Icons.account_balance_wallet_outlined,
+                  label: order.isPaid
+                      ? (order.paymentMethod != null
+                          ? '\u2713 ${order.paymentMethod!.replaceFirst(RegExp(r'^Activa\s+', caseSensitive: false), '')}'
+                          : 'Pagado')
+                      : '¿Pagado?',
+                  color: order.isPaid ? const Color(0xFF2E7D52) : const Color(0xFFD4790A),
+                  outlined: true,
                 ),
-                const SizedBox(width: 8),
-                // Status popup button
-                Expanded(
-                  child: PopupMenuButton<OrderStatus>(
-                    onSelected: (s) => _changeOrderStatus(order, s),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    itemBuilder: (ctx) => [
-                      for (final s in [
-                        OrderStatus.waiting,
-                        OrderStatus.processing,
-                        OrderStatus.inTransit,
-                        OrderStatus.delivered,
-                      ])
-                        PopupMenuItem<OrderStatus>(
-                          value: s,
-                          child: Row(
-                            children: [
-                              Icon(s.chipIcon, color: s.chipColor, size: 16),
-                              const SizedBox(width: 8),
-                              Text(s.label,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: s == order.status
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: s == order.status ? s.chipColor : Colors.black87,
-                                  )),
-                              const Spacer(),
-                              if (s == order.status)
-                                Icon(Icons.check, color: s.chipColor, size: 14),
-                            ],
-                          ),
-                        ),
-                    ],
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: order.status.chipColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(order.status.chipIcon, color: Colors.white, size: 15),
-                          const SizedBox(width: 5),
-                          Flexible(
-                            child: Text(order.status.label,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 3),
-                          const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
-                        ],
-                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Status row
+            PopupMenuButton<OrderStatus>(
+              onSelected: (s) => _changeOrderStatus(order, s),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              itemBuilder: (ctx) => [
+                for (final s in [
+                  OrderStatus.waiting,
+                  OrderStatus.processing,
+                  OrderStatus.inTransit,
+                  OrderStatus.delivered,
+                ])
+                  PopupMenuItem<OrderStatus>(
+                    value: s,
+                    child: Row(
+                      children: [
+                        Icon(s.chipIcon, color: s.chipColor, size: 16),
+                        const SizedBox(width: 8),
+                        Text(s.label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: s == order.status
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: s == order.status ? s.chipColor : Colors.black87,
+                            )),
+                        const Spacer(),
+                        if (s == order.status)
+                          Icon(Icons.check, color: s.chipColor, size: 14),
+                      ],
                     ),
                   ),
-                ),
               ],
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: order.status.chipColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(order.status.chipIcon, color: Colors.white, size: 15),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(order.status.label,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                  ],
+                ),
+              ),
             ),
                       ],
                     )

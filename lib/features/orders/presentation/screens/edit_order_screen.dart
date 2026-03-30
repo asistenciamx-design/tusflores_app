@@ -37,8 +37,9 @@ class _ProductItem {
   final TextEditingController qtyCtrl;
   final TextEditingController nameCtrl;
   final TextEditingController priceCtrl;
+  final String? sku;
 
-  _ProductItem({required String qty, required String name, required String price})
+  _ProductItem({required String qty, required String name, required String price, this.sku})
       : qtyCtrl = TextEditingController(text: qty),
         nameCtrl = TextEditingController(text: name),
         priceCtrl = TextEditingController(text: price);
@@ -125,7 +126,8 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
         final name = p['name'] as String? ?? 'Producto';
         final qty = p['qty']?.toString() ?? '1';
         final price = p['price']?.toString() ?? '0.0';
-        _productItems.add(_ProductItem(qty: qty, name: name, price: price));
+        final sku = p['sku'] as String?;
+        _productItems.add(_ProductItem(qty: qty, name: name, price: price, sku: sku));
       }
     } catch (_) {
       // Fallback string parser
@@ -419,7 +421,29 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 _buildInputLabel('Para:'),
                 _buildTextField(_cardToCtrl, 'Nombre destinatario', maxLength: 100),
                 const SizedBox(height: 16),
-                _buildInputLabel('Teléfono destinatario'),
+                Row(
+                  children: [
+                    const Expanded(child: Text('Teléfono destinatario', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textLight))),
+                    if (_cardPhoneCtrl.text.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: _cardPhoneCtrl.text));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Número copiado'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+                          );
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.copy, size: 14, color: Colors.grey[400]),
+                            const SizedBox(width: 4),
+                            Text('Copiar', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
                 _buildTextField(_cardPhoneCtrl, '55...', maxLength: 15,
                     keyboardType: TextInputType.phone,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
@@ -479,31 +503,13 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                       _buildInputLabel('CALLE Y NÚMERO', uppercase: true),
                       _buildTextField(_streetCtrl, 'Av. Reforma 222', maxLength: 200),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildInputLabel('COLONIA / BARRIO', uppercase: true),
-                                _buildTextField(_neighborhoodCtrl, 'Col. Juárez', maxLength: 150),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildInputLabel('CÓDIGO POSTAL', uppercase: true),
-                                _buildTextField(_zipCtrl, '06600', maxLength: 10,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildInputLabel('COLONIA / BARRIO', uppercase: true),
+                      _buildTextField(_neighborhoodCtrl, 'Col. Juárez', maxLength: 150),
+                      const SizedBox(height: 16),
+                      _buildInputLabel('CÓDIGO POSTAL', uppercase: true),
+                      _buildTextField(_zipCtrl, '06600', maxLength: 10,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
                       const SizedBox(height: 16),
                       _buildLocationField(),
                       const SizedBox(height: 16),
@@ -646,46 +652,40 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
           ),
           const SizedBox(height: 12),
           // Input
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _noteCtrl,
-                  maxLength: 500,
-                  maxLines: 2,
-                  minLines: 1,
-                  decoration: InputDecoration(
-                    hintText: 'Ej: Confirmar color del moño antes de enviar...',
-                    hintStyle: const TextStyle(fontSize: 13),
-                    filled: true,
-                    fillColor: Colors.white,
-                    counterText: '',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  style: const TextStyle(fontSize: 13),
-                ),
+          TextField(
+            controller: _noteCtrl,
+            maxLength: 500,
+            maxLines: 2,
+            minLines: 1,
+            decoration: InputDecoration(
+              hintText: 'Ej: Confirmar color del moño antes de enviar...',
+              hintStyle: const TextStyle(fontSize: 13),
+              filled: true,
+              fillColor: Colors.white,
+              counterText: '',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            style: const TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 38,
+            child: ElevatedButton.icon(
+              onPressed: _isSavingNote ? null : _saveNote,
+              icon: _isSavingNote
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.check, size: 18),
+              label: const Text('Agregar nota', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD97706),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 42,
-                child: ElevatedButton(
-                  onPressed: _isSavingNote ? null : _saveNote,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD97706),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                  ),
-                  child: _isSavingNote
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.check, size: 20),
-                ),
-              ),
-            ],
+            ),
           ),
           // History
           if (_isLoadingNotes)
@@ -824,6 +824,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 children: [
                   _buildInputLabel('Nombre', uppercase: false),
                   _buildTextField(item.nameCtrl, 'Ramo...', maxLength: 200),
+                  if (item.sku != null && item.sku!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('SKU: ${item.sku}',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                    ),
                 ],
               ),
             ),
