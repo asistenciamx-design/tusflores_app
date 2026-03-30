@@ -147,21 +147,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildCategoryChips(),
-            Expanded(
-              child: _isLoading 
-                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-                  : _filteredProducts.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                          itemCount: _filteredProducts.length,
-                          itemBuilder: (_, i) => _buildProductCard(_filteredProducts[i]),
-                        ),
-            ),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildCategoryChips()),
+            if (_isLoading)
+              const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+              )
+            else if (_filteredProducts.isEmpty)
+              SliverFillRemaining(child: _buildEmptyState())
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => _buildProductCard(_filteredProducts[i]),
+                    childCount: _filteredProducts.length,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

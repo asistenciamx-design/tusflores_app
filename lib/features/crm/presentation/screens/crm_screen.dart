@@ -139,29 +139,22 @@ class _CrmScreenState extends State<CrmScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8F7),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 16),
-                          _buildMetricsRow(),
-                          const SizedBox(height: 24),
-                          _buildGrowthChart(),
-                          const SizedBox(height: 24),
-                          _buildInteractionsList(),
-                        ],
-                      ),
-                    ),
+        child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  _buildMetricsRow(),
+                  const SizedBox(height: 24),
+                  _buildGrowthChart(),
+                  const SizedBox(height: 24),
+                  _buildInteractionsList(),
+                ],
+              ),
             ),
-          ],
-        ),
       ),
     );
   }
