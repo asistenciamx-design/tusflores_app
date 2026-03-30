@@ -545,7 +545,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                         Text(
                           _formatDate(deliveryDate),
                           style: const TextStyle(
-                              fontSize: 15, color: Color(0xFF9E9E9E)),
+                              fontSize: 13, color: Color(0xFF9E9E9E)),
                         ),
                       ],
                     ),
@@ -557,6 +557,23 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textLight,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 12, color: Color(0xFF9E9E9E)),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        zona,
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF9E9E9E)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -587,23 +604,6 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                             ),
                           ),
                       ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 12, color: Color(0xFF9E9E9E)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        zona,
-                        style: const TextStyle(
-                            fontSize: 18, color: Color(0xFF9E9E9E)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ),
                   ],
                 ),
