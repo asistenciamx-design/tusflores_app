@@ -60,12 +60,20 @@ DECLARE
     '-online','-on-line','-en-linea','-enlinea','-internet','-en-internet'
   ];
   protected_prefixes TEXT[] := ARRAY['mercadojamaica','mercado-jamaica'];
+  -- UUID del dueño de la marca mercadojamaica (excepción para slugs protegidos)
+  owner_mercadojamaica UUID := '01214284-1342-4b0d-acf3-46e855e33938';
   s TEXT;
 BEGIN
-  -- Slug reservado
+  -- Slug reservado (excepto mercadojamaica para su dueño)
   IF NEW.slug = ANY(reserved) THEN
-    RAISE EXCEPTION 'slug_reserved: Este nombre no esta disponible'
-      USING ERRCODE = 'P0001';
+    IF NEW.slug IN ('mercadojamaica','mercado-jamaica','mercado-de-jamaica','mercadodejamaica')
+       AND NEW.entity_id = owner_mercadojamaica THEN
+      -- Permitido: es el dueño legítimo
+      NULL;
+    ELSE
+      RAISE EXCEPTION 'slug_reserved: Este nombre no esta disponible'
+        USING ERRCODE = 'P0001';
+    END IF;
   END IF;
 
   -- Sufijos bloqueados

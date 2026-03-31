@@ -84,7 +84,8 @@ class _SlugEditorScreenState extends State<SlugEditorScreen> {
       return;
     }
 
-    final reservedError = validateSlugReserved(slug);
+    final reservedError = validateSlugReserved(slug,
+        currentUserId: _supabase.auth.currentUser?.id);
     if (reservedError != null) {
       setState(() {
         _errorMsg = reservedError;

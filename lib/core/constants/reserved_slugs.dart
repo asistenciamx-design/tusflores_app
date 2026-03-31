@@ -75,11 +75,7 @@ const Set<String> kReservedSlugs = {
   // Cualquier slug que termine con estos sufijos se bloquea dinámicamente.
   // (ver kBlockedSuffixes abajo)
 
-  // ── Slug protegido: mercadojamaica ──────────────────────────────────────
-  'mercadojamaica',
-  'mercado-jamaica',
-  'mercado-de-jamaica',
-  'mercadodejamaica',
+  // mercadojamaica y variantes están en kOwnerExclusiveSlugs, no aquí.
 };
 
 /// Sufijos que se bloquean dinámicamente.
@@ -105,8 +101,27 @@ const Set<String> kProtectedPrefixes = {
 /// Valida que un slug no sea reservado, no tenga sufijos bloqueados,
 /// y no use prefijos protegidos.
 /// Retorna `null` si es válido, o un mensaje de error si no lo es.
-String? validateSlugReserved(String slug) {
+/// Slugs que son propiedad exclusiva de una cuenta específica.
+/// El cliente los permite si el usuario es el dueño; el trigger
+/// server-side valida el entity_id como segunda capa.
+const Set<String> kOwnerExclusiveSlugs = {
+  'mercadojamaica',
+  'mercado-jamaica',
+  'mercado-de-jamaica',
+  'mercadodejamaica',
+};
+
+/// UUID del dueño de mercadojamaica (para validación client-side).
+const String kMercadoJamaicaOwnerId = '01214284-1342-4b0d-acf3-46e855e33938';
+
+String? validateSlugReserved(String slug, {String? currentUserId}) {
   final lower = slug.toLowerCase().trim();
+
+  // Slugs exclusivos: solo el dueño puede usarlos
+  if (kOwnerExclusiveSlugs.contains(lower)) {
+    if (currentUserId == kMercadoJamaicaOwnerId) return null;
+    return 'Este nombre no está disponible';
+  }
 
   if (kReservedSlugs.contains(lower)) {
     return 'Este nombre no está disponible';
