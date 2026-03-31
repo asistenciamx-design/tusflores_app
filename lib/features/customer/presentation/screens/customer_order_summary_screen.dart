@@ -294,7 +294,10 @@ class _CustomerOrderSummaryScreenState
       });
 
       // Build WhatsApp URL using the freshly assigned folio from the DB.
-      // Pass newOrder.folio explicitly so it doesn't depend on setState timing.
+      // If _shopPhone is empty (initial load may have failed), retry once.
+      if (_shopPhone.isEmpty) {
+        await _loadShopDetails();
+      }
       String? whatsappUrl;
       if (_shopPhone.isNotEmpty) {
         var cleanPhone = _shopPhone.replaceAll(RegExp(r'\D'), '');
