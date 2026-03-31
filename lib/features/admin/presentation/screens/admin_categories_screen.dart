@@ -3,6 +3,12 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/repositories/admin_repository.dart';
 
+// Los 10 grupos oficiales (orden fijo)
+const _kOfficialGroups = [
+  'Comerciales', 'Relleno', 'Bulbo', 'Silvestres', 'Tropicales',
+  'Orquídeas', 'Jardín', 'Verano', 'Aromáticas', 'Temporada',
+];
+
 class AdminCategoriesScreen extends StatefulWidget {
   const AdminCategoriesScreen({super.key});
 
@@ -16,19 +22,9 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   List<Map<String, dynamic>> _categories = [];
   List<String> _groups = [];
   String _searchQuery = '';
+  String? _selectedGroup;
   final _searchCtrl = TextEditingController();
-
-  // Paleta de colores ciclica para grupos dinámicos
-  static const _palette = [
-    (bg: Color(0xFFECFDF5), text: Color(0xFF065F46)),
-    (bg: Color(0xFFF5F3FF), text: Color(0xFF5B21B6)),
-    (bg: Color(0xFFFFF7ED), text: Color(0xFF9A3412)),
-    (bg: Color(0xFFEFF6FF), text: Color(0xFF1D4ED8)),
-    (bg: Color(0xFFFDF2F8), text: Color(0xFF9D174D)),
-    (bg: Color(0xFFF0FDF4), text: Color(0xFF166534)),
-    (bg: Color(0xFFFFFBEB), text: Color(0xFF92400E)),
-    (bg: Color(0xFFF0F9FF), text: Color(0xFF0369A1)),
-  ];
+  final _pillScrollCtrl = ScrollController();
 
   @override
   void initState() {
@@ -42,6 +38,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _pillScrollCtrl.dispose();
     super.dispose();
   }
 
@@ -56,6 +53,11 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       setState(() {
         _groups = results[0] as List<String>;
         _categories = results[1] as List<Map<String, dynamic>>;
+        // Auto-seleccionar primer grupo oficial si ninguno elegido
+        _selectedGroup ??= _kOfficialGroups.firstWhere(
+          (g) => (_groups).contains(g),
+          orElse: () => _groups.isNotEmpty ? _groups.first : '',
+        );
         _isLoading = false;
       });
     } catch (e) {
@@ -63,34 +65,43 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
   }
 
-  // ── Color helper ─────────────────────────────────────────────────────────────
+  // ── Colores por grupo ─────────────────────────────────────────────────────
 
-  ({Color bg, Color text}) _groupColor(String group) {
-    final idx = _groups.indexOf(group);
-    final i = idx < 0 ? 0 : idx % _palette.length;
-    return _palette[i];
+  static const _groupColors = <String, ({Color bg, Color text, Color pill})>{
+    'Comerciales': (bg: Color(0xFFFDF2F8), text: Color(0xFF9D174D), pill: Color(0xFFEC4899)),
+    'Relleno':     (bg: Color(0xFFF0FDF4), text: Color(0xFF166534), pill: Color(0xFF22C55E)),
+    'Bulbo':       (bg: Color(0xFFFFF7ED), text: Color(0xFF9A3412), pill: Color(0xFFF97316)),
+    'Silvestres':  (bg: Color(0xFFF0F9FF), text: Color(0xFF0369A1), pill: Color(0xFF38BDF8)),
+    'Tropicales':  (bg: Color(0xFFFFFBEB), text: Color(0xFF92400E), pill: Color(0xFFFBBF24)),
+    'Orquídeas':   (bg: Color(0xFFF5F3FF), text: Color(0xFF5B21B6), pill: Color(0xFF8B5CF6)),
+    'Jardín':      (bg: Color(0xFFECFDF5), text: Color(0xFF065F46), pill: Color(0xFF10B981)),
+    'Verano':      (bg: Color(0xFFFEF9C3), text: Color(0xFF713F12), pill: Color(0xFFEAB308)),
+    'Aromáticas':  (bg: Color(0xFFFDF4FF), text: Color(0xFF86198F), pill: Color(0xFFD946EF)),
+    'Temporada':   (bg: Color(0xFFEFF6FF), text: Color(0xFF1D4ED8), pill: Color(0xFF3B82F6)),
+  };
+
+  ({Color bg, Color text, Color pill}) _colorFor(String group) {
+    return _groupColors[group] ??
+        (bg: const Color(0xFFF3F4F6), text: const Color(0xFF374151), pill: const Color(0xFF6B7280));
   }
 
-  // ── Pausa / activar categoría ────────────────────────────────────────────────
+  // ── Toggle pausa ──────────────────────────────────────────────────────────
 
   Future<void> _toggleActive(Map<String, dynamic> cat) async {
     final isActive = cat['is_active'] as bool? ?? true;
     final name = cat['name'] as String? ?? '';
-    final action = isActive ? 'pausar' : 'activar';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('${isActive ? 'Pausar' : 'Activar'} categoría'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(isActive ? 'Pausar flor' : 'Activar flor'),
         content: Text(
           isActive
-              ? '¿Pausar "$name"? No aparecerá en el selector de productos hasta que la reactives.'
-              : '¿Activar "$name"? Volverá a aparecer en el selector de productos.',
+              ? '¿Pausar "$name"? No aparecerá en el selector hasta que la reactives.'
+              : '¿Activar "$name"? Volverá a aparecer en el selector.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: isActive ? Colors.orange : const Color(0xFF4F46E5),
@@ -108,83 +119,43 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al $action la categoría')),
+          const SnackBar(content: Text('Error al cambiar estado')),
         );
       }
     }
   }
 
-  // ── Crear nuevo grupo ────────────────────────────────────────────────────────
+  // ── Eliminar ──────────────────────────────────────────────────────────────
 
-  Future<void> _createGroup() async {
-    final nameCtrl = TextEditingController();
-    final confirmed = await showDialog<bool>(
+  Future<void> _confirmDelete(Map<String, dynamic> cat) async {
+    final name = cat['name'] as String? ?? '';
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nuevo grupo'),
-        content: TextField(
-          controller: nameCtrl,
-          textCapitalization: TextCapitalization.words,
-          maxLength: 40,
-          decoration: InputDecoration(
-            labelText: 'Nombre del grupo',
-            hintText: 'Ej: Color, Temporada...',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            counterText: '',
-          ),
-          autofocus: true,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Eliminar flor'),
+        content: Text('¿Eliminar "$name"? Esta acción es permanente.'),
         actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF4F46E5),
-            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Crear'),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-
-    if (confirmed != true) return;
-    final name = nameCtrl.text.trim();
-    if (name.isEmpty) return;
-    if (_groups.contains(name)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('El grupo "$name" ya existe')),
-        );
-      }
-      return;
-    }
-    try {
-      await _repo.createGroup(name);
+    if (confirm == true) {
+      await _repo.deleteCategory(cat['id'] as String);
       _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al crear el grupo')),
-        );
-      }
     }
   }
 
-  // ── Add / Edit sheet ─────────────────────────────────────────────────────────
+  // ── Add / Edit sheet ──────────────────────────────────────────────────────
 
   Future<void> _openSheet({Map<String, dynamic>? existing}) async {
-    final parents = _categories
-        .where((c) => c['parent_id'] == null)
-        .toList();
-
-    final nameCtrl =
-        TextEditingController(text: existing?['name'] as String? ?? '');
-    String selectedGroup =
-        existing?['group_name'] as String? ?? (_groups.isNotEmpty ? _groups.first : '');
-    String? selectedParentId = existing?['parent_id'] as String?;
+    final nameCtrl = TextEditingController(text: existing?['name'] as String? ?? '');
+    String selectedGroup = existing?['group_name'] as String? ??
+        (_selectedGroup ?? (_groups.isNotEmpty ? _groups.first : ''));
     String? existingImageUrl = existing?['image_url'] as String?;
     XFile? pickedFile;
     bool isSaving = false;
@@ -197,8 +168,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         builder: (ctx, setModal) {
           Future<void> pickImage() async {
             final picker = ImagePicker();
-            final file =
-                await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+            final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
             if (file != null) setModal(() => pickedFile = file);
           }
 
@@ -217,8 +187,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   // Handle
                   Center(
                     child: Container(
-                      width: 36,
-                      height: 4,
+                      width: 36, height: 4,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(2),
@@ -227,49 +196,28 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    existing == null ? 'Nueva categoría' : 'Editar categoría',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
+                    existing == null ? 'Agregar flor' : 'Editar flor',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  if (existing != null && existing['sku'] != null) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.tag_rounded,
-                            size: 14, color: Color(0xFF4F46E5)),
-                        const SizedBox(width: 4),
-                        Text(
-                          existing['sku'] as String,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF4F46E5),
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text('· código de categoría',
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.grey.shade400)),
-                      ],
+                  if (existing?['sku'] != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      existing!['sku'] as String,
+                      style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF4F46E5),
+                        fontWeight: FontWeight.w700, letterSpacing: 1.2,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 20),
 
-                  // ── Imagen ───────────────────────────────────────────────
-                  Text('Imagen de referencia',
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.mutedLight,
-                          fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
+                  // Imagen
                   Row(
                     children: [
                       GestureDetector(
                         onTap: isSaving ? null : pickImage,
                         child: Container(
-                          width: 80,
-                          height: 80,
+                          width: 72, height: 72,
                           decoration: BoxDecoration(
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(12),
@@ -285,31 +233,19 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               ? FutureBuilder<dynamic>(
                                   future: pickedFile!.readAsBytes(),
                                   builder: (_, snap) {
-                                    if (!snap.hasData) {
-                                      return const Center(
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2));
-                                    }
-                                    return Image.memory(snap.data!,
-                                        fit: BoxFit.cover);
+                                    if (!snap.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                                    return Image.memory(snap.data!, fit: BoxFit.cover);
                                   },
                                 )
                               : existingImageUrl != null
-                                  ? Image.network(existingImageUrl!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          const Icon(Icons.broken_image_outlined,
-                                              color: Colors.grey))
+                                  ? Image.network(existingImageUrl!, fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.grey))
                                   : Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.add_photo_alternate_outlined,
-                                            size: 28, color: Colors.grey.shade400),
-                                        const SizedBox(height: 4),
-                                        Text('Agregar',
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.grey.shade400)),
+                                        Icon(Icons.add_photo_alternate_outlined, size: 24, color: Colors.grey.shade400),
+                                        const SizedBox(height: 2),
+                                        Text('Foto', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
                                       ],
                                     ),
                         ),
@@ -319,24 +255,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              pickedFile != null
-                                  ? 'Nueva imagen seleccionada'
-                                  : existingImageUrl != null
-                                      ? 'Imagen actual'
-                                      : 'Sin imagen',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: pickedFile != null
-                                      ? const Color(0xFF4F46E5)
-                                      : AppTheme.textLight),
-                            ),
-                            const SizedBox(height: 4),
-                            Text('JPG, PNG o WebP · máx. 5 MB',
-                                style: TextStyle(
-                                    fontSize: 11, color: AppTheme.mutedLight)),
-                            const SizedBox(height: 8),
                             TextButton.icon(
                               onPressed: isSaving ? null : pickImage,
                               style: TextButton.styleFrom(
@@ -345,201 +263,99 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              icon: const Icon(Icons.photo_library_outlined,
-                                  size: 16),
+                              icon: const Icon(Icons.photo_library_outlined, size: 16),
                               label: Text(
-                                pickedFile != null || existingImageUrl != null
-                                    ? 'Cambiar imagen'
-                                    : 'Seleccionar imagen',
-                                style: const TextStyle(fontSize: 12),
+                                pickedFile != null || existingImageUrl != null ? 'Cambiar imagen' : 'Agregar imagen',
+                                style: const TextStyle(fontSize: 13),
                               ),
                             ),
+                            Text('JPG, PNG · máx. 5 MB',
+                                style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
                             if (existingImageUrl != null && pickedFile == null)
                               TextButton.icon(
-                                onPressed: isSaving
-                                    ? null
-                                    : () => setModal(() => existingImageUrl = null),
+                                onPressed: isSaving ? null : () => setModal(() => existingImageUrl = null),
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.red.shade400,
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                icon: const Icon(Icons.delete_outline, size: 16),
-                                label: const Text('Quitar imagen',
-                                    style: TextStyle(fontSize: 12)),
+                                icon: const Icon(Icons.delete_outline, size: 14),
+                                label: const Text('Quitar', style: TextStyle(fontSize: 12)),
                               ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // ── Nombre ───────────────────────────────────────────────
+                  // Nombre
                   TextField(
                     controller: nameCtrl,
                     textCapitalization: TextCapitalization.words,
                     maxLength: 60,
                     decoration: InputDecoration(
-                      labelText: 'Nombre',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                      labelText: 'Nombre de la flor',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       counterText: '',
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Grupo ────────────────────────────────────────────────
-                  Text('Grupo',
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.mutedLight,
-                          fontWeight: FontWeight.w500)),
+                  // Categoría
+                  Text('Categoría',
+                      style: TextStyle(fontSize: 13, color: AppTheme.mutedLight, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: 8, runSpacing: 8,
                     children: _groups.map((g) {
-                      final style = _groupColor(g);
+                      final c = _colorFor(g);
                       final isSelected = selectedGroup == g;
                       return FilterChip(
                         label: Text(g),
                         selected: isSelected,
-                        onSelected: (_) {
-                          setModal(() {
-                            selectedGroup = g;
-                            selectedParentId = null;
-                          });
-                        },
+                        onSelected: (_) => setModal(() => selectedGroup = g),
                         backgroundColor: Colors.white,
-                        selectedColor: style.bg,
+                        selectedColor: c.bg,
                         labelStyle: TextStyle(
-                          color: isSelected ? style.text : AppTheme.textLight,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.normal,
+                          color: isSelected ? c.text : AppTheme.textLight,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          fontSize: 13,
                         ),
                         side: BorderSide(
-                            color: isSelected
-                                ? style.text.withValues(alpha: 0.4)
-                                : Colors.grey.shade300),
+                          color: isSelected ? c.text.withValues(alpha: 0.4) : Colors.grey.shade300,
+                        ),
                         showCheckmark: false,
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // ── Categoría padre (opcional) ────────────────────────────
-                  Builder(builder: (_) {
-                    final groupParents = parents
-                        .where((p) => p['group_name'] == selectedGroup)
-                        .toList()
-                      ..sort((a, b) =>
-                          (a['name'] as String? ?? '')
-                              .compareTo(b['name'] as String? ?? ''));
-                    if (groupParents.isEmpty) return const SizedBox.shrink();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Subcategoría de (opcional)',
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.mutedLight,
-                                fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () async {
-                            final result =
-                                await showModalBottomSheet<String?>(
-                              context: ctx,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.white,
-                              shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(24))),
-                              builder: (_) => _ParentPickerSheet(
-                                parents: groupParents,
-                                selectedId: selectedParentId,
-                              ),
-                            );
-                            if (result != null) {
-                              setModal(() => selectedParentId =
-                                  result.isEmpty ? null : result);
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 13),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border:
-                                  Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    selectedParentId == null
-                                        ? 'Sin categoría padre'
-                                        : (groupParents.firstWhere(
-                                                (p) =>
-                                                    p['id'] ==
-                                                    selectedParentId,
-                                                orElse: () => {
-                                                      'name':
-                                                          'Sin categoría padre'
-                                                    })['name']
-                                            as String),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: selectedParentId == null
-                                          ? Colors.grey.shade400
-                                          : AppTheme.textLight,
-                                    ),
-                                  ),
-                                ),
-                                Icon(Icons.chevron_right,
-                                    color: Colors.grey.shade400, size: 20),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    );
-                  }),
-
-                  // ── Guardar ──────────────────────────────────────────────
+                  // Guardar
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF4F46E5),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: isSaving
                           ? null
                           : () async {
                               final name = nameCtrl.text.trim();
-                              if (name.isEmpty) return;
-                              if (selectedGroup.isEmpty) return;
+                              if (name.isEmpty || selectedGroup.isEmpty) return;
                               setModal(() => isSaving = true);
                               try {
-                                // Subir imagen si se seleccionó una nueva
                                 String? imageUrl = existingImageUrl;
                                 if (pickedFile != null) {
-                                  imageUrl =
-                                      await _repo.uploadCategoryImage(pickedFile!);
+                                  imageUrl = await _repo.uploadCategoryImage(pickedFile!);
                                 }
-
                                 if (existing == null) {
                                   await _repo.createCategory(
                                     name: name,
                                     groupName: selectedGroup,
-                                    parentId: selectedParentId,
                                     imageUrl: imageUrl,
                                   );
                                 } else {
@@ -548,10 +364,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                     name: name,
                                     groupName: selectedGroup,
                                     imageUrl: imageUrl,
-                                    clearImage: existingImageUrl == null &&
-                                        pickedFile == null,
-                                    parentId: selectedParentId,
-                                    clearParent: selectedParentId == null,
+                                    clearImage: existingImageUrl == null && pickedFile == null,
                                   );
                                 }
                                 if (ctx.mounted) Navigator.pop(ctx);
@@ -567,14 +380,11 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                             },
                       child: isSaving
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                              height: 20, width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Text('Guardar',
-                              style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -586,94 +396,39 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     );
   }
 
-  // ── Confirmar eliminación ─────────────────────────────────────────────────────
-
-  Future<void> _confirmDelete(Map<String, dynamic> cat) async {
-    final name = cat['name'] as String? ?? '';
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar categoría'),
-        content: Text('¿Eliminar "$name"? Esta acción es permanente.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Eliminar',
-                style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      await _repo.deleteCategory(cat['id'] as String);
-      _load();
-    }
-  }
-
-  // ── Build ─────────────────────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    // Filtrar por búsqueda
-    final filtered = _searchQuery.isEmpty
-        ? _categories
-        : _categories.where((c) {
-            final name = (c['name'] as String? ?? '').toLowerCase();
-            return name.contains(_searchQuery.toLowerCase());
-          }).toList();
+    // Ordenar grupos: primero los 10 oficiales, luego el resto
+    final sortedGroups = [
+      ..._kOfficialGroups.where((g) => _groups.contains(g)),
+      ..._groups.where((g) => !_kOfficialGroups.contains(g)),
+    ];
 
-    final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final cat in filtered) {
-      final g = cat['group_name'] as String? ?? 'Otro';
-      grouped.putIfAbsent(g, () => []).add(cat);
-    }
-    // Ordenar: padres A→Z, cada padre seguido inmediatamente de sus hijas A→Z
-    for (final key in grouped.keys.toList()) {
-      final all = grouped[key]!;
-      final topLevel = all.where((c) => c['parent_id'] == null).toList()
-        ..sort((a, b) =>
-            (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
-      final childrenMap = <String, List<Map<String, dynamic>>>{};
-      for (final c in all.where((c) => c['parent_id'] != null)) {
-        childrenMap.putIfAbsent(c['parent_id'] as String, () => []).add(c);
-      }
-      for (final list in childrenMap.values) {
-        list.sort((a, b) =>
-            (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
-      }
-      final ordered = <Map<String, dynamic>>[];
-      for (final parent in topLevel) {
-        ordered.add(parent);
-        ordered.addAll(childrenMap[parent['id'] as String] ?? []);
-      }
-      // Subcategorías huérfanas (padre fuera del grupo filtrado, ej. búsqueda activa)
-      final seen = ordered.map((c) => c['id'] as String).toSet();
-      for (final c in all.where(
-          (c) => c['parent_id'] != null && !seen.contains(c['id'] as String))) {
-        ordered.add(c);
-      }
-      grouped[key] = ordered;
-    }
+    // Flores del grupo seleccionado, filtradas por búsqueda
+    final visibleCats = _categories.where((c) {
+      final matchesGroup = _selectedGroup == null || c['group_name'] == _selectedGroup;
+      final matchesSearch = _searchQuery.isEmpty ||
+          (c['name'] as String? ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchesGroup && matchesSearch;
+    }).toList()
+      ..sort((a, b) {
+        final sa = (a['sort_order'] as int?) ?? 999;
+        final sb = (b['sort_order'] as int?) ?? 999;
+        if (sa != sb) return sa.compareTo(sb);
+        return (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? '');
+      });
 
-    // Incluir todos los grupos registrados, aunque estén vacíos (solo si no hay búsqueda activa)
-    final allGroups = (_searchQuery.isEmpty
-            ? {
-                ..._groups,
-                ...grouped.keys,
-              }.toList()
-            : grouped.keys.toList())
-        ..sort();
+    final activeColor = _selectedGroup != null ? _colorFor(_selectedGroup!) : null;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _groups.isEmpty ? null : () => _openSheet(),
+        onPressed: sortedGroups.isEmpty ? null : () => _openSheet(),
         backgroundColor: const Color(0xFF4F46E5),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Nueva categoría',
+        label: const Text('Agregar flor',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
       body: SafeArea(
@@ -681,175 +436,222 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
                 onRefresh: _load,
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
+                child: CustomScrollView(
+                  slivers: [
                     // ── Header ─────────────────────────────────────────────
-                    Row(
-                      children: [
-                        const Icon(Icons.category_rounded,
-                            color: Color(0xFF4F46E5), size: 22),
-                        const SizedBox(width: 8),
-                        const Text('Categorías',
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold)),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEEF2FF),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '${_categories.length} total',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF4F46E5),
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Botón nuevo grupo
-                        Tooltip(
-                          message: 'Nuevo grupo',
-                          child: InkWell(
-                            onTap: _createGroup,
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.local_florist_rounded,
+                                color: Color(0xFF4F46E5), size: 22),
+                            const SizedBox(width: 8),
+                            const Text('Categorías',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            // Contador
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF0FDF4),
+                                color: const Color(0xFFEEF2FF),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                    color: const Color(0xFF065F46)
-                                        .withValues(alpha: 0.3)),
                               ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.add_rounded,
-                                      size: 14, color: Color(0xFF065F46)),
-                                  SizedBox(width: 3),
-                                  Text('Grupo',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF065F46),
-                                          fontWeight: FontWeight.w600)),
-                                ],
+                              child: Text(
+                                '${visibleCats.length} flores',
+                                style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF4F46E5), fontWeight: FontWeight.w600),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── Buscador ────────────────────────────────────────────
-                    TextField(
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar categoría...',
-                        prefixIcon: const Icon(Icons.search_rounded,
-                            size: 20, color: Color(0xFF4F46E5)),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              )
-                            : null,
-                        filled: true,
-                        fillColor: AppTheme.cardLight,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: Color(0xFF4F46E5), width: 1.5),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
 
-                    // ── Sin grupos ─────────────────────────────────────────
-                    if (allGroups.isEmpty)
-                      Center(
+                    // ── Buscador ───────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Buscar por nombre de flor...',
+                            prefixIcon: const Icon(Icons.search_rounded,
+                                size: 20, color: Color(0xFF4F46E5)),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.close_rounded, size: 18),
+                                    onPressed: () {
+                                      _searchCtrl.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFF4F46E5), width: 1.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // ── Pills de categorías ────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: SizedBox(
+                          height: 40,
+                          child: ListView.separated(
+                            controller: _pillScrollCtrl,
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: sortedGroups.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (_, i) {
+                              final g = sortedGroups[i];
+                              final isSelected = _selectedGroup == g;
+                              final c = _colorFor(g);
+                              return GestureDetector(
+                                onTap: () => setState(() {
+                                  _selectedGroup = isSelected ? null : g;
+                                  _searchCtrl.clear();
+                                  _searchQuery = '';
+                                }),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? c.pill : Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? c.pill
+                                          : Colors.grey.shade300,
+                                    ),
+                                    boxShadow: isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: c.pill.withValues(alpha: 0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Text(
+                                    g,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // ── Indicador de categoría seleccionada ────────────────
+                    if (_selectedGroup != null && activeColor != null)
+                      SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.only(top: 40),
-                          child: Column(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                          child: Row(
                             children: [
-                              Icon(Icons.folder_open_outlined,
-                                  size: 48, color: Colors.grey.shade300),
-                              const SizedBox(height: 12),
-                              Text('Crea un grupo primero',
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: activeColor.bg,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _selectedGroup!,
                                   style: TextStyle(
-                                      color: AppTheme.mutedLight,
-                                      fontSize: 14)),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: activeColor.text,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${visibleCats.length} flores',
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey.shade500),
+                              ),
                             ],
                           ),
                         ),
                       ),
 
-                    // ── Grupos con sus categorías ──────────────────────────
-                    ...allGroups.map((g) {
-                      final cats = grouped[g] ?? [];
-                      final style = _groupColor(g);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Cabecera del grupo
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: style.bg,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                    // ── Lista de flores ────────────────────────────────────
+                    if (visibleCats.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 60),
+                          child: Center(
+                            child: Column(
                               children: [
+                                Icon(Icons.local_florist_outlined,
+                                    size: 48, color: Colors.grey.shade300),
+                                const SizedBox(height: 12),
                                 Text(
-                                  g,
+                                  _searchQuery.isNotEmpty
+                                      ? 'Sin resultados para "$_searchQuery"'
+                                      : 'Esta categoría no tiene flores',
                                   style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: style.text),
+                                      color: AppTheme.mutedLight, fontSize: 14),
                                 ),
-                                if (cats.isEmpty) ...[
-                                  const SizedBox(width: 6),
-                                  Text('sin categorías',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: style.text.withValues(alpha: 0.6))),
-                                ],
                               ],
                             ),
                           ),
-                          ...cats.map((cat) => _CategoryRow(
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (_, i) {
+                              final cat = visibleCats[i];
+                              final group = cat['group_name'] as String? ?? '';
+                              final c = _colorFor(group);
+                              return _FlowerRow(
                                 cat: cat,
-                                style: style,
+                                colors: c,
+                                showGroupBadge: _selectedGroup == null,
                                 onEdit: () => _openSheet(existing: cat),
                                 onDelete: () => _confirmDelete(cat),
                                 onToggleActive: () => _toggleActive(cat),
-                              )),
-                          const SizedBox(height: 16),
-                        ],
-                      );
-                    }),
-                    const SizedBox(height: 80), // espacio para FAB
+                              );
+                            },
+                            childCount: visibleCats.length,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -858,18 +660,20 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 }
 
-// ── Category row ──────────────────────────────────────────────────────────────
+// ── Fila de flor ──────────────────────────────────────────────────────────────
 
-class _CategoryRow extends StatelessWidget {
+class _FlowerRow extends StatelessWidget {
   final Map<String, dynamic> cat;
-  final ({Color bg, Color text}) style;
+  final ({Color bg, Color text, Color pill}) colors;
+  final bool showGroupBadge;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggleActive;
 
-  const _CategoryRow({
+  const _FlowerRow({
     required this.cat,
-    required this.style,
+    required this.colors,
+    required this.showGroupBadge,
     required this.onEdit,
     required this.onDelete,
     required this.onToggleActive,
@@ -879,110 +683,113 @@ class _CategoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = cat['name'] as String? ?? '—';
     final sku = cat['sku'] as String?;
-    final isChild = cat['parent_id'] != null;
     final imageUrl = cat['image_url'] as String?;
     final isActive = cat['is_active'] as bool? ?? true;
+    final group = cat['group_name'] as String? ?? '';
 
     return Opacity(
       opacity: isActive ? 1.0 : 0.55,
       child: Container(
-        margin: EdgeInsets.only(bottom: 8, left: isChild ? 16 : 0),
+        margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? AppTheme.cardLight : Colors.grey.shade50,
+          color: isActive ? Colors.white : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: isActive
-                  ? (isChild
-                      ? style.text.withValues(alpha: 0.12)
-                      : Colors.black.withValues(alpha: 0.06))
-                  : Colors.orange.shade200),
+            color: isActive
+                ? Colors.black.withValues(alpha: 0.06)
+                : Colors.orange.shade200,
+          ),
         ),
         child: Row(
           children: [
-            // Thumbnail
-            if (imageUrl != null)
-              Container(
-                width: 44,
-                height: 44,
-                margin: const EdgeInsets.only(right: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: style.bg,
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.image_not_supported_outlined,
-                    size: 20,
-                    color: style.text.withValues(alpha: 0.5),
-                  ),
-                ),
-              )
-            else
-              Container(
-                width: 44,
-                height: 44,
-                margin: const EdgeInsets.only(right: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: style.bg,
-                ),
-                child: Icon(
-                  Icons.local_florist_outlined,
-                  size: 20,
-                  color: style.text.withValues(alpha: 0.5),
-                ),
+            // Thumbnail / icono
+            Container(
+              width: 44, height: 44,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: colors.bg,
               ),
+              clipBehavior: Clip.antiAlias,
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.local_florist_outlined,
+                        size: 20, color: colors.text.withValues(alpha: 0.5),
+                      ),
+                    )
+                  : Icon(
+                      Icons.local_florist_outlined,
+                      size: 20, color: colors.text.withValues(alpha: 0.5),
+                    ),
+            ),
 
-            if (isChild)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Icon(Icons.subdirectory_arrow_right_rounded,
-                    size: 14, color: style.text.withValues(alpha: 0.5)),
-              ),
+            // Nombre + código
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isChild ? FontWeight.normal : FontWeight.w600,
-                        decoration: isActive ? null : TextDecoration.none),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600),
                   ),
-                  if (sku != null)
-                    Text(
-                      sku,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: style.text.withValues(alpha: 0.5),
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  if (!isActive)
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text('Pausada',
+                  Row(
+                    children: [
+                      if (sku != null)
+                        Text(
+                          sku,
                           style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: colors.text.withValues(alpha: 0.6),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      if (showGroupBadge && sku != null) const SizedBox(width: 6),
+                      if (showGroupBadge)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: colors.bg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            group,
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Colors.orange.shade800,
-                              fontWeight: FontWeight.w600)),
-                    ),
+                              fontWeight: FontWeight.w600,
+                              color: colors.text,
+                            ),
+                          ),
+                        ),
+                      if (!isActive) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text('Pausada',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.orange.shade800,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
-            // Botón pausa / reactivar
+
+            // Acciones
             IconButton(
               onPressed: onToggleActive,
               icon: Icon(
@@ -1000,146 +807,17 @@ class _CategoryRow extends StatelessWidget {
               icon: const Icon(Icons.edit_outlined, size: 18),
               color: AppTheme.mutedLight,
               visualDensity: VisualDensity.compact,
+              tooltip: 'Editar',
             ),
             IconButton(
               onPressed: onDelete,
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
               color: Colors.red.shade400,
               visualDensity: VisualDensity.compact,
+              tooltip: 'Eliminar',
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Parent category picker sheet ───────────────────────────────────────────────
-
-class _ParentPickerSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> parents;
-  final String? selectedId;
-  const _ParentPickerSheet({required this.parents, this.selectedId});
-
-  @override
-  State<_ParentPickerSheet> createState() => _ParentPickerSheetState();
-}
-
-class _ParentPickerSheetState extends State<_ParentPickerSheet> {
-  final _searchCtrl = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = widget.parents
-        .where((p) =>
-            _query.isEmpty ||
-            (p['name'] as String? ?? '')
-                .toLowerCase()
-                .contains(_query.toLowerCase()))
-        .toList();
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      maxChildSize: 0.92,
-      minChildSize: 0.4,
-      expand: false,
-      builder: (_, scrollCtrl) => Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2)),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Categoría padre',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _searchCtrl,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar...',
-                    prefixIcon: const Icon(Icons.search_rounded,
-                        size: 20, color: Color(0xFF4F46E5)),
-                    suffixIcon: _query.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 18),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() => _query = '');
-                            })
-                        : null,
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            BorderSide(color: Colors.grey.shade200)),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            BorderSide(color: Colors.grey.shade200)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF4F46E5), width: 1.5)),
-                  ),
-                  onChanged: (v) => setState(() => _query = v),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView(
-              controller: scrollCtrl,
-              children: [
-                if (_query.isEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.remove_circle_outline,
-                        size: 20, color: Colors.grey),
-                    title: const Text('Sin categoría padre'),
-                    selected: widget.selectedId == null,
-                    selectedColor: const Color(0xFF4F46E5),
-                    onTap: () => Navigator.pop(context, ''),
-                  ),
-                ...filtered.map((p) => ListTile(
-                      title: Text(p['name'] as String? ?? ''),
-                      selected: widget.selectedId == p['id'],
-                      selectedColor: const Color(0xFF4F46E5),
-                      onTap: () =>
-                          Navigator.pop(context, p['id'] as String),
-                    )),
-                if (filtered.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 32),
-                    child: Center(
-                      child: Text('Sin resultados',
-                          style:
-                              TextStyle(color: Colors.grey.shade400)),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
