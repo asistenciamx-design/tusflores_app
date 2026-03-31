@@ -125,6 +125,60 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
   }
 
+  // ── Crear grupo ──────────────────────────────────────────────────────────
+
+  Future<void> _createGroup() async {
+    final nameCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Nuevo grupo'),
+        content: TextField(
+          controller: nameCtrl,
+          textCapitalization: TextCapitalization.words,
+          maxLength: 40,
+          decoration: InputDecoration(
+            labelText: 'Nombre del grupo',
+            hintText: 'Ej: Exóticas, Acuáticas...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            counterText: '',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    if (_groups.contains(name)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('El grupo "$name" ya existe')),
+        );
+      }
+      return;
+    }
+    try {
+      await _repo.createGroup(name);
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al crear el grupo')),
+        );
+      }
+    }
+  }
+
   // ── Eliminar ──────────────────────────────────────────────────────────────
 
   Future<void> _confirmDelete(Map<String, dynamic> cat) async {
@@ -450,7 +504,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                             const Text('Categorías',
                                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                             const Spacer(),
-                            // Contador
+                            // Contador total
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
@@ -458,9 +512,39 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                '${visibleCats.length} flores',
+                                '${_categories.length} total',
                                 style: const TextStyle(
                                   fontSize: 12, color: Color(0xFF4F46E5), fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Botón nuevo grupo
+                            Tooltip(
+                              message: 'Nuevo grupo',
+                              child: InkWell(
+                                onTap: _createGroup,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0FDF4),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                        color: const Color(0xFF065F46).withValues(alpha: 0.3)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_rounded, size: 14, color: Color(0xFF065F46)),
+                                      SizedBox(width: 3),
+                                      Text('Grupo',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF065F46),
+                                              fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ],
