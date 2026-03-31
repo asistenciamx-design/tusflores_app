@@ -181,15 +181,23 @@ class _SlugEditorScreenState extends State<SlugEditorScreen> {
       }
     } catch (e) {
       final msg = e.toString();
-      if (msg.contains('uq_slug_per_country')) {
-        _showSnack('Este slug ya está en uso', isError: true);
-        setState(() {
-          _isAvailable = false;
-          _errorMsg = 'Este slug ya está en uso';
-        });
-      } else {
-        _showSnack('Error al guardar: $msg', isError: true);
+      String userMsg = 'Error al guardar';
+      if (msg.contains('uq_slug_per_country') || msg.contains('23505')) {
+        userMsg = 'Este slug ya esta en uso. Intenta con otro.';
+      } else if (msg.contains('slug_reserved')) {
+        userMsg = 'Este nombre no esta disponible';
+      } else if (msg.contains('slug_blocked_suffix')) {
+        userMsg = 'No se permiten nombres con ese sufijo';
+      } else if (msg.contains('slug_protected_prefix')) {
+        userMsg = 'Este nombre esta protegido';
+      } else if (msg.contains('slug_invalid_format') || msg.contains('slug_consecutive_hyphens')) {
+        userMsg = 'Formato de slug invalido';
       }
+      _showSnack(userMsg, isError: true);
+      setState(() {
+        _isAvailable = false;
+        _errorMsg = userMsg;
+      });
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

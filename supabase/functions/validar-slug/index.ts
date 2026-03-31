@@ -7,28 +7,54 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
+const SLUG_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/
+const VALID_COUNTRIES = new Set(['mx', 'co', 'ar'])
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders })
   }
 
+  const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' }
+
   try {
     const url = new URL(req.url)
-    const pais = url.searchParams.get('pais')
-    const slug = url.searchParams.get('slug')
+    const rawPais = (url.searchParams.get('pais') ?? '').toLowerCase().trim()
+    const rawSlug = (url.searchParams.get('slug') ?? '').toLowerCase().trim()
 
-    if (!pais || !slug) {
+    if (!rawPais || !rawSlug) {
       return new Response(
-        JSON.stringify({ error: 'Parámetros pais y slug son requeridos' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ error: 'Parametros pais y slug son requeridos' }),
+        { status: 400, headers: jsonHeaders },
       )
     }
 
-    const validCountries = ['mx', 'co', 'ar']
-    if (!validCountries.includes(pais.toLowerCase())) {
+    if (!VALID_COUNTRIES.has(rawPais)) {
       return new Response(
-        JSON.stringify({ error: 'País no válido', valid: validCountries }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ error: 'Pais no valido' }),
+        { status: 400, headers: jsonHeaders },
+      )
+    }
+
+    // Validar formato del slug en servidor (no confiar solo en el cliente)
+    if (rawSlug.length < 3 || rawSlug.length > 60) {
+      return new Response(
+        JSON.stringify({ error: 'Slug debe tener entre 3 y 60 caracteres' }),
+        { status: 400, headers: jsonHeaders },
+      )
+    }
+
+    if (!SLUG_REGEX.test(rawSlug)) {
+      return new Response(
+        JSON.stringify({ error: 'Formato de slug invalido' }),
+        { status: 400, headers: jsonHeaders },
+      )
+    }
+
+    if (rawSlug.includes('--')) {
+      return new Response(
+        JSON.stringify({ error: 'No se permiten guiones consecutivos' }),
+        { status: 400, headers: jsonHeaders },
       )
     }
 
@@ -39,9 +65,9 @@ serve(async (req: Request) => {
 
     const { data, error } = await supabase
       .from('slugs_registry')
-      .select('entity_type, entity_id')
-      .eq('pais', pais.toLowerCase())
-      .eq('slug', slug.toLowerCase())
+      .select('entity_type')
+      .eq('pais', rawPais)
+      .eq('slug', rawSlug)
       .maybeSingle()
 
     if (error) throw error
@@ -49,22 +75,22 @@ serve(async (req: Request) => {
     if (!data) {
       return new Response(
         JSON.stringify({ found: false }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 404, headers: jsonHeaders },
       )
     }
 
+    // Solo retornar tipo de entidad, NO el entity_id (evitar enumeración de UUIDs)
     return new Response(
       JSON.stringify({
         found: true,
         entity_type: data.entity_type,
-        entity_id: data.entity_id,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 200, headers: jsonHeaders },
     )
-  } catch (err) {
+  } catch (_err) {
     return new Response(
       JSON.stringify({ error: 'Error interno del servidor' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 500, headers: jsonHeaders },
     )
   }
 })
