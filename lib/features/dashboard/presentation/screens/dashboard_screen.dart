@@ -401,10 +401,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                    final catalogName = (settings?.rawData?['catalog_shop_name'] as String?)?.trim() ?? '';
                    final displayName = catalogName.isNotEmpty ? catalogName : _shopName;
 
-                   final slug = (profile?['shop_name'] as String?)?.trim() ?? '';
-                   final storeUrl = slug.isNotEmpty
-                       ? 'https://www.tusflores.app/mx/$slug'
-                       : 'https://www.tusflores.app';
+                   // Buscar slug registrado en slugs_registry
+                   String storeUrl = 'https://www.tusflores.app';
+                   try {
+                     final slugRow = await Supabase.instance.client
+                         .from('slugs_registry')
+                         .select('slug, pais')
+                         .eq('entity_id', userId)
+                         .maybeSingle();
+                     if (slugRow != null) {
+                       final s = slugRow['slug'] as String;
+                       final p = slugRow['pais'] as String;
+                       storeUrl = 'https://www.tusflores.app/$p/$s';
+                     }
+                   } catch (_) {}
 
                    final customMsg = (settings?.catalogMessage as String?)?.trim() ?? '';
 

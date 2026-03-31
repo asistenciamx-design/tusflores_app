@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/main/presentation/screens/main_layout.dart';
-import '../../features/auth/domain/repositories/profile_repository.dart';
 import '../../features/admin/presentation/screens/admin_layout.dart';
 
 import '../../features/auth/presentation/screens/create_account_screen.dart';
@@ -97,12 +96,14 @@ final appRouter = GoRouter(
       builder: (context, state) => const TermsScreen(),
     ),
     // ── Ruta pública de la tienda ──────────────────────────────────────────
-    // Visitantes acceden por: tusflores.app/mx/{slug}
+    // Visitantes acceden por: tusflores.app/{pais}/{slug}
+    // Países soportados: mx, co, ar
     GoRoute(
-      path: '/mx/:slug',
+      path: '/:pais/:slug',
       builder: (context, state) {
+        final pais = state.pathParameters['pais'] ?? '';
         final slug = state.pathParameters['slug'] ?? '';
-        return _PublicStoreLoader(slug: slug);
+        return _PublicStoreLoader(pais: pais, slug: slug);
       },
     ),
     // ── Rutas del cliente (con barra de navegación inferior) ───────────────
@@ -202,22 +203,38 @@ final appRouter = GoRouter(
 
 // ── Widget auxiliar: resuelve el slug y carga la tienda pública ────────────
 class _PublicStoreLoader extends StatefulWidget {
+  final String pais;
   final String slug;
-  const _PublicStoreLoader({required this.slug});
+  const _PublicStoreLoader({required this.pais, required this.slug});
 
   @override
   State<_PublicStoreLoader> createState() => _PublicStoreLoaderState();
 }
 
-class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
+class _PublicStoreLoaderState extends State<_PublicStoreLoader>
+    with SingleTickerProviderStateMixin {
   String? _shopId;
   String? _shopName;
   bool _notFound = false;
 
+  late final AnimationController _shimmerCtrl;
+
+  static const _validCountries = {'mx', 'co', 'ar'};
+
   @override
   void initState() {
     super.initState();
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
     _resolveSlug();
+  }
+
+  @override
+  void dispose() {
+    _shimmerCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _updateSeo(String? shopId, String shopName) async {
@@ -239,28 +256,61 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
   }
 
   Future<void> _resolveSlug() async {
+    final pais = widget.pais.toLowerCase().trim();
+    final slug = Uri.decodeComponent(widget.slug).toLowerCase().trim();
+
+    // Validar país
+    if (!_validCountries.contains(pais)) {
+      if (mounted) setState(() => _notFound = true);
+      return;
+    }
+
     try {
-      final decodedSlug = Uri.decodeComponent(widget.slug).toLowerCase().trim();
+      // 1. Buscar en slugs_registry (nuevo sistema)
+      final registryMatch = await Supabase.instance.client
+          .from('slugs_registry')
+          .select('entity_type, entity_id')
+          .eq('pais', pais)
+          .eq('slug', slug)
+          .maybeSingle();
 
-      // Normalize matches DB generated column: lower(regexp_replace(shop_name, '[^a-zA-Z0-9]', '', 'g'))
-      // Works for both hyphenated URLs (/mx/flores-del-campo) and stripped (/mx/floresdelcampo)
-      final normalizedSlug = decodedSlug.replaceAll(RegExp(r'[^a-z0-9]'), '');
+      if (!mounted) return;
 
-      final match = await Supabase.instance.client
+      if (registryMatch != null) {
+        final entityId = registryMatch['entity_id'] as String;
+        // Obtener nombre de la tienda del perfil
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('shop_name')
+            .eq('id', entityId)
+            .maybeSingle();
+
+        if (!mounted) return;
+        final resolvedName = (profile?['shop_name'] ?? '') as String;
+        setState(() {
+          _shopId = entityId;
+          _shopName = resolvedName;
+        });
+        _updateSeo(entityId, resolvedName);
+        return;
+      }
+
+      // 2. Fallback: buscar por slug generado del shop_name (compatibilidad)
+      final normalizedSlug = slug.replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final legacyMatch = await Supabase.instance.client
           .from('profiles')
           .select('id, shop_name')
           .eq('slug', normalizedSlug)
           .maybeSingle();
 
-
       if (!mounted) return;
-      if (match != null) {
-        final resolvedShopName = (match['shop_name'] ?? '') as String;
+      if (legacyMatch != null) {
+        final resolvedShopName = (legacyMatch['shop_name'] ?? '') as String;
         setState(() {
-          _shopId = match['id'] as String?;
+          _shopId = legacyMatch['id'] as String?;
           _shopName = resolvedShopName;
         });
-        _updateSeo(match['id'] as String?, resolvedShopName);
+        _updateSeo(legacyMatch['id'] as String?, resolvedShopName);
       } else {
         setState(() => _notFound = true);
       }
@@ -271,41 +321,152 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader> {
 
   @override
   Widget build(BuildContext context) {
-    if (_notFound) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.local_florist_outlined, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text(
-                  'Florería no encontrada',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    if (_notFound) return const _NotFoundScreen();
+
+    if (_shopId == null && _shopName == null) {
+      return _SkeletonLoading(animation: _shimmerCtrl);
+    }
+
+    return PublicCustomerMainLayout(shopId: _shopId, shopName: _shopName);
+  }
+}
+
+// ── Pantalla 404 ──────────────────────────────────────────────────────────────
+class _NotFoundScreen extends StatelessWidget {
+  const _NotFoundScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Verifica que el enlace sea correcto.',
-                  style: TextStyle(color: Colors.grey),
-                  textAlign: TextAlign.center,
+                child: Icon(Icons.storefront_outlined,
+                    size: 48, color: Colors.grey.shade400),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Pagina no encontrada',
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'El enlace que seguiste no existe o ya no esta disponible.\nVerifica que la URL sea correcta.',
+                style: TextStyle(
+                    color: Colors.grey.shade600, fontSize: 15, height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              TextButton.icon(
+                onPressed: () {
+                  // Go to home / landing
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text('Volver'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF7C3AED),
+                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-    }
-    
-    // Si todavía estamos intentando cargar (estado inicial)
-    if (_shopId == null && _shopName == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    
-    return PublicCustomerMainLayout(shopId: _shopId, shopName: _shopName);
+      ),
+    );
+  }
+}
+
+// ── Skeleton loading mientras se resuelve el slug ─────────────────────────────
+class _SkeletonLoading extends StatefulWidget {
+  final AnimationController animation;
+  const _SkeletonLoading({required this.animation});
+
+  @override
+  State<_SkeletonLoading> createState() => _SkeletonLoadingState();
+}
+
+class _SkeletonLoadingState extends State<_SkeletonLoading> {
+  @override
+  void initState() {
+    super.initState();
+    widget.animation.addListener(_tick);
+  }
+
+  @override
+  void dispose() {
+    widget.animation.removeListener(_tick);
+    super.dispose();
+  }
+
+  void _tick() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final shimmerColor = ColorTween(
+      begin: Colors.grey.shade200,
+      end: Colors.grey.shade100,
+    ).evaluate(widget.animation)!;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: shimmerColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Container(
+                  width: 180,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: shimmerColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              for (var i = 0; i < 3; i++) ...[
+                Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: shimmerColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

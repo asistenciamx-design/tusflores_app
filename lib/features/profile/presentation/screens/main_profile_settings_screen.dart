@@ -11,6 +11,7 @@ import 'profile_branch_edit_screen.dart'; // To navigate to "Sucursal"
 import 'payment_methods_screen.dart'; // To navigate to "Métodos de Pago"
 import 'profile_faq_edit_screen.dart'; // To navigate to "Preguntas Frecuentes"
 import 'shop_config_screen.dart'; // To navigate to "Configuración"
+import 'slug_editor_screen.dart'; // To navigate to "Tu URL"
 import '../../../reparto/presentation/screens/reparto_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,6 +34,8 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
   int _orderCount = 0;
   double _rating = 0.0;
   String? _logoUrl;
+  String? _slug;
+  String _slugPais = 'mx';
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -56,7 +59,20 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
         final shopId = user.id;
         final orders = await _orderRepo.getOrders(shopId);
         _orderCount = orders.length;
-        _rating = 0.0; // To be implemented with real reviews system, default to 0.0
+        _rating = 0.0;
+
+        // Cargar slug registrado
+        try {
+          final slugRow = await Supabase.instance.client
+              .from('slugs_registry')
+              .select('slug, pais')
+              .eq('entity_id', shopId)
+              .maybeSingle();
+          if (slugRow != null) {
+            _slug = slugRow['slug'] as String?;
+            _slugPais = (slugRow['pais'] as String?) ?? 'mx';
+          }
+        } catch (_) {}
       }
     } catch (e) {
     } finally {
@@ -112,8 +128,9 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
       ));
     }
 
-    final linkEnd = _shopName.isEmpty ? 'tu-floreria' : _shopName.toLowerCase().replaceAll(' ', '-');
-    final storeLink = 'www.tusflores.app/mx/$linkEnd';
+    final storeLink = _slug != null
+        ? 'www.tusflores.app/$_slugPais/$_slug'
+        : null;
 
     return Container(
       padding: const EdgeInsets.only(top: 24, bottom: 24, left: 24, right: 24),
@@ -210,119 +227,131 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppTheme.backgroundLight,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isMobile = constraints.maxWidth < 400;
-                if (isMobile) {
-                  // Mobile: botones centrados debajo de la URL
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        storeLink,
-                        style: const TextStyle(color: AppTheme.mutedLight, fontSize: 13),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary, size: 18),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: storeLink));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Enlace copiado al portapapeles'),
-                                  backgroundColor: Colors.green,
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary, size: 18),
-                            onPressed: () {
-                              Share.share('Visita nuestra florería en línea: $storeLink');
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: Icon(Icons.open_in_new, color: Theme.of(context).colorScheme.primary, size: 18),
-                            onPressed: () {
-                              context.push('/shop/catalog');
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                } else {
-                  // Desktop: botones al lado de la URL
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        storeLink,
-                        style: const TextStyle(color: AppTheme.mutedLight, fontSize: 13),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(width: 1, height: 20, color: Colors.grey.withValues(alpha: 0.3)),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary, size: 18),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: storeLink));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Enlace copiado al portapapeles'),
-                              backgroundColor: Colors.green,
-                              duration: Duration(seconds: 2),
+          if (storeLink != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundLight,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 400;
+                  if (isMobile) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          storeLink,
+                          style: const TextStyle(color: AppTheme.mutedLight, fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary, size: 18),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: storeLink));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Enlace copiado al portapapeles'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary, size: 18),
-                        onPressed: () {
-                          Share.share('Visita nuestra florería en línea: $storeLink');
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(Icons.open_in_new, color: Theme.of(context).colorScheme.primary, size: 18),
-                        onPressed: () {
-                          context.push('/shop/catalog');
-                        },
-                      ),
-                    ],
-                  );
-                }
+                            const SizedBox(width: 8),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary, size: 18),
+                              onPressed: () {
+                                Share.share('Visita nuestra floreria: $storeLink');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: Icon(Icons.open_in_new, color: Theme.of(context).colorScheme.primary, size: 18),
+                              onPressed: () => context.push('/shop/catalog'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(storeLink, style: const TextStyle(color: AppTheme.mutedLight, fontSize: 13)),
+                        const SizedBox(width: 12),
+                        Container(width: 1, height: 20, color: Colors.grey.withValues(alpha: 0.3)),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary, size: 18),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: storeLink));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Enlace copiado al portapapeles'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(Icons.share, color: Theme.of(context).colorScheme.primary, size: 18),
+                          onPressed: () {
+                            Share.share('Visita nuestra floreria: $storeLink');
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(Icons.open_in_new, color: Theme.of(context).colorScheme.primary, size: 18),
+                          onPressed: () => context.push('/shop/catalog'),
+                        ),
+                      ],
+                    );
+                  }
+                },
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SlugEditorScreen()))
+                    .then((_) => _loadProfile());
               },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.link, color: AppTheme.primary, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Configura tu URL personalizada',
+                      style: TextStyle(color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.chevron_right, color: AppTheme.primary, size: 18),
+                  ],
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -436,6 +465,19 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
             ),
             child: Column(
               children: [
+                _MenuItem(
+                  icon: Icons.link,
+                  iconColor: Colors.blue,
+                  iconBg: Colors.blue.withValues(alpha: 0.1),
+                  title: 'Tu URL',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SlugEditorScreen()),
+                    ).then((_) => _loadProfile());
+                  },
+                ),
+                _buildDivider(),
                 _MenuItem(
                   icon: Icons.contact_mail,
                   iconColor: Colors.purple,
