@@ -511,7 +511,10 @@ class OrdersScreenState extends State<OrdersScreen> {
               o.status == OrderStatus.inTransit)
           .toList();
     }
-    return _applyDateFilter(byStatus);
+    final filtered = _applyDateFilter(byStatus);
+    // Most recent first regardless of realtime insert order
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return filtered;
   }
 
   Future<void> _selectDateRange() async {
@@ -843,13 +846,20 @@ class OrdersScreenState extends State<OrdersScreen> {
                       ),
                     ],
                     ..._buildUrgencyBadge(order),
-                    Text(
-                      'FOLIO ${order.folio}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFBDBDBD),
-                        letterSpacing: 0.5,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C3AED),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'FOLIO ${order.folio}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.4,
+                        ),
                       ),
                     ),
                   ],
@@ -964,7 +974,11 @@ class OrdersScreenState extends State<OrdersScreen> {
                       ),
                       Text(
                         'Entrega: ${order.deliveryInfo}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF9E9E9E),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),

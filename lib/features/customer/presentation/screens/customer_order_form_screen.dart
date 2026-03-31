@@ -496,7 +496,7 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           quantity: 1, // Store as 1 bundle
                           price: subtotal,
                           status: OrderStatus.waiting,
-                          createdAt: DateTime.now(),
+                          createdAt: DateTime.now().toUtc(),
                           saleDate: _parseDeliveryDate(_selectedDate),
                           deliveryInfo: '$_selectedDate, $_selectedTime',
                           isPaid: false,
@@ -519,6 +519,9 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
                           buyerName: _buyerNameCtrl.text,
                           buyerWhatsapp: _buyerWhatsappCtrl.text,
                           buyerEmail: _buyerEmailCtrl.text,
+                          productImageUrl: widget.product?.imageUrls.isNotEmpty == true
+                              ? widget.product!.imageUrls.first
+                              : null,
                         );
 
                         _clearDraft();

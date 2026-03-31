@@ -394,7 +394,7 @@ class _CustomerOrderSummaryScreenState
               ),
               const SizedBox(height: 28),
 
-              // WhatsApp button (primary)
+              // WhatsApp button (primary) — shown when shop has a phone number
               if (whatsappUrl != null)
                 SizedBox(
                   width: double.infinity,
@@ -421,6 +421,16 @@ class _CustomerOrderSummaryScreenState
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
+                  ),
+                ),
+
+              if (whatsappUrl == null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Contacta a la florería directamente para coordinar tu pedido.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    textAlign: TextAlign.center,
                   ),
                 ),
 
