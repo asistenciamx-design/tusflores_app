@@ -177,6 +177,9 @@ class OrderModel {
       customerRating: json['customer_rating'] as int?,
       repartidorId: json['repartidor_id'] as String?,
       deliveryAmount: (json['delivery_amount'] as num?)?.toDouble(),
+      repartidorName: json['repartidores'] != null
+          ? (json['repartidores'] as Map<String, dynamic>)['name'] as String?
+          : null,
       // Map UI colors for displaying correctly in the app
       iconBgColor: const Color(0xFFF5F5F5),
       iconColor: Colors.black87,

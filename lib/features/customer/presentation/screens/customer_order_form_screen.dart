@@ -821,17 +821,59 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
               ],
             ),
           ),
-          // Remove button
-          GestureDetector(
-            onTap: () => setState(() => _giftProducts.remove(gift)),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                shape: BoxShape.circle,
+          // Quantity controls + remove
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Quantity stepper
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        if (qty > 1) {
+                          gift['quantity'] = qty - 1;
+                        } else {
+                          _giftProducts.remove(gift);
+                        }
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(
+                          qty <= 1 ? Icons.delete_outline : Icons.remove,
+                          size: 16,
+                          color: qty <= 1 ? Colors.redAccent : Colors.black54,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '$qty',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        gift['quantity'] = qty + 1;
+                      }),
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(Icons.add, size: 16, color: Colors.black54),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: const Icon(Icons.close, size: 16, color: Colors.redAccent),
-            ),
+            ],
           ),
         ],
       ),

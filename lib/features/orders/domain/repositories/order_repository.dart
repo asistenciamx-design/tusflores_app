@@ -20,7 +20,7 @@ class OrderRepository {
     try {
       final response = await _supabase
           .from('orders')
-          .select()
+          .select('*, repartidores(name)')
           .eq('shop_id', shopId)
           .order('created_at', ascending: false);
       
