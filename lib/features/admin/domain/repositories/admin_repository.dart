@@ -150,6 +150,76 @@ class AdminRepository {
     await _db.from('categories').delete().eq('id', id);
   }
 
+  // ── Sub-categories (variantes) CRUD ─────────────────────────────────────────
+
+  /// Obtiene todas las sub-categorías de una flor principal.
+  Future<List<Map<String, dynamic>>> getSubCategories(String parentId) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    final rows = await _db
+        .from('sub_categories')
+        .select()
+        .eq('parent_id', parentId)
+        .order('name');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  /// Conteo de sub-categorías por parent_id (para badges en la lista).
+  Future<Map<String, int>> getSubCategoryCounts() async {
+    final rows = await _db
+        .from('sub_categories')
+        .select('parent_id');
+    final counts = <String, int>{};
+    for (final r in rows) {
+      final pid = r['parent_id'] as String?;
+      if (pid != null) counts[pid] = (counts[pid] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  Future<void> createSubCategory({
+    required String parentId,
+    required String name,
+    String? color,
+    String? imageUrl,
+  }) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_categories').insert({
+      'parent_id': parentId,
+      'name': name,
+      if (color != null && color.isNotEmpty) 'color': color,
+      if (imageUrl != null) 'image_url': imageUrl,
+    });
+  }
+
+  Future<void> updateSubCategory({
+    required String id,
+    required String name,
+    String? color,
+    bool clearColor = false,
+    String? imageUrl,
+    bool clearImage = false,
+  }) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_categories').update({
+      'name': name,
+      if (clearColor) 'color': null else if (color != null && color.isNotEmpty) 'color': color,
+      if (clearImage) 'image_url': null else if (imageUrl != null) 'image_url': imageUrl,
+    }).eq('id', id);
+  }
+
+  Future<void> deleteSubCategory(String id) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_categories').delete().eq('id', id);
+  }
+
+  Future<void> toggleSubCategoryActive(String id, {required bool isActive}) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db
+        .from('sub_categories')
+        .update({'is_active': isActive})
+        .eq('id', id);
+  }
+
   // ── Category image upload ───────────────────────────────────────────────────
 
   Future<String> uploadCategoryImage(XFile file) async {

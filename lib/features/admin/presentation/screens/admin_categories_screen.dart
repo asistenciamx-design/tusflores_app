@@ -21,6 +21,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _categories = [];
   List<String> _groups = [];
+  Map<String, int> _subCounts = {};
   String _searchQuery = '';
   String? _selectedGroup;
   final _searchCtrl = TextEditingController();
@@ -48,11 +49,13 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       final results = await Future.wait([
         _repo.getGroups(),
         _repo.getCategories(),
+        _repo.getSubCategoryCounts(),
       ]);
       if (!mounted) return;
       setState(() {
         _groups = results[0] as List<String>;
         _categories = results[1] as List<Map<String, dynamic>>;
+        _subCounts = results[2] as Map<String, int>;
         // Auto-seleccionar primer grupo oficial si ninguno elegido
         _selectedGroup ??= _kOfficialGroups.firstWhere(
           (g) => (_groups).contains(g),
@@ -202,6 +205,28 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       await _repo.deleteCategory(cat['id'] as String);
       _load();
     }
+  }
+
+  // ── Variantes (sub-flores) modal ───────────────────────────────────────────
+
+  Future<void> _openVariantsSheet(Map<String, dynamic> parentCat) async {
+    final parentId = parentCat['id'] as String;
+    final parentName = parentCat['name'] as String? ?? '';
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _VariantsModal(
+        repo: _repo,
+        parentId: parentId,
+        parentName: parentName,
+        colorFor: _colorFor,
+        parentGroup: parentCat['group_name'] as String? ?? '',
+      ),
+    );
+    // Recargar conteos al cerrar
+    _load();
   }
 
   // ── Add / Edit sheet ──────────────────────────────────────────────────────
@@ -721,6 +746,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               final cat = visibleCats[i];
                               final group = cat['group_name'] as String? ?? '';
                               final c = _colorFor(group);
+                              final catId = cat['id'] as String? ?? '';
                               return _FlowerRow(
                                 cat: cat,
                                 colors: c,
@@ -728,6 +754,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 onEdit: () => _openSheet(existing: cat),
                                 onDelete: () => _confirmDelete(cat),
                                 onToggleActive: () => _toggleActive(cat),
+                                onVariants: () => _openVariantsSheet(cat),
+                                subCount: _subCounts[catId] ?? 0,
                                 onGroupJump: isSearching
                                     ? () {
                                         final g = cat['group_name'] as String?;
@@ -763,6 +791,8 @@ class _FlowerRow extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggleActive;
+  final VoidCallback onVariants;
+  final int subCount;
   final VoidCallback? onGroupJump;
 
   const _FlowerRow({
@@ -772,6 +802,8 @@ class _FlowerRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleActive,
+    required this.onVariants,
+    this.subCount = 0,
     this.onGroupJump,
   });
 
@@ -888,6 +920,39 @@ class _FlowerRow extends StatelessWidget {
             ),
 
             // Acciones
+            Stack(
+              children: [
+                IconButton(
+                  onPressed: onVariants,
+                  icon: const Icon(Icons.account_tree_outlined, size: 18),
+                  color: subCount > 0
+                      ? const Color(0xFF4F46E5)
+                      : Colors.grey.shade400,
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Variantes',
+                ),
+                if (subCount > 0)
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF4F46E5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$subCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             IconButton(
               onPressed: onToggleActive,
               icon: Icon(
@@ -917,6 +982,481 @@ class _FlowerRow extends StatelessWidget {
           ],
         ),
       ),
+      ),
+    );
+  }
+}
+
+// ── Modal de variantes (sub-flores) ──────────────────────────────────────────
+
+class _VariantsModal extends StatefulWidget {
+  final AdminRepository repo;
+  final String parentId;
+  final String parentName;
+  final String parentGroup;
+  final ({Color bg, Color text, Color pill}) Function(String) colorFor;
+
+  const _VariantsModal({
+    required this.repo,
+    required this.parentId,
+    required this.parentName,
+    required this.parentGroup,
+    required this.colorFor,
+  });
+
+  @override
+  State<_VariantsModal> createState() => _VariantsModalState();
+}
+
+class _VariantsModalState extends State<_VariantsModal> {
+  List<Map<String, dynamic>> _variants = [];
+  bool _isLoading = true;
+  bool _showForm = false;
+  bool _isSaving = false;
+  Map<String, dynamic>? _editing;
+
+  final _nameCtrl = TextEditingController();
+  final _colorCtrl = TextEditingController();
+  XFile? _pickedFile;
+  String? _existingImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVariants();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _colorCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadVariants() async {
+    setState(() => _isLoading = true);
+    try {
+      final rows = await widget.repo.getSubCategories(widget.parentId);
+      if (mounted) setState(() { _variants = rows; _isLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _startAdd() {
+    setState(() {
+      _editing = null;
+      _nameCtrl.clear();
+      _colorCtrl.clear();
+      _pickedFile = null;
+      _existingImageUrl = null;
+      _showForm = true;
+    });
+  }
+
+  void _startEdit(Map<String, dynamic> variant) {
+    setState(() {
+      _editing = variant;
+      _nameCtrl.text = variant['name'] as String? ?? '';
+      _colorCtrl.text = variant['color'] as String? ?? '';
+      _existingImageUrl = variant['image_url'] as String?;
+      _pickedFile = null;
+      _showForm = true;
+    });
+  }
+
+  void _cancelForm() {
+    setState(() => _showForm = false);
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (file != null) setState(() => _pickedFile = file);
+  }
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _isSaving = true);
+    try {
+      String? imageUrl = _existingImageUrl;
+      if (_pickedFile != null) {
+        imageUrl = await widget.repo.uploadCategoryImage(_pickedFile!);
+      }
+
+      if (_editing != null) {
+        await widget.repo.updateSubCategory(
+          id: _editing!['id'] as String,
+          name: name,
+          color: _colorCtrl.text.trim(),
+          clearColor: _colorCtrl.text.trim().isEmpty,
+          imageUrl: imageUrl,
+          clearImage: _existingImageUrl == null && _pickedFile == null,
+        );
+      } else {
+        await widget.repo.createSubCategory(
+          parentId: widget.parentId,
+          name: name,
+          color: _colorCtrl.text.trim().isEmpty ? null : _colorCtrl.text.trim(),
+          imageUrl: imageUrl,
+        );
+      }
+
+      setState(() { _showForm = false; _isSaving = false; });
+      _loadVariants();
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteVariant(Map<String, dynamic> variant) async {
+    final name = variant['name'] as String? ?? '';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Eliminar variante'),
+        content: Text('¿Eliminar "$name"? Esta acción es permanente.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await widget.repo.deleteSubCategory(variant['id'] as String);
+      _loadVariants();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.colorFor(widget.parentGroup);
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: c.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.account_tree_outlined, color: c.text, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Variantes de ${widget.parentName}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '${_variants.length} variante${_variants.length == 1 ? '' : 's'}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!_showForm)
+                  FilledButton.icon(
+                    onPressed: _startAdd,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Agregar', style: TextStyle(fontSize: 13)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+
+          // Content
+          Flexible(
+            child: _isLoading
+                ? const Center(child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: CircularProgressIndicator(),
+                  ))
+                : SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                        24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Formulario inline
+                        if (_showForm) ...[
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _editing != null ? 'Editar variante' : 'Nueva variante',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Imagen
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: _isSaving ? null : _pickImage,
+                                      child: Container(
+                                        width: 56, height: 56,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: _pickedFile != null || _existingImageUrl != null
+                                                ? const Color(0xFF4F46E5).withValues(alpha: 0.4)
+                                                : Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: _pickedFile != null
+                                            ? FutureBuilder<dynamic>(
+                                                future: _pickedFile!.readAsBytes(),
+                                                builder: (_, snap) {
+                                                  if (!snap.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                                                  return Image.memory(snap.data!, fit: BoxFit.cover);
+                                                },
+                                              )
+                                            : _existingImageUrl != null
+                                                ? Image.network(_existingImageUrl!, fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 20))
+                                                : Icon(Icons.add_photo_alternate_outlined, size: 20, color: Colors.grey.shade400),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          // Nombre
+                                          TextField(
+                                            controller: _nameCtrl,
+                                            textCapitalization: TextCapitalization.words,
+                                            maxLength: 60,
+                                            decoration: InputDecoration(
+                                              labelText: 'Nombre',
+                                              hintText: 'Ej: ${widget.parentName} Rojo',
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                              counterText: '',
+                                              isDense: true,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          // Color
+                                          TextField(
+                                            controller: _colorCtrl,
+                                            textCapitalization: TextCapitalization.words,
+                                            maxLength: 30,
+                                            decoration: InputDecoration(
+                                              labelText: 'Color (opcional)',
+                                              hintText: 'Ej: Rojo, Amarillo...',
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                              counterText: '',
+                                              isDense: true,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Botones
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton(
+                                      onPressed: _isSaving ? null : _cancelForm,
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    FilledButton(
+                                      onPressed: _isSaving ? null : _save,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: const Color(0xFF4F46E5),
+                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                      ),
+                                      child: _isSaving
+                                          ? const SizedBox(
+                                              height: 16, width: 16,
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                            )
+                                          : Text(_editing != null ? 'Actualizar' : 'Guardar',
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Lista de variantes
+                        if (_variants.isEmpty && !_showForm)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.account_tree_outlined, size: 40, color: Colors.grey.shade300),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Sin variantes todavía',
+                                    style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Agrega colores o tipos específicos',
+                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        ..._variants.map((v) {
+                          final vName = v['name'] as String? ?? '';
+                          final vColor = v['color'] as String?;
+                          final vSku = v['sku'] as String?;
+                          final vImage = v['image_url'] as String?;
+                          final vActive = v['is_active'] as bool? ?? true;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: vActive ? Colors.white : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: vActive
+                                    ? Colors.black.withValues(alpha: 0.06)
+                                    : Colors.orange.shade200,
+                              ),
+                            ),
+                            child: Opacity(
+                              opacity: vActive ? 1.0 : 0.55,
+                              child: Row(
+                                children: [
+                                  // Thumbnail
+                                  Container(
+                                    width: 40, height: 40,
+                                    margin: const EdgeInsets.only(right: 10),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: c.bg,
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: vImage != null
+                                        ? Image.network(vImage, fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Icon(Icons.local_florist_outlined, size: 18, color: c.text.withValues(alpha: 0.5)))
+                                        : Icon(Icons.local_florist_outlined, size: 18, color: c.text.withValues(alpha: 0.5)),
+                                  ),
+                                  // Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(vName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                        Row(
+                                          children: [
+                                            if (vSku != null)
+                                              Text(vSku, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.text.withValues(alpha: 0.6), letterSpacing: 0.8)),
+                                            if (vColor != null && vColor.isNotEmpty) ...[
+                                              if (vSku != null) const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: c.bg,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(vColor, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.text)),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Actions
+                                  IconButton(
+                                    onPressed: () => _startEdit(v),
+                                    icon: const Icon(Icons.edit_outlined, size: 16),
+                                    color: AppTheme.mutedLight,
+                                    visualDensity: VisualDensity.compact,
+                                    tooltip: 'Editar',
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _deleteVariant(v),
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                                    color: Colors.red.shade400,
+                                    visualDensity: VisualDensity.compact,
+                                    tooltip: 'Eliminar',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
