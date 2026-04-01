@@ -19,6 +19,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
   ShopSettingsModel? _settings;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isProveedor = false;
 
   @override
   void initState() {
@@ -39,13 +40,45 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
       return;
     }
     final settings = await _repo.getSettings(userId);
+    // Cargar is_proveedor del perfil
+    bool isProveedor = false;
+    try {
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('is_proveedor')
+          .eq('id', userId)
+          .maybeSingle();
+      isProveedor = profile?['is_proveedor'] as bool? ?? false;
+    } catch (_) {}
     if (mounted) {
       CurrencyCache.update(settings);
       setState(() {
         _settings = settings;
         _unavailableMsgController.text = settings?.unavailableMessage ?? '';
+        _isProveedor = isProveedor;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _toggleProveedor(bool value) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    setState(() => _isSaving = true);
+    try {
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'is_proveedor': value})
+          .eq('id', userId);
+      if (mounted) setState(() => _isProveedor = value);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al guardar. Intenta de nuevo.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -294,6 +327,21 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
                         subtitle: 'Al asignar un repartidor, el monto de envío de la zona se aplica automáticamente como su pago.',
                         value: _settings!.autoTransferShipping,
                         onChanged: (v) => _toggle('autoTransferShipping', v),
+                        enabled: !_isSaving,
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                    _SectionHeader(title: 'CUENTA'),
+                    const SizedBox(height: 12),
+                    _buildCard(children: [
+                      _ConfigTile(
+                        icon: Icons.local_shipping_rounded,
+                        iconColor: const Color(0xFF500088),
+                        iconBg: const Color(0xFF500088).withValues(alpha: 0.1),
+                        title: 'Modo proveedor',
+                        subtitle: 'Habilita el acceso al panel de proveedor desde tu cuenta de florería.',
+                        value: _isProveedor,
+                        onChanged: _isSaving ? (_) {} : _toggleProveedor,
                         enabled: !_isSaving,
                       ),
                     ]),

@@ -204,6 +204,8 @@ class _MainLayoutState extends State<MainLayout>
   }
 
   void _onNavTap(int index) {
+    // Si venía del tab Perfil, refrescar estado de proveedor
+    if (_currentIndex == 4 && index != 4) _loadProfile();
     setState(() => _currentIndex = index);
     if (index == 2) _dismissBanner();
   }
