@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/supabase_service.dart';
+import '../../../../core/utils/image_compressor.dart';
 
 class ProfileRepository {
   final SupabaseClient _client;
@@ -75,12 +76,23 @@ class ProfileRepository {
       if (user == null) return null;
 
       const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
-      final ext = file.name.split('.').last.toLowerCase();
-      if (!allowedExtensions.contains(ext)) {
-        throw Exception('Tipo de archivo no permitido: .$ext');
+      final origExt = file.name.split('.').last.toLowerCase();
+      if (!allowedExtensions.contains(origExt)) {
+        throw Exception('Tipo de archivo no permitido: .$origExt');
       }
 
-      final bytes = await file.readAsBytes();
+      // Comprimir y convertir a WebP (excepto .webp y .gif)
+      final Uint8List bytes;
+      final String ext;
+      if (origExt == 'gif') {
+        bytes = Uint8List.fromList(await file.readAsBytes());
+        ext = origExt;
+      } else {
+        final compressed = await ImageCompressor.compress(file);
+        bytes = compressed.bytes;
+        ext = compressed.ext;
+      }
+
       const maxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
       if (bytes.length > maxFileSizeBytes) {
         throw Exception('El archivo es demasiado grande. Máximo: 10 MB');
@@ -92,7 +104,7 @@ class ProfileRepository {
       final path = '${user.id}/$folder/$fileName';
 
       await _client.storage.from('shop_assets').uploadBinary(
-        path, 
+        path,
         bytes,
         fileOptions: FileOptions(contentType: 'image/$ext'),
       );

@@ -29,6 +29,7 @@ dependencies:
   
   # Images
   image_picker: ^1.2.1
+  flutter_image_compress: ^2.3.0
   
   # Deep links (WhatsApp)
   url_launcher: ^6.3.2

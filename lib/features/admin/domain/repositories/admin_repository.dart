@@ -1,5 +1,6 @@
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/utils/image_compressor.dart';
 
 class AdminRepository {
   final _db = Supabase.instance.client;
@@ -225,12 +226,15 @@ class AdminRepository {
   Future<String> uploadCategoryImage(XFile file) async {
     if (!await isSuperAdmin()) throw Exception('No autorizado');
     const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp'};
-    final ext = file.name.split('.').last.toLowerCase();
-    if (!allowedExtensions.contains(ext)) {
-      throw Exception('Tipo de archivo no permitido: .$ext');
+    final origExt = file.name.split('.').last.toLowerCase();
+    if (!allowedExtensions.contains(origExt)) {
+      throw Exception('Tipo de archivo no permitido: .$origExt');
     }
 
-    final bytes = await file.readAsBytes();
+    // Comprimir y convertir a WebP (excepto si ya es .webp)
+    final compressed = await ImageCompressor.compress(file);
+    final bytes = compressed.bytes;
+    final ext = compressed.ext;
 
     const maxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
     if (bytes.length > maxFileSizeBytes) {
