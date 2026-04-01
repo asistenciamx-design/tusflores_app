@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/main/presentation/screens/main_layout.dart';
 import '../../features/admin/presentation/screens/admin_layout.dart';
+import '../../features/proveedor/presentation/screens/proveedor_layout.dart';
 
 import '../../features/auth/presentation/screens/create_account_screen.dart';
 import '../../features/auth/presentation/screens/shop_name_claim_screen.dart';
@@ -37,7 +38,7 @@ final appRouter = GoRouter(
   redirect: (context, state) {
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final path = state.uri.path;
-    const protectedPaths = ['/', '/reviews/manage', '/admin'];
+    const protectedPaths = ['/', '/reviews/manage', '/admin', '/proveedor'];
     // Si ya está autenticado y va al login, redirigir al home
     if (isLoggedIn && path == '/login') return '/';
     if (protectedPaths.contains(path) && !isLoggedIn) return '/login';
@@ -85,6 +86,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/admin',
       builder: (context, state) => const AdminLayout(),
+    ),
+    GoRoute(
+      path: '/proveedor',
+      builder: (context, state) => const ProveedorLayout(),
     ),
     // ── Rutas legales (públicas, sin autenticación) ────────────────────────
     GoRoute(

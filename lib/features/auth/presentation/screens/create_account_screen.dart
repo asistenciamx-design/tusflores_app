@@ -11,11 +11,12 @@ class CreateAccountScreen extends StatefulWidget {
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  final _nameCtrl = TextEditingController(); // Represents Shop Name or Owner Name initially
+  final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscurePass = true;
   bool _isLoading = false;
+  String _accountType = 'shop_owner'; // 'shop_owner' o 'proveedor'
 
   @override
   void dispose() {
@@ -65,6 +66,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           await Supabase.instance.client.from('profiles').insert({
             'id': response.user!.id,
             'shop_name': name,
+            'role': _accountType,
           });
         } catch (dbError) {
           // Proceed anyway as they are signed up. They can update profile later.
@@ -130,18 +132,142 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               const Text('Crear Cuenta',
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
               const SizedBox(height: 8),
-              const Text('Crea tu cuenta para empezar a vender en línea.',
+              const Text('Selecciona tu tipo de cuenta para comenzar.',
                 style: TextStyle(fontSize: 14, color: AppTheme.mutedLight)),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
-              const Text('Nombre Completo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
+              // ── Selector de tipo ───────────────────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _accountType = 'shop_owner'),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: _accountType == 'shop_owner'
+                              ? AppTheme.primary.withValues(alpha: 0.1)
+                              : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _accountType == 'shop_owner'
+                                ? AppTheme.primary
+                                : Colors.grey.shade200,
+                            width: _accountType == 'shop_owner' ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.storefront_rounded,
+                              size: 28,
+                              color: _accountType == 'shop_owner'
+                                  ? AppTheme.primary
+                                  : Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Floreria',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: _accountType == 'shop_owner'
+                                    ? AppTheme.primary
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Vendo arreglos',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _accountType == 'shop_owner'
+                                    ? AppTheme.primary.withValues(alpha: 0.7)
+                                    : Colors.grey.shade400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _accountType = 'proveedor'),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: _accountType == 'proveedor'
+                              ? const Color(0xFF500088).withValues(alpha: 0.1)
+                              : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _accountType == 'proveedor'
+                                ? const Color(0xFF500088)
+                                : Colors.grey.shade200,
+                            width: _accountType == 'proveedor' ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.local_shipping_rounded,
+                              size: 28,
+                              color: _accountType == 'proveedor'
+                                  ? const Color(0xFF500088)
+                                  : Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Proveedor',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: _accountType == 'proveedor'
+                                    ? const Color(0xFF500088)
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Vendo al mayoreo',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _accountType == 'proveedor'
+                                    ? const Color(0xFF500088).withValues(alpha: 0.7)
+                                    : Colors.grey.shade400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              Text(
+                _accountType == 'shop_owner' ? 'Nombre de la Floreria' : 'Nombre del Negocio',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textLight),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: _nameCtrl,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
-                  hintText: 'Ej. Juan Pérez',
-                  prefixIcon: const Icon(Icons.person_outline, color: AppTheme.mutedLight),
+                  hintText: _accountType == 'shop_owner'
+                      ? 'Ej. Flores de Maria'
+                      : 'Ej. Maxiflores',
+                  prefixIcon: Icon(
+                    _accountType == 'shop_owner'
+                        ? Icons.storefront_outlined
+                        : Icons.local_shipping_outlined,
+                    color: AppTheme.mutedLight,
+                  ),
                   filled: true,
                   fillColor: Colors.grey[50],
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),

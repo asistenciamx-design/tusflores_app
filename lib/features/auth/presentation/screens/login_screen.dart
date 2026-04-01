@@ -52,7 +52,13 @@ class _LoginScreenState extends State<LoginScreen> {
               .maybeSingle();
           final role = profile?['role'] as String? ?? 'shop_owner';
           if (mounted) {
-            context.go(role == 'super_admin' ? '/admin' : '/');
+            if (role == 'super_admin') {
+              context.go('/admin');
+            } else if (role == 'proveedor') {
+              context.go('/proveedor');
+            } else {
+              context.go('/');
+            }
           }
         } catch (_) {
           if (mounted) context.go('/');
@@ -206,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
 
               // Header Formulario
-              const Text('Iniciar Sesión',
+              const Text('Iniciar Sesion',
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
               const SizedBox(height: 8),
               const Text('Ingresa tus credenciales para continuar.',
