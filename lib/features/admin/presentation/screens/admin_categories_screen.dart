@@ -1010,6 +1010,7 @@ class _VariantsModal extends StatefulWidget {
 
 class _VariantsModalState extends State<_VariantsModal> {
   List<Map<String, dynamic>> _variants = [];
+  Map<String, int> _toneCounts = {};
   bool _isLoading = true;
   bool _showForm = false;
   bool _isSaving = false;
@@ -1036,8 +1037,17 @@ class _VariantsModalState extends State<_VariantsModal> {
   Future<void> _loadVariants() async {
     setState(() => _isLoading = true);
     try {
-      final rows = await widget.repo.getSubCategories(widget.parentId);
-      if (mounted) setState(() { _variants = rows; _isLoading = false; });
+      final results = await Future.wait([
+        widget.repo.getSubCategories(widget.parentId),
+        widget.repo.getSubColorCounts(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _variants = results[0] as List<Map<String, dynamic>>;
+          _toneCounts = results[1] as Map<String, int>;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -1114,6 +1124,24 @@ class _VariantsModalState extends State<_VariantsModal> {
         );
       }
     }
+  }
+
+  Future<void> _openTones(Map<String, dynamic> variant) async {
+    final variantId = variant['id'] as String;
+    final variantName = variant['name'] as String? ?? '';
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SubColorsModal(
+        repo: widget.repo,
+        parentId: variantId,
+        parentName: variantName,
+        parentGroup: widget.parentGroup,
+        colorFor: widget.colorFor,
+      ),
+    );
+    _loadVariants();
   }
 
   Future<void> _deleteVariant(Map<String, dynamic> variant) async {
@@ -1433,6 +1461,36 @@ class _VariantsModalState extends State<_VariantsModal> {
                                     ),
                                   ),
                                   // Actions
+                                  Builder(builder: (_) {
+                                    final vId = v['id'] as String? ?? '';
+                                    final toneCount = _toneCounts[vId] ?? 0;
+                                    return Stack(
+                                      children: [
+                                        IconButton(
+                                          onPressed: () => _openTones(v),
+                                          icon: const Icon(Icons.account_tree_outlined, size: 16),
+                                          color: toneCount > 0
+                                              ? const Color(0xFF4F46E5)
+                                              : Colors.grey.shade400,
+                                          visualDensity: VisualDensity.compact,
+                                          tooltip: 'Tonos',
+                                        ),
+                                        if (toneCount > 0)
+                                          Positioned(
+                                            right: 4, top: 4,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(3),
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF4F46E5),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Text('$toneCount',
+                                                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  }),
                                   IconButton(
                                     onPressed: () => _startEdit(v),
                                     icon: const Icon(Icons.edit_outlined, size: 16),
@@ -1449,6 +1507,464 @@ class _VariantsModalState extends State<_VariantsModal> {
                                   ),
                                 ],
                               ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Modal de tonos (sub-colores) ─────────────────────────────────────────────
+
+class _SubColorsModal extends StatefulWidget {
+  final AdminRepository repo;
+  final String parentId;
+  final String parentName;
+  final String parentGroup;
+  final ({Color bg, Color text, Color pill}) Function(String) colorFor;
+
+  const _SubColorsModal({
+    required this.repo,
+    required this.parentId,
+    required this.parentName,
+    required this.parentGroup,
+    required this.colorFor,
+  });
+
+  @override
+  State<_SubColorsModal> createState() => _SubColorsModalState();
+}
+
+class _SubColorsModalState extends State<_SubColorsModal> {
+  List<Map<String, dynamic>> _tones = [];
+  bool _isLoading = true;
+  bool _showForm = false;
+  bool _isSaving = false;
+  Map<String, dynamic>? _editing;
+
+  final _nameCtrl = TextEditingController();
+  final _colorCtrl = TextEditingController();
+  XFile? _pickedFile;
+  String? _existingImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTones();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _colorCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTones() async {
+    setState(() => _isLoading = true);
+    try {
+      final rows = await widget.repo.getSubColors(widget.parentId);
+      if (mounted) setState(() { _tones = rows; _isLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _startAdd() {
+    setState(() {
+      _editing = null;
+      _nameCtrl.clear();
+      _colorCtrl.clear();
+      _pickedFile = null;
+      _existingImageUrl = null;
+      _showForm = true;
+    });
+  }
+
+  void _startEdit(Map<String, dynamic> tone) {
+    setState(() {
+      _editing = tone;
+      _nameCtrl.text = tone['name'] as String? ?? '';
+      _colorCtrl.text = tone['color'] as String? ?? '';
+      _existingImageUrl = tone['image_url'] as String?;
+      _pickedFile = null;
+      _showForm = true;
+    });
+  }
+
+  void _cancelForm() => setState(() => _showForm = false);
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (file != null) setState(() => _pickedFile = file);
+  }
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _isSaving = true);
+    try {
+      String? imageUrl = _existingImageUrl;
+      if (_pickedFile != null) {
+        imageUrl = await widget.repo.uploadCategoryImage(_pickedFile!);
+      }
+
+      if (_editing != null) {
+        await widget.repo.updateSubColor(
+          id: _editing!['id'] as String,
+          name: name,
+          color: _colorCtrl.text.trim(),
+          clearColor: _colorCtrl.text.trim().isEmpty,
+          imageUrl: imageUrl,
+          clearImage: _existingImageUrl == null && _pickedFile == null,
+        );
+      } else {
+        await widget.repo.createSubColor(
+          parentId: widget.parentId,
+          name: name,
+          color: _colorCtrl.text.trim().isEmpty ? null : _colorCtrl.text.trim(),
+          imageUrl: imageUrl,
+        );
+      }
+
+      setState(() { _showForm = false; _isSaving = false; });
+      _loadTones();
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteTone(Map<String, dynamic> tone) async {
+    final name = tone['name'] as String? ?? '';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Eliminar tono'),
+        content: Text('¿Eliminar "$name"? Esta acción es permanente.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await widget.repo.deleteSubColor(tone['id'] as String);
+      _loadTones();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.colorFor(widget.parentGroup);
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: c.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.palette_outlined, color: c.text, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tonos de ${widget.parentName}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        '${_tones.length} tono${_tones.length == 1 ? '' : 's'}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!_showForm)
+                  FilledButton.icon(
+                    onPressed: _startAdd,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Agregar', style: TextStyle(fontSize: 13)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+
+          // Content
+          Flexible(
+            child: _isLoading
+                ? const Center(child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: CircularProgressIndicator(),
+                  ))
+                : SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                        24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Formulario inline
+                        if (_showForm) ...[
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _editing != null ? 'Editar tono' : 'Nuevo tono',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: _isSaving ? null : _pickImage,
+                                      child: Container(
+                                        width: 56, height: 56,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: _pickedFile != null || _existingImageUrl != null
+                                                ? const Color(0xFF4F46E5).withValues(alpha: 0.4)
+                                                : Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: _pickedFile != null
+                                            ? FutureBuilder<dynamic>(
+                                                future: _pickedFile!.readAsBytes(),
+                                                builder: (_, snap) {
+                                                  if (!snap.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                                                  return Image.memory(snap.data!, fit: BoxFit.cover);
+                                                },
+                                              )
+                                            : _existingImageUrl != null
+                                                ? Image.network(_existingImageUrl!, fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 20))
+                                                : Icon(Icons.add_photo_alternate_outlined, size: 20, color: Colors.grey.shade400),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          TextField(
+                                            controller: _nameCtrl,
+                                            textCapitalization: TextCapitalization.words,
+                                            maxLength: 60,
+                                            decoration: InputDecoration(
+                                              labelText: 'Nombre',
+                                              hintText: 'Ej: Champagne, Crema, Marfil...',
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                              counterText: '',
+                                              isDense: true,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          TextField(
+                                            controller: _colorCtrl,
+                                            textCapitalization: TextCapitalization.words,
+                                            maxLength: 30,
+                                            decoration: InputDecoration(
+                                              labelText: 'Tono (opcional)',
+                                              hintText: 'Ej: Champagne',
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                              counterText: '',
+                                              isDense: true,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton(
+                                      onPressed: _isSaving ? null : _cancelForm,
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    FilledButton(
+                                      onPressed: _isSaving ? null : _save,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: const Color(0xFF4F46E5),
+                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                      ),
+                                      child: _isSaving
+                                          ? const SizedBox(
+                                              height: 16, width: 16,
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                            )
+                                          : Text(_editing != null ? 'Actualizar' : 'Guardar',
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Lista de tonos
+                        if (_tones.isEmpty && !_showForm)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.palette_outlined, size: 40, color: Colors.grey.shade300),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Sin tonos todavía',
+                                    style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Agrega tonos como Champagne, Crema, Marfil...',
+                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        ..._tones.map((t) {
+                          final tName = t['name'] as String? ?? '';
+                          final tColor = t['color'] as String?;
+                          final tSku = t['sku'] as String?;
+                          final tImage = t['image_url'] as String?;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40, height: 40,
+                                  margin: const EdgeInsets.only(right: 10),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: c.bg,
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: tImage != null
+                                      ? Image.network(tImage, fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Icon(Icons.palette_outlined, size: 18, color: c.text.withValues(alpha: 0.5)))
+                                      : Icon(Icons.palette_outlined, size: 18, color: c.text.withValues(alpha: 0.5)),
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(tName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                      Row(
+                                        children: [
+                                          if (tSku != null)
+                                            Text(tSku, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.text.withValues(alpha: 0.6), letterSpacing: 0.8)),
+                                          if (tColor != null && tColor.isNotEmpty) ...[
+                                            if (tSku != null) const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: c.bg,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(tColor, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.text)),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => _startEdit(t),
+                                  icon: const Icon(Icons.edit_outlined, size: 16),
+                                  color: AppTheme.mutedLight,
+                                  visualDensity: VisualDensity.compact,
+                                  tooltip: 'Editar',
+                                ),
+                                IconButton(
+                                  onPressed: () => _deleteTone(t),
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                                  color: Colors.red.shade400,
+                                  visualDensity: VisualDensity.compact,
+                                  tooltip: 'Eliminar',
+                                ),
+                              ],
                             ),
                           );
                         }),

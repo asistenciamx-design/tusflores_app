@@ -221,6 +221,66 @@ class AdminRepository {
         .eq('id', id);
   }
 
+  // ── Sub-colors (tonos) CRUD ─────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getSubColors(String parentId) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    final rows = await _db
+        .from('sub_colors')
+        .select()
+        .eq('parent_id', parentId)
+        .order('name');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, int>> getSubColorCounts() async {
+    final rows = await _db
+        .from('sub_colors')
+        .select('parent_id');
+    final counts = <String, int>{};
+    for (final r in rows) {
+      final pid = r['parent_id'] as String?;
+      if (pid != null) counts[pid] = (counts[pid] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  Future<void> createSubColor({
+    required String parentId,
+    required String name,
+    String? color,
+    String? imageUrl,
+  }) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_colors').insert({
+      'parent_id': parentId,
+      'name': name,
+      if (color != null && color.isNotEmpty) 'color': color,
+      if (imageUrl != null) 'image_url': imageUrl,
+    });
+  }
+
+  Future<void> updateSubColor({
+    required String id,
+    required String name,
+    String? color,
+    bool clearColor = false,
+    String? imageUrl,
+    bool clearImage = false,
+  }) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_colors').update({
+      'name': name,
+      if (clearColor) 'color': null else if (color != null && color.isNotEmpty) 'color': color,
+      if (clearImage) 'image_url': null else if (imageUrl != null) 'image_url': imageUrl,
+    }).eq('id', id);
+  }
+
+  Future<void> deleteSubColor(String id) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_colors').delete().eq('id', id);
+  }
+
   // ── Category image upload ───────────────────────────────────────────────────
 
   Future<String> uploadCategoryImage(XFile file) async {
