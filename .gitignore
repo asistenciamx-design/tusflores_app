@@ -50,3 +50,8 @@ app.*.map.json
 
 # Flutter SDK instalado localmente (no va al repo)
 flutter/
+
+# Variables de entorno — nunca commitear
+.env
+.env.*
+!.env.example

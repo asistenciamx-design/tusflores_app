@@ -70,7 +70,7 @@ async function getProductImageUrl(
   accessToken: string | null
 ): Promise<string | null> {
   const lineItem = (order.line_items ?? [])[0];
-  console.log(`[img] product_id=${lineItem?.product_id} featured_image=${JSON.stringify(lineItem?.featured_image)} token=${accessToken ? accessToken.slice(0,10) + "..." : "null"}`);
+  console.log(`[img] product_id=${lineItem?.product_id} featured_image=${JSON.stringify(lineItem?.featured_image)} token=${accessToken ? "set" : "null"}`);
 
   // 1. featured_image.url viene directo en el webhook payload (Shopify API 2024+)
   const featuredUrl = lineItem?.featured_image?.url ?? null;
@@ -209,7 +209,7 @@ Deno.serve(async (req: Request) => {
   const hmacHeader = req.headers.get("x-shopify-hmac-sha256") ?? "";
   const topic = req.headers.get("x-shopify-topic") ?? "";
 
-  console.log(`[webhook] topic="${topic}" domain="${shopDomain}"`);
+  console.log(`[webhook] topic="${topic}"`);
 
   // Solo aceptamos orders/create
   if (!topic.includes("orders/create")) {
