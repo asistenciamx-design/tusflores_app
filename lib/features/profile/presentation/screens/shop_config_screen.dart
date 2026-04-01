@@ -41,8 +41,9 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
       return;
     }
     final settings = await _repo.getSettings(userId);
-    // Cargar is_proveedor del perfil
+    // Cargar is_proveedor y can_be_proveedor del perfil
     bool isProveedor = false;
+    bool canBeProveedor = false;
     try {
       final profile = await Supabase.instance.client
           .from('profiles')
@@ -50,7 +51,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
           .eq('id', userId)
           .maybeSingle();
       isProveedor = profile?['is_proveedor'] as bool? ?? false;
-      final canBeProveedor = profile?['can_be_proveedor'] as bool? ?? false;
+      canBeProveedor = profile?['can_be_proveedor'] as bool? ?? false;
     } catch (_) {}
     if (mounted) {
       CurrencyCache.update(settings);
