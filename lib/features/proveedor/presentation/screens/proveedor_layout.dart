@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'proveedor_dashboard_screen.dart';
 
@@ -12,6 +13,7 @@ class ProveedorLayout extends StatefulWidget {
 class _ProveedorLayoutState extends State<ProveedorLayout> {
   int _currentIndex = 0;
   String _shopName = '';
+  bool _isShopOwner = false;
 
   @override
   void initState() {
@@ -25,11 +27,14 @@ class _ProveedorLayoutState extends State<ProveedorLayout> {
     try {
       final row = await Supabase.instance.client
           .from('profiles')
-          .select('shop_name')
+          .select('shop_name, role')
           .eq('id', user.id)
           .maybeSingle();
       if (mounted && row != null) {
-        setState(() => _shopName = row['shop_name'] as String? ?? '');
+        setState(() {
+          _shopName = row['shop_name'] as String? ?? '';
+          _isShopOwner = (row['role'] as String?) == 'shop_owner';
+        });
       }
     } catch (_) {}
   }
@@ -59,6 +64,30 @@ class _ProveedorLayoutState extends State<ProveedorLayout> {
           ],
         ),
         actions: [
+          if (_isShopOwner)
+            GestureDetector(
+              onTap: () => context.go('/'),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2BEE79).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF2BEE79).withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.storefront_rounded, size: 13, color: Color(0xFF059669)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Florería',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: CircleAvatar(

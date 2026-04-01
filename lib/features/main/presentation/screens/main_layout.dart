@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/currency_cache.dart';
 import '../../../../core/utils/responsive.dart';
@@ -19,6 +20,7 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  bool _isProveedor = false;
 
   // ── Realtime ──────────────────────────────────────────────────────────────
   RealtimeChannel? _ordersChannel;
@@ -79,6 +81,7 @@ class _MainLayoutState extends State<MainLayout>
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startRealtimeSubscription();
+      _loadProfile();
     });
   }
 
@@ -91,6 +94,23 @@ class _MainLayoutState extends State<MainLayout>
       Supabase.instance.client.removeChannel(_ordersChannel!);
     }
     super.dispose();
+  }
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+
+  Future<void> _loadProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('profiles')
+          .select('is_proveedor')
+          .eq('id', user.id)
+          .maybeSingle();
+      if (mounted) {
+        setState(() => _isProveedor = row?['is_proveedor'] as bool? ?? false);
+      }
+    } catch (_) {}
   }
 
   // ── Realtime subscription ─────────────────────────────────────────────────
@@ -197,12 +217,14 @@ class _MainLayoutState extends State<MainLayout>
         currentIndex: _currentIndex,
         onTap: _onNavTap,
         screen: _screens[_currentIndex],
+        isProveedor: _isProveedor,
       ),
       desktop: _WideLayout(
         currentIndex: _currentIndex,
         onTap: _onNavTap,
         screen: _screens[_currentIndex],
         items: _sidebarItems,
+        isProveedor: _isProveedor,
       ),
     );
   }
@@ -214,62 +236,91 @@ class _MobileLayout extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final Widget screen;
+  final bool isProveedor;
 
   const _MobileLayout({
     required this.currentIndex,
     required this.onTap,
     required this.screen,
+    this.isProveedor = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: screen,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, -4),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isProveedor)
+            GestureDetector(
+              onTap: () => context.go('/proveedor'),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                color: const Color(0xFF500088).withValues(alpha: 0.08),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.local_shipping_rounded, size: 13, color: Color(0xFF500088)),
+                    SizedBox(width: 6),
+                    Text(
+                      'Cambiar a Modo Proveedor',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF500088)),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF500088)),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24.0)),
-          child: BottomNavigationBar(
-            currentIndex: currentIndex,
-            onTap: onTap,
-            type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'Inicio',
+          Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24.0)),
+              child: BottomNavigationBar(
+                currentIndex: currentIndex,
+                onTap: onTap,
+                type: BottomNavigationBarType.fixed,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_outlined),
+                    activeIcon: Icon(Icons.home),
+                    label: 'Inicio',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.local_florist_outlined),
+                    activeIcon: Icon(Icons.local_florist),
+                    label: 'Catálogo',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.shopping_bag_outlined),
+                    activeIcon: Icon(Icons.shopping_bag),
+                    label: 'Pedidos',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.group_outlined),
+                    activeIcon: Icon(Icons.group),
+                    label: 'CRM',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_outline),
+                    activeIcon: Icon(Icons.person),
+                    label: 'Perfil',
+                  ),
+                ],
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.local_florist_outlined),
-                activeIcon: Icon(Icons.local_florist),
-                label: 'Catálogo',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.shopping_bag_outlined),
-                activeIcon: Icon(Icons.shopping_bag),
-                label: 'Pedidos',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.group_outlined),
-                activeIcon: Icon(Icons.group),
-                label: 'CRM',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person),
-                label: 'Perfil',
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -282,27 +333,57 @@ class _WideLayout extends StatelessWidget {
   final ValueChanged<int> onTap;
   final Widget screen;
   final List<AppSidebarItem> items;
+  final bool isProveedor;
 
   const _WideLayout({
     required this.currentIndex,
     required this.onTap,
     required this.screen,
     required this.items,
+    this.isProveedor = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          AppSidebar(
-            currentIndex: currentIndex,
-            onTap: onTap,
-            items: items,
-            accentColor: const Color(0xFF2BEE79),
-            header: _SidebarHeader(),
+          if (isProveedor)
+            GestureDetector(
+              onTap: () => context.go('/proveedor'),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                color: const Color(0xFF500088).withValues(alpha: 0.08),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.local_shipping_rounded, size: 13, color: Color(0xFF500088)),
+                    SizedBox(width: 6),
+                    Text(
+                      'Cambiar a Modo Proveedor',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF500088)),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF500088)),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(
+            child: Row(
+              children: [
+                AppSidebar(
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                  items: items,
+                  accentColor: const Color(0xFF2BEE79),
+                  header: _SidebarHeader(),
+                ),
+                Expanded(child: screen),
+              ],
+            ),
           ),
-          Expanded(child: screen),
         ],
       ),
     );
