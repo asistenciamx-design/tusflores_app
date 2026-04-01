@@ -748,6 +748,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               final c = _colorFor(group);
                               final catId = cat['id'] as String? ?? '';
                               return _FlowerRow(
+                                key: ValueKey(catId),
                                 cat: cat,
                                 colors: c,
                                 showGroupBadge: isSearching || _selectedGroup == null,
@@ -755,7 +756,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 onDelete: () => _confirmDelete(cat),
                                 onToggleActive: () => _toggleActive(cat),
                                 onVariants: () => _openVariantsSheet(cat),
+                                repo: _repo,
                                 subCount: _subCounts[catId] ?? 0,
+                                parentGroup: group,
+                                colorFor: _colorFor,
                                 onGroupJump: isSearching
                                     ? () {
                                         final g = cat['group_name'] as String?;
@@ -782,9 +786,9 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 }
 
-// ── Fila de flor ──────────────────────────────────────────────────────────────
+// ── Fila de flor (expandible) ────────────────────────────────────────────────
 
-class _FlowerRow extends StatelessWidget {
+class _FlowerRow extends StatefulWidget {
   final Map<String, dynamic> cat;
   final ({Color bg, Color text, Color pill}) colors;
   final bool showGroupBadge;
@@ -792,10 +796,14 @@ class _FlowerRow extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onToggleActive;
   final VoidCallback onVariants;
+  final AdminRepository repo;
   final int subCount;
   final VoidCallback? onGroupJump;
+  final String parentGroup;
+  final ({Color bg, Color text, Color pill}) Function(String) colorFor;
 
   const _FlowerRow({
+    super.key,
     required this.cat,
     required this.colors,
     required this.showGroupBadge,
@@ -803,185 +811,263 @@ class _FlowerRow extends StatelessWidget {
     required this.onDelete,
     required this.onToggleActive,
     required this.onVariants,
+    required this.repo,
     this.subCount = 0,
     this.onGroupJump,
+    required this.parentGroup,
+    required this.colorFor,
   });
 
   @override
+  State<_FlowerRow> createState() => _FlowerRowState();
+}
+
+class _FlowerRowState extends State<_FlowerRow> {
+  bool _expanded = false;
+  List<Map<String, dynamic>>? _subs;
+  bool _loadingSubs = false;
+
+  Future<void> _toggleExpand() async {
+    if (widget.onGroupJump != null) {
+      widget.onGroupJump!();
+      return;
+    }
+    if (widget.subCount == 0) return;
+
+    if (_expanded) {
+      setState(() => _expanded = false);
+      return;
+    }
+
+    if (_subs == null) {
+      setState(() => _loadingSubs = true);
+      try {
+        final rows = await widget.repo.getSubCategories(
+          widget.cat['id'] as String,
+        );
+        if (mounted) setState(() { _subs = rows; _loadingSubs = false; _expanded = true; });
+      } catch (_) {
+        if (mounted) setState(() => _loadingSubs = false);
+      }
+    } else {
+      setState(() => _expanded = true);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = cat['name'] as String? ?? '—';
-    final sku = cat['sku'] as String?;
-    final imageUrl = cat['image_url'] as String?;
-    final isActive = cat['is_active'] as bool? ?? true;
-    final group = cat['group_name'] as String? ?? '';
+    final name = widget.cat['name'] as String? ?? '—';
+    final sku = widget.cat['sku'] as String?;
+    final imageUrl = widget.cat['image_url'] as String?;
+    final isActive = widget.cat['is_active'] as bool? ?? true;
+    final group = widget.cat['group_name'] as String? ?? '';
+    final c = widget.colors;
 
     return Opacity(
       opacity: isActive ? 1.0 : 0.55,
-      child: GestureDetector(
-        onTap: onGroupJump,
-        child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive
-                ? Colors.black.withValues(alpha: 0.06)
-                : Colors.orange.shade200,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Thumbnail / icono
-            Container(
-              width: 44, height: 44,
-              margin: const EdgeInsets.only(right: 12),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: _toggleExpand,
+            child: Container(
+              margin: EdgeInsets.only(bottom: _expanded ? 0 : 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: colors.bg,
+                color: isActive ? Colors.white : Colors.grey.shade50,
+                borderRadius: _expanded
+                    ? const BorderRadius.vertical(top: Radius.circular(12))
+                    : BorderRadius.circular(12),
+                border: Border.all(
+                  color: _expanded
+                      ? const Color(0xFF4F46E5).withValues(alpha: 0.2)
+                      : isActive
+                          ? Colors.black.withValues(alpha: 0.06)
+                          : Colors.orange.shade200,
+                ),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: imageUrl != null
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.local_florist_outlined,
-                        size: 20, color: colors.text.withValues(alpha: 0.5),
-                      ),
-                    )
-                  : Icon(
-                      Icons.local_florist_outlined,
-                      size: 20, color: colors.text.withValues(alpha: 0.5),
-                    ),
-            ),
-
-            // Nombre + código
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600),
+                  // Thumbnail
+                  Container(
+                    width: 44, height: 44,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: c.bg,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: imageUrl != null
+                        ? Image.network(imageUrl, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(Icons.local_florist_outlined, size: 20, color: c.text.withValues(alpha: 0.5)))
+                        : Icon(Icons.local_florist_outlined, size: 20, color: c.text.withValues(alpha: 0.5)),
                   ),
-                  Row(
-                    children: [
-                      if (sku != null)
-                        Text(
-                          sku,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: colors.text.withValues(alpha: 0.6),
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      if (showGroupBadge && sku != null) const SizedBox(width: 6),
-                      if (showGroupBadge)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: colors.bg,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            group,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: colors.text,
+
+                  // Nombre + código
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                             ),
-                          ),
+                            if (widget.subCount > 0) ...[
+                              const SizedBox(width: 6),
+                              Icon(
+                                _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                                size: 18, color: const Color(0xFF4F46E5),
+                              ),
+                            ],
+                            if (_loadingSubs) ...[
+                              const SizedBox(width: 6),
+                              const SizedBox(width: 14, height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4F46E5))),
+                            ],
+                          ],
                         ),
-                      if (!isActive) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text('Pausada',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.orange.shade800,
-                                  fontWeight: FontWeight.w600)),
+                        Row(
+                          children: [
+                            if (sku != null)
+                              Text(sku, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c.text.withValues(alpha: 0.6), letterSpacing: 0.8)),
+                            if (widget.subCount > 0) ...[
+                              if (sku != null) const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEEF2FF),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text('${widget.subCount}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF4F46E5))),
+                              ),
+                            ],
+                            if (widget.showGroupBadge) ...[
+                              if (sku != null || widget.subCount > 0) const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(color: c.bg, borderRadius: BorderRadius.circular(4)),
+                                child: Text(group, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.text)),
+                              ),
+                            ],
+                            if (!isActive) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(4)),
+                                child: Text('Pausada', style: TextStyle(fontSize: 10, color: Colors.orange.shade800, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
-                    ],
+                    ),
+                  ),
+
+                  // Acciones
+                  IconButton(
+                    onPressed: widget.onVariants,
+                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                    color: const Color(0xFF4F46E5),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Gestionar variantes',
+                  ),
+                  IconButton(
+                    onPressed: widget.onToggleActive,
+                    icon: Icon(isActive ? Icons.pause_circle_outline_rounded : Icons.play_circle_outline_rounded, size: 20),
+                    color: isActive ? Colors.orange.shade400 : Colors.green.shade500,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: isActive ? 'Pausar' : 'Activar',
+                  ),
+                  IconButton(
+                    onPressed: widget.onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    color: AppTheme.mutedLight,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Editar',
+                  ),
+                  IconButton(
+                    onPressed: widget.onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    color: Colors.red.shade400,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Eliminar',
                   ),
                 ],
               ),
             ),
+          ),
 
-            // Acciones
-            Stack(
-              children: [
-                IconButton(
-                  onPressed: onVariants,
-                  icon: const Icon(Icons.account_tree_outlined, size: 18),
-                  color: subCount > 0
-                      ? const Color(0xFF4F46E5)
-                      : Colors.grey.shade400,
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Variantes',
-                ),
-                if (subCount > 0)
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF4F46E5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '$subCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            IconButton(
-              onPressed: onToggleActive,
-              icon: Icon(
-                isActive
-                    ? Icons.pause_circle_outline_rounded
-                    : Icons.play_circle_outline_rounded,
-                size: 20,
+          // Sub-flores expandidas
+          if (_expanded && _subs != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: c.bg.withValues(alpha: 0.3),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2)),
               ),
-              color: isActive ? Colors.orange.shade400 : Colors.green.shade500,
-              visualDensity: VisualDensity.compact,
-              tooltip: isActive ? 'Pausar' : 'Activar',
+              child: Column(
+                children: _subs!.map((v) {
+                  final vName = v['name'] as String? ?? '';
+                  final vColor = v['color'] as String?;
+                  final vSku = v['sku'] as String?;
+                  final vImage = v['image_url'] as String?;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 4, height: 28,
+                          decoration: BoxDecoration(
+                            color: c.pill.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6),
+                            color: c.bg,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: vImage != null
+                              ? Image.network(vImage, fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Icon(Icons.local_florist_outlined, size: 14, color: c.text.withValues(alpha: 0.5)))
+                              : Icon(Icons.local_florist_outlined, size: 14, color: c.text.withValues(alpha: 0.5)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(vName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                              Row(
+                                children: [
+                                  if (vSku != null)
+                                    Text(vSku, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: c.text.withValues(alpha: 0.5), letterSpacing: 0.8)),
+                                  if (vColor != null && vColor.isNotEmpty) ...[
+                                    if (vSku != null) const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                                      decoration: BoxDecoration(color: c.bg, borderRadius: BorderRadius.circular(3)),
+                                      child: Text(vColor, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: c.text)),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-            IconButton(
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              color: AppTheme.mutedLight,
-              visualDensity: VisualDensity.compact,
-              tooltip: 'Editar',
-            ),
-            IconButton(
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline_rounded, size: 18),
-              color: Colors.red.shade400,
-              visualDensity: VisualDensity.compact,
-              tooltip: 'Eliminar',
-            ),
-          ],
-        ),
-      ),
+        ],
       ),
     );
   }
