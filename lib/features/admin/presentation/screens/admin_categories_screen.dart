@@ -460,11 +460,13 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       ..._groups.where((g) => !_kOfficialGroups.contains(g)),
     ];
 
-    // Flores del grupo seleccionado, filtradas por búsqueda
+    // En modo búsqueda se ignora el grupo seleccionado → busca en todos
+    final isSearching = _searchQuery.isNotEmpty;
     final visibleCats = _categories.where((c) {
-      final matchesGroup = _selectedGroup == null || c['group_name'] == _selectedGroup;
-      final matchesSearch = _searchQuery.isEmpty ||
-          (c['name'] as String? ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesGroup = isSearching || _selectedGroup == null || c['group_name'] == _selectedGroup;
+      final matchesSearch = isSearching
+          ? (c['name'] as String? ?? '').toLowerCase().contains(_searchQuery.toLowerCase())
+          : true;
       return matchesGroup && matchesSearch;
     }).toList()
       ..sort((a, b) =>
@@ -722,10 +724,22 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               return _FlowerRow(
                                 cat: cat,
                                 colors: c,
-                                showGroupBadge: _selectedGroup == null,
+                                showGroupBadge: isSearching || _selectedGroup == null,
                                 onEdit: () => _openSheet(existing: cat),
                                 onDelete: () => _confirmDelete(cat),
                                 onToggleActive: () => _toggleActive(cat),
+                                onGroupJump: isSearching
+                                    ? () {
+                                        final g = cat['group_name'] as String?;
+                                        if (g != null) {
+                                          _searchCtrl.clear();
+                                          setState(() {
+                                            _searchQuery = '';
+                                            _selectedGroup = g;
+                                          });
+                                        }
+                                      }
+                                    : null,
                               );
                             },
                             childCount: visibleCats.length,
@@ -749,6 +763,7 @@ class _FlowerRow extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggleActive;
+  final VoidCallback? onGroupJump;
 
   const _FlowerRow({
     required this.cat,
@@ -757,6 +772,7 @@ class _FlowerRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleActive,
+    this.onGroupJump,
   });
 
   @override
@@ -769,7 +785,9 @@ class _FlowerRow extends StatelessWidget {
 
     return Opacity(
       opacity: isActive ? 1.0 : 0.55,
-      child: Container(
+      child: GestureDetector(
+        onTap: onGroupJump,
+        child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
@@ -898,6 +916,7 @@ class _FlowerRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
