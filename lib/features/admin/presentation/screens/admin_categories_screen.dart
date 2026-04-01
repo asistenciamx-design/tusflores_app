@@ -467,12 +467,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
           (c['name'] as String? ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
       return matchesGroup && matchesSearch;
     }).toList()
-      ..sort((a, b) {
-        final sa = (a['sort_order'] as int?) ?? 999;
-        final sb = (b['sort_order'] as int?) ?? 999;
-        if (sa != sb) return sa.compareTo(sb);
-        return (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? '');
-      });
+      ..sort((a, b) =>
+          (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
 
     final activeColor = _selectedGroup != null ? _colorFor(_selectedGroup!) : null;
 
