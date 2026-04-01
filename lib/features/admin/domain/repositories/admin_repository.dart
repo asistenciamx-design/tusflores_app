@@ -69,10 +69,18 @@ class AdminRepository {
     if (!await isSuperAdmin()) throw Exception('No autorizado');
     final rows = await _db
         .from('profiles')
-        .select('id, shop_name, whatsapp_number, created_at, average_rating, review_count')
+        .select('id, shop_name, whatsapp_number, created_at, average_rating, review_count, can_be_proveedor')
         .eq('role', 'shop_owner')
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> toggleCanBeProveedor(String shopId, {required bool value}) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    // Si se desactiva el permiso, también apagar is_proveedor para cerrar la segunda puerta.
+    final update = <String, dynamic>{'can_be_proveedor': value};
+    if (!value) update['is_proveedor'] = false;
+    await _db.from('profiles').update(update).eq('id', shopId);
   }
 
   // ── Groups CRUD ─────────────────────────────────────────────────────────────

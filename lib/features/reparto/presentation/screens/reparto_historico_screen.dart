@@ -125,7 +125,7 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
   }
 
   Future<void> _saveNote(String orderId, String note) async {
-    await _repo.assignToOrder(orderId: orderId, driverNotes: note);
+    await _repo.saveDriverNote(orderId: orderId, note: note);
   }
 
   List<Map<String, dynamic>> _ordersFor(String repartidorId) {
@@ -634,46 +634,73 @@ class _RepartoHistoricoScreenState extends State<RepartoHistoricoScreen> {
                   child: isExpanded
                       ? Padding(
                           padding: const EdgeInsets.only(top: 8),
-                          child: TextField(
-                            controller: ctrl,
-                            autofocus: true,
-                            decoration: InputDecoration(
-                              hintText: 'Nota de entrega…',
-                              hintStyle: const TextStyle(
-                                  fontSize: 12, color: Color(0xFFBDBDBD)),
-                              filled: true,
-                              fillColor: const Color(0xFFF9F9F9),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade200),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: ctrl,
+                                autofocus: true,
+                                decoration: InputDecoration(
+                                  hintText: 'Nota de entrega…',
+                                  hintStyle: const TextStyle(
+                                      fontSize: 12, color: Color(0xFFBDBDBD)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9F9F9),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(color: Colors.grey.shade200),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(color: Colors.grey.shade200),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(color: AppTheme.primary),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  isDense: true,
+                                ),
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 3,
+                                minLines: 1,
+                                textInputAction: TextInputAction.newline,
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade200),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () => setState(() => _expandedNotes.remove(orderId)),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF9E9E9E),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text('Cancelar', style: TextStyle(fontSize: 12)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      _saveNote(orderId, ctrl.text.trim());
+                                      setState(() => _expandedNotes.remove(orderId));
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primary,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    child: const Text('Guardar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    const BorderSide(color: AppTheme.primary),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              isDense: true,
-                            ),
-                            style: const TextStyle(fontSize: 12),
-                            maxLines: 3,
-                            minLines: 1,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (v) {
-                              _saveNote(orderId, v);
-                              setState(() => _expandedNotes.remove(orderId));
-                            },
-                            onEditingComplete: () {
-                              _saveNote(orderId, ctrl.text);
-                              setState(() => _expandedNotes.remove(orderId));
-                            },
+                            ],
                           ),
                         )
                       : const SizedBox.shrink(),

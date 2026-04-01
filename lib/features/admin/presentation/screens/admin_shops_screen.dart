@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/repositories/admin_repository.dart';
 
+final _adminRepo = AdminRepository();
+
 class AdminShopsScreen extends StatefulWidget {
   const AdminShopsScreen({super.key});
 
@@ -164,25 +166,53 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
 
 // ── Shop card ──────────────────────────────────────────────────────────────────
 
-class _ShopCard extends StatelessWidget {
+class _ShopCard extends StatefulWidget {
   final Map<String, dynamic> shop;
   const _ShopCard({required this.shop});
 
   @override
+  State<_ShopCard> createState() => _ShopCardState();
+}
+
+class _ShopCardState extends State<_ShopCard> {
+  late bool _canBeProveedor;
+  bool _toggling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _canBeProveedor = widget.shop['can_be_proveedor'] as bool? ?? false;
+  }
+
+  Future<void> _toggle(bool value) async {
+    setState(() => _toggling = true);
+    try {
+      final shopId = widget.shop['id'] as String;
+      await _adminRepo.toggleCanBeProveedor(shopId, value: value);
+      if (mounted) setState(() => _canBeProveedor = value);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al actualizar. Intenta de nuevo.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _toggling = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final shop = widget.shop;
     final name = shop['shop_name'] as String? ?? '—';
     final phone = shop['whatsapp_number'] as String? ?? '—';
-    final rating =
-        (shop['average_rating'] as num?)?.toStringAsFixed(1) ?? '—';
+    final rating = (shop['average_rating'] as num?)?.toStringAsFixed(1) ?? '—';
     final reviewCount = shop['review_count'] as int? ?? 0;
     final rawDate = shop['created_at'] as String?;
-    final date =
-        rawDate != null ? DateTime.tryParse(rawDate) : null;
+    final date = rawDate != null ? DateTime.tryParse(rawDate) : null;
     final dateFmt = date != null
         ? DateFormat('d MMM yyyy', 'es_MX').format(date)
         : '—';
-
-    // Initials avatar
     final initials = name.trim().isNotEmpty
         ? name.trim().split(' ').take(2).map((w) => w[0].toUpperCase()).join()
         : '?';
@@ -193,60 +223,117 @@ class _ShopCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.cardLight,
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF2FF),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                    color: Color(0xFF4F46E5),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
+          Row(
+            children: [
+              // Avatar
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF2FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 15),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 3),
-                Text(phone,
-                    style: TextStyle(
-                        fontSize: 12, color: AppTheme.mutedLight)),
-                const SizedBox(height: 6),
-                Row(
+                        color: Color(0xFF4F46E5),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Pill(
-                      icon: Icons.star_rounded,
-                      iconColor: const Color(0xFFF59E0B),
-                      label: '$rating ($reviewCount)',
-                    ),
-                    const SizedBox(width: 8),
-                    _Pill(
-                      icon: Icons.calendar_today_rounded,
-                      iconColor: AppTheme.mutedLight,
-                      label: dateFmt,
+                    Text(name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 3),
+                    Text(phone,
+                        style: TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _Pill(
+                          icon: Icons.star_rounded,
+                          iconColor: const Color(0xFFF59E0B),
+                          label: '$rating ($reviewCount)',
+                        ),
+                        const SizedBox(width: 8),
+                        _Pill(
+                          icon: Icons.calendar_today_rounded,
+                          iconColor: AppTheme.mutedLight,
+                          label: dateFmt,
+                        ),
+                      ],
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Toggle proveedor
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: _canBeProveedor
+                  ? const Color(0xFF500088).withValues(alpha: 0.06)
+                  : Colors.grey.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: _canBeProveedor
+                    ? const Color(0xFF500088).withValues(alpha: 0.2)
+                    : Colors.grey.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.local_shipping_rounded,
+                  size: 16,
+                  color: _canBeProveedor
+                      ? const Color(0xFF500088)
+                      : Colors.grey.shade400,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Permitir modo Proveedor',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _canBeProveedor
+                          ? const Color(0xFF500088)
+                          : Colors.grey.shade500,
+                    ),
+                  ),
+                ),
+                if (_toggling)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Color(0xFF500088)),
+                  )
+                else
+                  Switch.adaptive(
+                    value: _canBeProveedor,
+                    onChanged: _toggle,
+                    activeColor: const Color(0xFF500088),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
               ],
             ),
           ),

@@ -21,6 +21,7 @@ class _MainLayoutState extends State<MainLayout>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   bool _isProveedor = false;
+  bool _canBeProveedor = false;
 
   // ── Realtime ──────────────────────────────────────────────────────────────
   RealtimeChannel? _ordersChannel;
@@ -104,11 +105,14 @@ class _MainLayoutState extends State<MainLayout>
     try {
       final row = await Supabase.instance.client
           .from('profiles')
-          .select('is_proveedor')
+          .select('is_proveedor, can_be_proveedor')
           .eq('id', user.id)
           .maybeSingle();
       if (mounted) {
-        setState(() => _isProveedor = row?['is_proveedor'] as bool? ?? false);
+        setState(() {
+          _isProveedor = row?['is_proveedor'] as bool? ?? false;
+          _canBeProveedor = row?['can_be_proveedor'] as bool? ?? false;
+        });
       }
     } catch (_) {}
   }
@@ -219,14 +223,14 @@ class _MainLayoutState extends State<MainLayout>
         currentIndex: _currentIndex,
         onTap: _onNavTap,
         screen: _screens[_currentIndex],
-        isProveedor: _isProveedor,
+        isProveedor: _canBeProveedor && _isProveedor,
       ),
       desktop: _WideLayout(
         currentIndex: _currentIndex,
         onTap: _onNavTap,
         screen: _screens[_currentIndex],
         items: _sidebarItems,
-        isProveedor: _isProveedor,
+        isProveedor: _canBeProveedor && _isProveedor,
       ),
     );
   }

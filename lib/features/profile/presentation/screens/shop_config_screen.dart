@@ -20,6 +20,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isProveedor = false;
+  bool _canBeProveedor = false;
 
   @override
   void initState() {
@@ -45,10 +46,11 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
     try {
       final profile = await Supabase.instance.client
           .from('profiles')
-          .select('is_proveedor')
+          .select('is_proveedor, can_be_proveedor')
           .eq('id', userId)
           .maybeSingle();
       isProveedor = profile?['is_proveedor'] as bool? ?? false;
+      final canBeProveedor = profile?['can_be_proveedor'] as bool? ?? false;
     } catch (_) {}
     if (mounted) {
       CurrencyCache.update(settings);
@@ -56,6 +58,7 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
         _settings = settings;
         _unavailableMsgController.text = settings?.unavailableMessage ?? '';
         _isProveedor = isProveedor;
+        _canBeProveedor = canBeProveedor;
         _isLoading = false;
       });
     }
@@ -331,21 +334,23 @@ class _ShopConfigScreenState extends State<ShopConfigScreen> {
                       ),
                     ]),
                     const SizedBox(height: 24),
-                    _SectionHeader(title: 'CUENTA'),
-                    const SizedBox(height: 12),
-                    _buildCard(children: [
-                      _ConfigTile(
-                        icon: Icons.local_shipping_rounded,
-                        iconColor: const Color(0xFF500088),
-                        iconBg: const Color(0xFF500088).withValues(alpha: 0.1),
-                        title: 'Modo proveedor',
-                        subtitle: 'Habilita el acceso al panel de proveedor desde tu cuenta de florería.',
-                        value: _isProveedor,
-                        onChanged: _isSaving ? (_) {} : _toggleProveedor,
-                        enabled: !_isSaving,
-                      ),
-                    ]),
-                    const SizedBox(height: 24),
+                    if (_canBeProveedor) ...[
+                      _SectionHeader(title: 'CUENTA'),
+                      const SizedBox(height: 12),
+                      _buildCard(children: [
+                        _ConfigTile(
+                          icon: Icons.local_shipping_rounded,
+                          iconColor: const Color(0xFF500088),
+                          iconBg: const Color(0xFF500088).withValues(alpha: 0.1),
+                          title: 'Modo proveedor',
+                          subtitle: 'Habilita el acceso al panel de proveedor desde tu cuenta de florería.',
+                          value: _isProveedor,
+                          onChanged: _isSaving ? (_) {} : _toggleProveedor,
+                          enabled: !_isSaving,
+                        ),
+                      ]),
+                      const SizedBox(height: 24),
+                    ],
                     _SectionHeader(title: 'MONEDA Y REGIÓN'),
                     const SizedBox(height: 12),
                     _buildCard(children: [

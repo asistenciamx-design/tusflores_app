@@ -104,6 +104,24 @@ class RepartidorRepository {
     }
   }
 
+  /// Guarda solo la nota del conductor sin tocar repartidor_id ni delivery_amount.
+  Future<bool> saveDriverNote({
+    required String orderId,
+    required String note,
+  }) async {
+    if (_uid == null) return false;
+    try {
+      await _db
+          .from('orders')
+          .update({'driver_notes': note})
+          .eq('id', orderId)
+          .eq('shop_id', _uid!);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Historico ─────────────────────────────────────────────────────────────
 
   /// Returns all orders assigned to a repartidor within [from]–[to] (inclusive).
