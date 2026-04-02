@@ -289,6 +289,20 @@ class AdminRepository {
     await _db.from('sub_colors').delete().eq('id', id);
   }
 
+  // ── Reasignación (mover a otro padre) ───────────────────────────────────────
+
+  /// Mueve una variante (sub_category) a otra flor (category).
+  Future<void> moveSubCategory(String id, String newParentId) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_categories').update({'parent_id': newParentId}).eq('id', id);
+  }
+
+  /// Mueve un tono (sub_color) a otra variante (sub_category).
+  Future<void> moveSubColor(String id, String newParentId) async {
+    if (!await isSuperAdmin()) throw Exception('No autorizado');
+    await _db.from('sub_colors').update({'parent_id': newParentId}).eq('id', id);
+  }
+
   // ── Category image upload ───────────────────────────────────────────────────
 
   Future<String> uploadCategoryImage(XFile file) async {

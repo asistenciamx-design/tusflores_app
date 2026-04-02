@@ -229,10 +229,126 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     _load();
   }
 
+  // ── Mover flor a grupo (quick) ────────────────────────────────────────────
+
+  Future<void> _quickMoveToGroup(Map<String, dynamic> cat) async {
+    final catId = cat['id'] as String;
+    final catName = cat['name'] as String? ?? '';
+    String currentGroup = cat['group_name'] as String? ?? '';
+    String? chosen;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Mover "$catName" a…',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              Text('Grupo actual: $currentGroup',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: _groups.map((g) {
+                  final c = _colorFor(g);
+                  final isCurrent = g == currentGroup;
+                  final isChosen = g == chosen;
+                  return GestureDetector(
+                    onTap: isCurrent ? null : () => setSheet(() => chosen = g),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isCurrent ? Colors.grey.shade100 : isChosen ? c.bg : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isCurrent ? Colors.grey.shade300 : isChosen ? c.text.withValues(alpha: 0.5) : Colors.grey.shade300,
+                          width: isChosen ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Text(g,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isCurrent ? Colors.grey.shade400 : isChosen ? c.text : Colors.grey.shade700,
+                          fontWeight: isChosen ? FontWeight.w700 : FontWeight.w500,
+                        )),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: chosen != null ? const Color(0xFF4F46E5) : Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: chosen == null ? null : () => Navigator.pop(ctx),
+                  child: Text(
+                    chosen != null ? 'Mover a $chosen' : 'Selecciona un grupo',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (chosen == null || chosen == currentGroup) return;
+    try {
+      await _repo.updateCategory(
+        id: catId,
+        name: catName,
+        groupName: chosen!,
+        imageUrl: cat['image_url'] as String?,
+        parentId: cat['parent_id'] as String?,
+      );
+      if (mounted) {
+        setState(() => _selectedGroup = chosen);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$catName movida a $chosen'),
+            backgroundColor: const Color(0xFF4F46E5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
   // ── Add / Edit sheet ──────────────────────────────────────────────────────
 
   Future<void> _openSheet({Map<String, dynamic>? existing}) async {
     final nameCtrl = TextEditingController(text: existing?['name'] as String? ?? '');
+    final oldGroup = existing?['group_name'] as String?;
     String selectedGroup = existing?['group_name'] as String? ??
         (_selectedGroup ?? (_groups.isNotEmpty ? _groups.first : ''));
     String? existingImageUrl = existing?['image_url'] as String?;
@@ -437,6 +553,9 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                     groupName: selectedGroup,
                                     imageUrl: imageUrl,
                                   );
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  setState(() => _selectedGroup = selectedGroup);
+                                  _load();
                                 } else {
                                   await _repo.updateCategory(
                                     id: existing['id'] as String,
@@ -445,9 +564,23 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                     imageUrl: imageUrl,
                                     clearImage: existingImageUrl == null && pickedFile == null,
                                   );
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  final groupChanged = oldGroup != null && oldGroup != selectedGroup;
+                                  if (groupChanged) {
+                                    setState(() => _selectedGroup = selectedGroup);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('$name movida a $selectedGroup'),
+                                          backgroundColor: const Color(0xFF4F46E5),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                  _load();
                                 }
-                                if (ctx.mounted) Navigator.pop(ctx);
-                                _load();
                               } catch (e) {
                                 setModal(() => isSaving = false);
                                 if (ctx.mounted) {
@@ -756,6 +889,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                 onDelete: () => _confirmDelete(cat),
                                 onToggleActive: () => _toggleActive(cat),
                                 onVariants: () => _openVariantsSheet(cat),
+                                onMoveToGroup: () => _quickMoveToGroup(cat),
                                 repo: _repo,
                                 subCount: _subCounts[catId] ?? 0,
                                 parentGroup: group,
@@ -796,6 +930,7 @@ class _FlowerRow extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback onToggleActive;
   final VoidCallback onVariants;
+  final VoidCallback onMoveToGroup;
   final AdminRepository repo;
   final int subCount;
   final VoidCallback? onGroupJump;
@@ -811,6 +946,7 @@ class _FlowerRow extends StatefulWidget {
     required this.onDelete,
     required this.onToggleActive,
     required this.onVariants,
+    required this.onMoveToGroup,
     required this.repo,
     this.subCount = 0,
     this.onGroupJump,
@@ -970,6 +1106,13 @@ class _FlowerRowState extends State<_FlowerRow> {
                     color: const Color(0xFF4F46E5),
                     visualDensity: VisualDensity.compact,
                     tooltip: 'Gestionar variantes',
+                  ),
+                  IconButton(
+                    onPressed: widget.onMoveToGroup,
+                    icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                    color: const Color(0xFF4F46E5),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Mover a grupo',
                   ),
                   IconButton(
                     onPressed: widget.onToggleActive,
@@ -1228,6 +1371,111 @@ class _VariantsModalState extends State<_VariantsModal> {
       ),
     );
     _loadVariants();
+  }
+
+  Future<void> _moveVariantToFlower(Map<String, dynamic> variant) async {
+    final variantId = variant['id'] as String;
+    final variantName = variant['name'] as String? ?? '';
+
+    // Cargar todas las flores
+    List<Map<String, dynamic>> allFlowers;
+    try {
+      allFlowers = await widget.repo.getCategories();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al cargar flores')));
+      return;
+    }
+
+    // Excluir la flor actual
+    allFlowers = allFlowers.where((f) => f['id'] != widget.parentId).toList();
+
+    String? chosen;
+    final searchCtrl = TextEditingController();
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          final q = searchCtrl.text.toLowerCase();
+          final filtered = q.isEmpty
+              ? allFlowers
+              : allFlowers.where((f) => (f['name'] as String? ?? '').toLowerCase().contains(q)).toList();
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Mover "$variantName" a flor', style: const TextStyle(fontSize: 16)),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 360,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar flor...',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (_) => setDialog(() {}),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) {
+                        final f = filtered[i];
+                        final fId = f['id'] as String;
+                        final fName = f['name'] as String? ?? '';
+                        final fGroup = f['group_name'] as String? ?? '';
+                        final isSelected = chosen == fId;
+                        return ListTile(
+                          dense: true,
+                          selected: isSelected,
+                          selectedTileColor: const Color(0xFFEEF2FF),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          title: Text(fName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          subtitle: Text(fGroup, style: const TextStyle(fontSize: 11)),
+                          onTap: () => setDialog(() => chosen = fId),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+              FilledButton(
+                onPressed: chosen == null ? null : () => Navigator.pop(ctx),
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
+                child: const Text('Mover'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    searchCtrl.dispose();
+    if (chosen == null) return;
+
+    try {
+      await widget.repo.moveSubCategory(variantId, chosen!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$variantName reasignada'),
+            backgroundColor: const Color(0xFF4F46E5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+      _loadVariants();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   Future<void> _deleteVariant(Map<String, dynamic> variant) async {
@@ -1578,6 +1826,13 @@ class _VariantsModalState extends State<_VariantsModal> {
                                     );
                                   }),
                                   IconButton(
+                                    onPressed: () => _moveVariantToFlower(v),
+                                    icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                                    color: const Color(0xFF4F46E5),
+                                    visualDensity: VisualDensity.compact,
+                                    tooltip: 'Mover a otra flor',
+                                  ),
+                                  IconButton(
                                     onPressed: () => _startEdit(v),
                                     icon: const Icon(Icons.edit_outlined, size: 16),
                                     color: AppTheme.mutedLight,
@@ -1730,6 +1985,161 @@ class _SubColorsModalState extends State<_SubColorsModal> {
           SnackBar(content: Text('Error: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _moveToneToVariant(Map<String, dynamic> tone) async {
+    final toneId = tone['id'] as String;
+    final toneName = tone['name'] as String? ?? '';
+
+    // Paso 1: elegir flor
+    List<Map<String, dynamic>> allFlowers;
+    try {
+      allFlowers = await widget.repo.getCategories();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al cargar flores')));
+      return;
+    }
+
+    String? chosenFlowerId;
+    final searchCtrl = TextEditingController();
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          final q = searchCtrl.text.toLowerCase();
+          final filtered = q.isEmpty
+              ? allFlowers
+              : allFlowers.where((f) => (f['name'] as String? ?? '').toLowerCase().contains(q)).toList();
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Mover "$toneName" — elige flor', style: const TextStyle(fontSize: 15)),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 340,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar flor...',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (_) => setDialog(() {}),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) {
+                        final f = filtered[i];
+                        final fId = f['id'] as String;
+                        final isSelected = chosenFlowerId == fId;
+                        return ListTile(
+                          dense: true,
+                          selected: isSelected,
+                          selectedTileColor: const Color(0xFFEEF2FF),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          title: Text(f['name'] as String? ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          subtitle: Text(f['group_name'] as String? ?? '', style: const TextStyle(fontSize: 11)),
+                          onTap: () => setDialog(() => chosenFlowerId = fId),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+              FilledButton(
+                onPressed: chosenFlowerId == null ? null : () => Navigator.pop(ctx),
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
+                child: const Text('Siguiente'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    searchCtrl.dispose();
+    if (chosenFlowerId == null) return;
+
+    // Paso 2: elegir variante de esa flor
+    List<Map<String, dynamic>> variants;
+    try {
+      variants = await widget.repo.getSubCategories(chosenFlowerId!);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al cargar variantes')));
+      return;
+    }
+
+    if (variants.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Esa flor no tiene variantes')));
+      return;
+    }
+
+    String? chosenVariantId;
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Mover "$toneName" — elige variante', style: const TextStyle(fontSize: 15)),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: ListView.builder(
+              itemCount: variants.length,
+              itemBuilder: (_, i) {
+                final v = variants[i];
+                final vId = v['id'] as String;
+                final isSelected = chosenVariantId == vId;
+                return ListTile(
+                  dense: true,
+                  selected: isSelected,
+                  selectedTileColor: const Color(0xFFEEF2FF),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  title: Text(v['name'] as String? ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: v['color'] != null ? Text(v['color'] as String, style: const TextStyle(fontSize: 11)) : null,
+                  onTap: () => setDialog(() => chosenVariantId = vId),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: chosenVariantId == null ? null : () => Navigator.pop(ctx),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4F46E5)),
+              child: const Text('Mover'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (chosenVariantId == null) return;
+
+    try {
+      await widget.repo.moveSubColor(toneId, chosenVariantId!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$toneName reasignado'),
+            backgroundColor: const Color(0xFF4F46E5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+      _loadTones();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -2035,6 +2445,13 @@ class _SubColorsModalState extends State<_SubColorsModal> {
                                       ),
                                     ],
                                   ),
+                                ),
+                                IconButton(
+                                  onPressed: () => _moveToneToVariant(t),
+                                  icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                                  color: const Color(0xFF4F46E5),
+                                  visualDensity: VisualDensity.compact,
+                                  tooltip: 'Mover a otra variante',
                                 ),
                                 IconButton(
                                   onPressed: () => _startEdit(t),

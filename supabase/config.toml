@@ -1,0 +1,17 @@
+# Supabase project configuration
+# Este archivo fija la configuración de Edge Functions para que
+# no dependa del valor default en cada redeploy.
+
+[functions.shopify-webhook]
+# verify_jwt DEBE ser false: Shopify no envía JWT de Supabase.
+# La seguridad se maneja internamente con HMAC-SHA256.
+verify_jwt = false
+
+[functions.validar-slug]
+verify_jwt = false
+
+[functions.smooth-api]
+verify_jwt = false
+
+[functions.super-service]
+verify_jwt = true
