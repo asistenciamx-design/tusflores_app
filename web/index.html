@@ -279,6 +279,23 @@
   </script>
 </head>
 <body>
+  <!--
+    Auto-reload when a new Service Worker takes control (new app version deployed).
+    Without this, users on a cached page get a white screen after a new deploy
+    because the old SW serves stale assets that no longer match the new index.html.
+    The _tfRefreshing flag prevents infinite reload loops.
+  -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      var _tfRefreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!_tfRefreshing) {
+          _tfRefreshing = true;
+          window.location.reload();
+        }
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
