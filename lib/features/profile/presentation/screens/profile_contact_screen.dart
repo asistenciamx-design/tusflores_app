@@ -55,13 +55,12 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
 
   final ImagePicker _picker = ImagePicker();
   String? _logoUrl;
+  String? _slug;
+  String _slugPais = 'mx';
 
   @override
   void initState() {
     super.initState();
-    _shopNameCtrl.addListener(() {
-      setState(() {});
-    });
     _loadProfile();
   }
 
@@ -77,6 +76,16 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
           final raw = (profile['whatsapp_number'] as String?) ?? '';
           _parseWhatsappNumber(raw);
           _logoUrl = profile['logo_url'];
+        }
+        // Cargar el slug real desde slugs_registry
+        final slugRow = await Supabase.instance.client
+            .from('slugs_registry')
+            .select('slug, pais')
+            .eq('entity_id', user.id)
+            .maybeSingle();
+        if (slugRow != null) {
+          _slug = slugRow['slug'] as String?;
+          _slugPais = (slugRow['pais'] as String?) ?? 'mx';
         }
       }
     } catch (e) {
@@ -460,9 +469,9 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
   }
 
   Widget _buildStoreLinkCard() {
-    final linkEnd = _shopNameCtrl.text.isEmpty ? 'tu-floreria' : _shopNameCtrl.text.toLowerCase().replaceAll(' ', '-');
-    final storeLink = 'www.tusflores.app/mx/$linkEnd';
-    
+    final hasSlug = _slug != null && _slug!.isNotEmpty;
+    final storeLink = hasSlug ? 'www.tusflores.app/$_slugPais/$_slug' : null;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -484,57 +493,63 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.link, color: AppTheme.primary, size: 20),
+                Icon(Icons.link, color: hasSlug ? AppTheme.primary : Colors.grey, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    storeLink,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                    hasSlug ? storeLink! : 'Sin URL configurada',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: hasSlug ? Colors.grey[700] : Colors.grey[400],
+                      fontWeight: FontWeight.w600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: storeLink));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Enlace copiado al portapapeles')),
-                    );
-                  },
-                  icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('Copiar'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          if (hasSlug) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: storeLink!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Enlace copiado al portapapeles')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('Copiar'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: () {
-                    Share.share('¡Visita mi florería en línea! $storeLink');
-                  },
-                  icon: const Icon(Icons.share, size: 18),
-                  label: const Text('Compartir'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
-                    backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Share.share('¡Visita mi florería en línea! $storeLink');
+                    },
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Compartir'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
