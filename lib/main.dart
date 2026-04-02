@@ -2,11 +2,10 @@
 // Software propietario. Consulta el archivo LICENSE en la raíz del repositorio.
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_router.dart';
 import 'core/services/supabase_service.dart';
-import 'package:flutter_web_plugins/url_strategy.dart';
-
 
 void main() async {
   usePathUrlStrategy();
@@ -14,7 +13,7 @@ void main() async {
 
   // Initialize Supabase (credentials injected at build time via --dart-define)
   await SupabaseService.initialize();
-  
+
   runApp(const TusFloresApp());
 }
 

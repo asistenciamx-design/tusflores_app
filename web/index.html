@@ -280,21 +280,69 @@
 </head>
 <body>
   <!--
-    Auto-reload when a new Service Worker takes control (new app version deployed).
-    Without this, users on a cached page get a white screen after a new deploy
-    because the old SW serves stale assets that no longer match the new index.html.
-    The _tfRefreshing flag prevents infinite reload loops.
+    Service Worker update strategy:
+    1. controllerchange → auto-reload when new SW takes control (covers future deploys).
+    2. Waiting SW → message SKIP_WAITING so it activates immediately without waiting
+       for all tabs to close.
+    3. White-screen fallback → if Flutter hasn't rendered in 8 s, unregister all SWs,
+       clear all caches, and hard-reload. Guards against stale cached builds.
   -->
   <script>
-    if ('serviceWorker' in navigator) {
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+
       var _tfRefreshing = false;
+
+      // 1. Auto-reload when a new SW takes control
       navigator.serviceWorker.addEventListener('controllerchange', function () {
         if (!_tfRefreshing) {
           _tfRefreshing = true;
           window.location.reload();
         }
       });
-    }
+
+      // 2. Force-activate any waiting SW immediately
+      function _tfActivateWaiting(reg) {
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      }
+      navigator.serviceWorker.ready.then(function (reg) {
+        _tfActivateWaiting(reg);
+        reg.addEventListener('updatefound', function () {
+          var w = reg.installing;
+          if (!w) return;
+          w.addEventListener('statechange', function () {
+            if (w.state === 'installed') _tfActivateWaiting(reg);
+          });
+        });
+        // Proactively check for a newer SW version
+        reg.update().catch(function () {});
+      });
+
+      // 3. White-screen fallback: if Flutter hasn't rendered after 8 s, nuke SW + reload
+      var _tfTimer = setTimeout(function () {
+        var booted = document.querySelector('flt-glass-pane') ||
+                     document.querySelector('flutter-view') ||
+                     document.querySelector('flt-renderer');
+        if (booted) return; // Flutter rendered — all good
+        // Flutter didn't boot; likely stale SW cache — clear everything and reload
+        navigator.serviceWorker.getRegistrations()
+          .then(function (regs) {
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          })
+          .then(function () {
+            return caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            });
+          })
+          .then(function () { window.location.reload(true); })
+          .catch(function () { window.location.reload(true); });
+      }, 8000);
+
+      // Flutter signals a successful boot by calling window._tfBootOk()
+      window._tfBootOk = function () { clearTimeout(_tfTimer); };
+    })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
