@@ -75,7 +75,7 @@ class ProfileRepository {
       final user = _client.auth.currentUser;
       if (user == null) return null;
 
-      const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
+      const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'};
       final origExt = file.name.split('.').last.toLowerCase();
       if (!allowedExtensions.contains(origExt)) {
         throw Exception('Tipo de archivo no permitido: .$origExt');
@@ -88,6 +88,7 @@ class ProfileRepository {
         bytes = Uint8List.fromList(await file.readAsBytes());
         ext = origExt;
       } else {
+        // heic/heif → comprimir como jpeg/webp (FlutterImageCompress lo maneja)
         final compressed = await ImageCompressor.compress(file);
         bytes = compressed.bytes;
         ext = compressed.ext;

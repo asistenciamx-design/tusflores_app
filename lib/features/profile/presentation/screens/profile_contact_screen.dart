@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -53,7 +52,6 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
   final _whatsappCtrl = TextEditingController();
   String _countryDial = '+52'; // default México
 
-  final ImagePicker _picker = ImagePicker();
   String? _logoUrl;
   String? _slug;
   String _slugPais = 'mx';
@@ -134,30 +132,6 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
     super.dispose();
   }
 
-  Future<void> _pickAndUploadLogo() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-      if (image == null) return;
-      
-      setState(() => _isLoading = true);
-      final url = await _repo.uploadLogo(image);
-      if (url != null) {
-        setState(() => _logoUrl = url);
-        // Save automatically
-        await _repo.updateProfile(logoUrl: url);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Logo actualizado en la nube')));
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ Error al subir imagen', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,8 +150,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildProfileImage(),
-                const SizedBox(height: 32),
+                const SizedBox(height: 8),
                 _buildSectionHeader('INFORMACIÓN PERSONAL'),
                 _buildTextField(label: 'Nombre completo', icon: Icons.person, controller: _ownerNameCtrl, hintText: 'Ej. María Rosas'),
                 const SizedBox(height: 32),
@@ -373,45 +346,6 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
     );
   }
 
-  Widget _buildProfileImage() {
-    return Center(
-      child: Stack(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.primary, width: 2),
-            ),
-            child: CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: _logoUrl != null ? NetworkImage(_logoUrl!) : null,
-              child: _logoUrl == null ? const Icon(Icons.store, size: 40, color: Colors.grey) : null,
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: _isLoading ? null : _pickAndUploadLogo,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.backgroundLight, width: 3),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(6.0),
-                  child: Icon(Icons.camera_alt, color: Colors.white, size: 16),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildSectionHeader(String title) {
     return Padding(
