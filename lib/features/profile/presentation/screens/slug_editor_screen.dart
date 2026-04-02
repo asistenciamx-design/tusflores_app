@@ -30,9 +30,26 @@ class _SlugEditorScreenState extends State<SlugEditorScreen> {
   Timer? _debounce;
 
   static const _countries = [
-    {'code': 'mx', 'name': 'Mexico', 'flag': '🇲🇽'},
-    {'code': 'co', 'name': 'Colombia', 'flag': '🇨🇴'},
-    {'code': 'ar', 'name': 'Argentina', 'flag': '🇦🇷'},
+    {'code': 'mx', 'name': 'México',              'flag': '🇲🇽'},
+    {'code': 'ar', 'name': 'Argentina',            'flag': '🇦🇷'},
+    {'code': 'bo', 'name': 'Bolivia',              'flag': '🇧🇴'},
+    {'code': 'cl', 'name': 'Chile',                'flag': '🇨🇱'},
+    {'code': 'co', 'name': 'Colombia',             'flag': '🇨🇴'},
+    {'code': 'cr', 'name': 'Costa Rica',           'flag': '🇨🇷'},
+    {'code': 'cu', 'name': 'Cuba',                 'flag': '🇨🇺'},
+    {'code': 'do', 'name': 'Rep. Dominicana',      'flag': '🇩🇴'},
+    {'code': 'ec', 'name': 'Ecuador',              'flag': '🇪🇨'},
+    {'code': 'sv', 'name': 'El Salvador',          'flag': '🇸🇻'},
+    {'code': 'es', 'name': 'España',               'flag': '🇪🇸'},
+    {'code': 'gt', 'name': 'Guatemala',            'flag': '🇬🇹'},
+    {'code': 'hn', 'name': 'Honduras',             'flag': '🇭🇳'},
+    {'code': 'ni', 'name': 'Nicaragua',            'flag': '🇳🇮'},
+    {'code': 'pa', 'name': 'Panamá',               'flag': '🇵🇦'},
+    {'code': 'py', 'name': 'Paraguay',             'flag': '🇵🇾'},
+    {'code': 'pe', 'name': 'Perú',                 'flag': '🇵🇪'},
+    {'code': 'pr', 'name': 'Puerto Rico',          'flag': '🇵🇷'},
+    {'code': 'uy', 'name': 'Uruguay',              'flag': '🇺🇾'},
+    {'code': 've', 'name': 'Venezuela',            'flag': '🇻🇪'},
   ];
 
   @override
