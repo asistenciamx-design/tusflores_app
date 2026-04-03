@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/inventory_models.dart';
+import '../../domain/models/flower_colors.dart';
 import '../../domain/repositories/inventory_repository.dart';
 
 // ── Color del módulo ──────────────────────────────────────────────────────────
-const _kColor = Color(0xFF7C3AED); // indigo/morado
+const _kColor = Color(0xFF7C3AED);
 const _kColorBg = Color(0xFFF5F3FF);
 const _kColorBorder = Color(0xFFEDE9FE);
+
+const _kQualities = ['Estándar', 'Campo', 'Primera', 'Premium'];
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -20,7 +24,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final _repo = InventoryRepository();
   List<InventoryList> _lists = [];
   bool _loading = true;
-  String _filter = 'Todas'; // Todas, Activas, Completadas, Inactivas
+  String _filter = 'Todas';
 
   @override
   void initState() {
@@ -40,10 +44,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   List<InventoryList> get _filtered {
     switch (_filter) {
-      case 'Activas':    return _lists.where((l) => l.isActive && !l.isCompleted).toList();
+      case 'Activas':     return _lists.where((l) => l.isActive && !l.isCompleted).toList();
       case 'Completadas': return _lists.where((l) => l.isCompleted).toList();
-      case 'Inactivas':  return _lists.where((l) => !l.isActive).toList();
-      default:           return _lists;
+      case 'Inactivas':   return _lists.where((l) => !l.isActive).toList();
+      default:            return _lists;
     }
   }
 
@@ -73,7 +77,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           : Column(
               children: [
                 _buildFilterBar(),
-                Expanded(child: _buildGrid()),
+                Expanded(child: _buildList()),
               ],
             ),
     );
@@ -98,9 +102,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   decoration: BoxDecoration(
                     color: active ? _kColor : Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: active ? _kColor : const Color(0xFFE5E7EB),
-                    ),
+                    border: Border.all(color: active ? _kColor : const Color(0xFFE5E7EB)),
                   ),
                   child: Text(
                     opt,
@@ -119,7 +121,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _buildGrid() {
+  Widget _buildList() {
     final items = _filtered;
     if (items.isEmpty) {
       return Center(
@@ -144,18 +146,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       color: _kColor,
-      child: GridView.builder(
+      child: ListView.separated(
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.82,
-        ),
         itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (ctx, i) => _NoteCard(
           list: items[i],
-          onEdit: () => _openForm(context, items[i]),
+          onTap: () => _openForm(context, items[i]),
+          onShare: () => _shareList(items[i]),
           onToggleActive: () async {
             await _repo.toggleActive(items[i].id, !items[i].isActive);
             _load();
@@ -190,6 +188,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (result == true) _load();
   }
 
+  void _shareList(InventoryList list) {
+    final buf = StringBuffer();
+    buf.writeln('📋 ${list.title}');
+    buf.writeln('Fecha: ${DateFormat("d MMMM yyyy", "es").format(list.createdAt)}');
+    buf.writeln('─────────────────');
+    for (final item in list.items) {
+      final parts = <String>[item.productName];
+      if (item.color.isNotEmpty) parts.add(item.color);
+      if (item.quality.isNotEmpty) parts.add(item.quality);
+      buf.writeln('${item.sequenceNumber}. ${parts.join(' · ')} × ${item.quantity}');
+    }
+    buf.writeln('─────────────────');
+    buf.writeln('Total: ${list.itemCount} productos');
+    buf.writeln('\nEnviado desde tusflores.app');
+
+    SharePlus.instance.share(ShareParams(text: buf.toString().trim()));
+  }
+
   Future<void> _confirmDelete(BuildContext context, InventoryList list) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -214,17 +230,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
-// ── Card de nota ──────────────────────────────────────────────────────────────
+// ── Card horizontal de nota ───────────────────────────────────────────────────
 class _NoteCard extends StatelessWidget {
   final InventoryList list;
-  final VoidCallback onEdit;
+  final VoidCallback onTap;
+  final VoidCallback onShare;
   final VoidCallback onToggleActive;
   final VoidCallback onToggleComplete;
   final VoidCallback onDelete;
 
   const _NoteCard({
     required this.list,
-    required this.onEdit,
+    required this.onTap,
+    required this.onShare,
     required this.onToggleActive,
     required this.onToggleComplete,
     required this.onDelete,
@@ -255,78 +273,103 @@ class _NoteCard extends StatelessWidget {
 
     return Opacity(
       opacity: isInactive && !isCompleted ? 0.65 : 1.0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
             children: [
-              // Estado badge
-              _StateBadge(isCompleted: isCompleted, isInactive: isInactive),
-              const SizedBox(height: 10),
-              // Título
-              Text(
-                list.title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: titleColor,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              // Fecha
-              Text(
-                DateFormat("d MMM yyyy", 'es').format(list.createdAt),
-                style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight),
-              ),
-              const SizedBox(height: 6),
-              // Cantidad
-              Row(
-                children: [
-                  Icon(Icons.format_list_bulleted, size: 13,
-                      color: isCompleted ? const Color(0xFF16A34A) : _kColor),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${list.itemCount} ${list.itemCount == 1 ? 'producto' : 'productos'}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isCompleted ? const Color(0xFF16A34A) : _kColor,
+              // Contenido izquierdo
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Badge + fecha
+                    Row(
+                      children: [
+                        _StateBadge(isCompleted: isCompleted, isInactive: isInactive),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat("d MMM yyyy", 'es').format(list.createdAt),
+                          style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    // Título
+                    Text(
+                      list.title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: titleColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // Cantidad
+                    Row(
+                      children: [
+                        Icon(Icons.format_list_bulleted, size: 13,
+                            color: isCompleted ? const Color(0xFF16A34A) : _kColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${list.itemCount} ${list.itemCount == 1 ? 'producto' : 'productos'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isCompleted ? const Color(0xFF16A34A) : _kColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const Spacer(),
-              // Botones de acción
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Acciones derecha
+              Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _ActionBtn(icon: Icons.edit_outlined, color: _kColor, onTap: onEdit),
+                  _ActionBtn(
+                    icon: Icons.share_outlined,
+                    color: const Color(0xFF3B82F6),
+                    onTap: onShare,
+                    size: 22,
+                  ),
+                  const SizedBox(height: 6),
                   _ActionBtn(
                     icon: isCompleted ? Icons.check_circle : Icons.check_circle_outline,
                     color: const Color(0xFF16A34A),
                     onTap: onToggleComplete,
+                    size: 22,
                   ),
+                  const SizedBox(height: 6),
                   _ActionBtn(
-                    icon: list.isActive ? Icons.toggle_on_outlined : Icons.toggle_off_outlined,
-                    color: list.isActive ? AppTheme.mutedLight : const Color(0xFFF59E0B),
+                    icon: list.isActive ? Icons.toggle_on : Icons.toggle_off,
+                    color: list.isActive ? _kColor : const Color(0xFFF59E0B),
                     onTap: onToggleActive,
+                    size: 22,
                   ),
-                  _ActionBtn(icon: Icons.delete_outline, color: Colors.red.shade400, onTap: onDelete),
+                  const SizedBox(height: 6),
+                  _ActionBtn(
+                    icon: Icons.delete_outline,
+                    color: Colors.red.shade400,
+                    onTap: onDelete,
+                    size: 22,
+                  ),
                 ],
               ),
             ],
@@ -363,18 +406,19 @@ class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _ActionBtn({required this.icon, required this.color, required this.onTap});
+  final double size;
+  const _ActionBtn({required this.icon, required this.color, required this.onTap, this.size = 17});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, size: 17, color: color),
+          child: Icon(icon, size: size, color: color),
         ),
       );
 }
@@ -419,7 +463,14 @@ class _ListFormSheetState extends State<_ListFormSheet> {
   }
 
   void _addRow() => setState(() => _rows.add(_ItemRow()));
-  void _removeRow(int i) { if (_rows.length > 1) setState(() { _rows[i].dispose(); _rows.removeAt(i); }); }
+  void _removeRow(int i) {
+    if (_rows.length > 1) {
+      setState(() {
+        _rows[i].dispose();
+        _rows.removeAt(i);
+      });
+    }
+  }
 
   Future<void> _save() async {
     final title = _titleCtrl.text.trim().isEmpty ? widget.initialTitle : _titleCtrl.text.trim();
@@ -431,7 +482,7 @@ class _ListFormSheetState extends State<_ListFormSheet> {
       return;
     }
 
-    // Ordenar alfabéticamente por nombre
+    // Ordenar alfabéticamente
     validRows.sort((a, b) => a.name.text.trim().toLowerCase().compareTo(b.name.text.trim().toLowerCase()));
 
     final items = validRows.asMap().entries.map((e) => InventoryItem(
@@ -439,7 +490,7 @@ class _ListFormSheetState extends State<_ListFormSheet> {
           sequenceNumber: e.key + 1,
           productName: e.value.name.text.trim(),
           color: e.value.color.text.trim(),
-          quality: e.value.quality.text.trim(),
+          quality: e.value.selectedQuality ?? '',
           quantity: int.tryParse(e.value.qty.text.trim()) ?? 1,
         )).toList();
 
@@ -507,20 +558,24 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                 controller: scrollCtrl,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  // Título
+                  // Título — línea simple
                   TextField(
                     controller: _titleCtrl,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textLight),
                     decoration: InputDecoration(
-                      labelText: 'Título',
                       hintText: widget.initialTitle,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _kColor, width: 2),
+                      hintStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.mutedLight.withValues(alpha: 0.4)),
+                      border: InputBorder.none,
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE5E7EB)),
                       ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: _kColor, width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.only(bottom: 8),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   // Cabecera tabla
                   const _TableHeader(),
                   const Divider(height: 12),
@@ -576,7 +631,7 @@ class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Row(
         children: [
-          SizedBox(width: 28, child: Text('#', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.mutedLight))),
+          SizedBox(width: 24, child: Text('#', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.mutedLight))),
           Expanded(flex: 4, child: Text('Producto', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.mutedLight))),
           Expanded(flex: 3, child: Text('Color', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.mutedLight))),
           Expanded(flex: 3, child: Text('Calidad', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.mutedLight))),
@@ -590,7 +645,7 @@ class _TableHeader extends StatelessWidget {
 class _ItemRow {
   final TextEditingController name = TextEditingController();
   final TextEditingController color = TextEditingController();
-  final TextEditingController quality = TextEditingController();
+  String? selectedQuality;
   final TextEditingController qty = TextEditingController(text: '1');
 
   _ItemRow();
@@ -599,17 +654,19 @@ class _ItemRow {
     final r = _ItemRow();
     r.name.text = item.productName;
     r.color.text = item.color;
-    r.quality.text = item.quality;
+    r.selectedQuality = _kQualities.contains(item.quality) ? item.quality : (item.quality.isNotEmpty ? item.quality : null);
     r.qty.text = item.quantity.toString();
     return r;
   }
 
   void dispose() {
-    name.dispose(); color.dispose(); quality.dispose(); qty.dispose();
+    name.dispose();
+    color.dispose();
+    qty.dispose();
   }
 }
 
-class _ItemRowWidget extends StatelessWidget {
+class _ItemRowWidget extends StatefulWidget {
   final _ItemRow row;
   final int index;
   final VoidCallback onRemove;
@@ -622,6 +679,11 @@ class _ItemRowWidget extends StatelessWidget {
     required this.canRemove,
   });
 
+  @override
+  State<_ItemRowWidget> createState() => _ItemRowWidgetState();
+}
+
+class _ItemRowWidgetState extends State<_ItemRowWidget> {
   InputDecoration _dec(String hint) => InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(fontSize: 12, color: Color(0xFFD1D5DB)),
@@ -648,18 +710,107 @@ class _ItemRowWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(
-              width: 28,
-              child: Text('$index', style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight, fontWeight: FontWeight.w600)),
+              width: 24,
+              child: Text('${widget.index}', style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight, fontWeight: FontWeight.w600)),
             ),
-            Expanded(flex: 4, child: Padding(padding: const EdgeInsets.only(right: 4), child: TextField(controller: row.name, style: const TextStyle(fontSize: 12), decoration: _dec('Nombre')))),
-            Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 4), child: TextField(controller: row.color, style: const TextStyle(fontSize: 12), decoration: _dec('Color')))),
-            Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(right: 4), child: TextField(controller: row.quality, style: const TextStyle(fontSize: 12), decoration: _dec('Calidad')))),
+            // Producto
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: TextField(
+                  controller: widget.row.name,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: _dec('Nombre'),
+                ),
+              ),
+            ),
+            // Color — con autocompletado
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Autocomplete<String>(
+                  initialValue: TextEditingValue(text: widget.row.color.text),
+                  optionsBuilder: (textEditingValue) {
+                    if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
+                    final q = textEditingValue.text.toLowerCase();
+                    return kFlowerColors.where((c) => c.toLowerCase().contains(q));
+                  },
+                  onSelected: (val) => widget.row.color.text = val,
+                  fieldViewBuilder: (context, ctrl, focusNode, onFieldSubmitted) {
+                    // Sincronizar controlador externo
+                    ctrl.addListener(() => widget.row.color.text = ctrl.text);
+                    return TextField(
+                      controller: ctrl,
+                      focusNode: focusNode,
+                      style: const TextStyle(fontSize: 12),
+                      decoration: _dec('Color'),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 8,
+                        borderRadius: BorderRadius.circular(10),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 180, maxWidth: 180),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (_, i) {
+                              final opt = options.elementAt(i);
+                              return ListTile(
+                                dense: true,
+                                visualDensity: VisualDensity.compact,
+                                title: Text(opt, style: const TextStyle(fontSize: 12)),
+                                onTap: () => onSelected(opt),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            // Calidad — dropdown
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Container(
+                  height: 34,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: widget.row.selectedQuality,
+                      hint: const Text('Calidad', style: TextStyle(fontSize: 12, color: Color(0xFFD1D5DB))),
+                      isExpanded: true,
+                      isDense: true,
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textLight),
+                      icon: const Icon(Icons.expand_more, size: 16, color: AppTheme.mutedLight),
+                      items: _kQualities.map((q) => DropdownMenuItem(value: q, child: Text(q))).toList(),
+                      onChanged: (val) => setState(() => widget.row.selectedQuality = val),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Cantidad
             Expanded(
               flex: 2,
               child: Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: TextField(
-                  controller: row.qty,
+                  controller: widget.row.qty,
                   style: const TextStyle(fontSize: 12),
                   keyboardType: TextInputType.number,
                   decoration: _dec('1'),
@@ -667,11 +818,12 @@ class _ItemRowWidget extends StatelessWidget {
                 ),
               ),
             ),
+            // Eliminar fila
             SizedBox(
               width: 28,
-              child: canRemove
+              child: widget.canRemove
                   ? GestureDetector(
-                      onTap: onRemove,
+                      onTap: widget.onRemove,
                       child: const Icon(Icons.remove_circle_outline, size: 18, color: Color(0xFFEF4444)),
                     )
                   : const SizedBox.shrink(),
