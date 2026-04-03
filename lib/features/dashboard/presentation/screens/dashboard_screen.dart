@@ -16,6 +16,7 @@ import '../../../catalog/presentation/screens/catalog_screen.dart';
 import '../../../orders/presentation/screens/orders_screen.dart';
 import '../../../reviews/presentation/widgets/dashboard_rating_widget.dart';
 import '../../../reparto/presentation/screens/reparto_historico_screen.dart';
+import '../../../inventory/presentation/screens/inventory_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
@@ -133,6 +134,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _buildLatestOrder(context),
                     const SizedBox(height: 16),
                     _buildRepartoCard(context),
+                    const SizedBox(height: 16),
+                    _buildInventarioCard(context),
                     const SizedBox(height: 16),
                     DashboardRatingWidget(shopId: Supabase.instance.client.auth.currentUser?.id ?? ''),
                     const SizedBox(height: 24),
@@ -814,6 +817,86 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
+
+  Widget _buildInventarioCard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'INVENTARIO',
+          style: TextStyle(
+            color: AppTheme.mutedLight,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 10),
+        InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const InventoryScreen()),
+          ),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.18)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.inventory_2_outlined,
+                      color: Color(0xFF7C3AED), size: 26),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Listas de Compra',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textLight,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Crea y gestiona tus listas de flores e insumos',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.mutedLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: Color(0xFF7C3AED), size: 22),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
 class _StatCard extends StatelessWidget {
   final IconData icon;

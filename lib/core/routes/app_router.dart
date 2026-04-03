@@ -29,6 +29,7 @@ import '../../features/orders/domain/models/order_model.dart';
 import '../../features/customer/presentation/screens/order_tracking_screen.dart';
 import '../../features/reviews/presentation/screens/review_form_screen.dart';
 import '../../features/reviews/presentation/screens/shop_reviews_manage_screen.dart';
+import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_screen.dart';
 import '../services/seo_service.dart';
@@ -192,6 +193,10 @@ final appRouter = GoRouter(
       builder: (context, state) => const ShopReviewsManageScreen(),
     ),
     GoRoute(
+      path: '/inventario',
+      builder: (context, state) => const InventoryScreen(),
+    ),
+    GoRoute(
       path: '/resena',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
@@ -282,6 +287,12 @@ class _PublicStoreLoaderState extends State<_PublicStoreLoader>
       if (!mounted) return;
 
       if (registryMatch != null) {
+        final entityType = registryMatch['entity_type'] as String? ?? '';
+        // Solo cargar tiendas públicas (florerías), no proveedores u otros tipos
+        if (entityType != 'floreria' && entityType != 'shop') {
+          if (mounted) setState(() => _notFound = true);
+          return;
+        }
         final entityId = registryMatch['entity_id'] as String;
         // Obtener nombre de la tienda del perfil
         final profile = await Supabase.instance.client
