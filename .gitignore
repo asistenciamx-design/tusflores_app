@@ -55,3 +55,4 @@ flutter/
 .env
 .env.*
 !.env.example
+.mcp.json
