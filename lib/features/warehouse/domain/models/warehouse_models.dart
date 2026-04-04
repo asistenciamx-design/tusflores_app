@@ -105,7 +105,6 @@ class WarehouseProduct {
         'supplier_name': supplierName?.trim().isEmpty == true ? null : supplierName?.trim(),
         'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
         'is_active': isActive,
-        'low_stock_alert': lowStockAlert,
       };
 
   Map<String, dynamic> toUpdateMap() => {
@@ -120,7 +119,6 @@ class WarehouseProduct {
         'supplier_name': supplierName?.trim().isEmpty == true ? null : supplierName?.trim(),
         'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
         'is_active': isActive,
-        'low_stock_alert': lowStockAlert,
         'updated_at': DateTime.now().toIso8601String(),
       };
 }

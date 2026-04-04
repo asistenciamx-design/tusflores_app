@@ -15,9 +15,7 @@ String _sanitizeError(Object e) {
   final msg = e.toString();
   // Mostrar errores de validación de negocio tal cual
   if (msg.startsWith('Exception: ')) return msg.replaceFirst('Exception: ', '');
-  // Mostrar mensaje de Supabase/Postgrest para diagnóstico
-  if (msg.contains('PostgrestException') || msg.contains('StorageException')) return msg;
-  // Ocultar otros detalles técnicos
+  // Ocultar detalles técnicos
   return 'Ocurrió un error. Intenta de nuevo.';
 }
 
