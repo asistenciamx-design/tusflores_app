@@ -65,3 +65,24 @@ DO $$ BEGIN
     ALTER TABLE inventory_items ADD COLUMN unit_price NUMERIC(10,2);
   END IF;
 END $$;
+
+-- ── 4. Proveedor asignado a la lista ────────────────────────────────────────
+-- supplier_id referencia al perfil del proveedor (profiles.id)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inventory_lists' AND column_name = 'supplier_id'
+  ) THEN
+    ALTER TABLE inventory_lists ADD COLUMN supplier_id UUID REFERENCES profiles(id);
+  END IF;
+END $$;
+
+-- Nombre del proveedor (cache para mostrar sin JOIN)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inventory_lists' AND column_name = 'supplier_name'
+  ) THEN
+    ALTER TABLE inventory_lists ADD COLUMN supplier_name TEXT;
+  END IF;
+END $$;

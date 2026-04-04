@@ -114,4 +114,23 @@ class InventoryRepository {
   Future<void> deleteList(String listId) async {
     await _client.from('inventory_lists').delete().eq('id', listId).eq('floreria_id', _userId);
   }
+
+  // ── Obtener proveedores disponibles ────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> getProveedores() async {
+    final data = await _client
+        .from('profiles')
+        .select('id, shop_name')
+        .eq('is_proveedor', true)
+        .order('shop_name', ascending: true);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  // ── Asignar proveedor a lista ──────────────────────────────────────────────
+  Future<void> assignSupplier(String listId, String? supplierId, String? supplierName) async {
+    await _client.from('inventory_lists').update({
+      'supplier_id': supplierId,
+      'supplier_name': supplierName,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', listId).eq('floreria_id', _userId);
+  }
 }

@@ -57,6 +57,8 @@ class InventoryList {
   bool isActive;
   bool isCompleted;
   final int? folio;
+  String? supplierId;
+  String? supplierName;
   List<InventoryItem> items;
 
   InventoryList({
@@ -69,6 +71,8 @@ class InventoryList {
     required this.isActive,
     required this.isCompleted,
     this.folio,
+    this.supplierId,
+    this.supplierName,
     this.items = const [],
   });
 
@@ -84,6 +88,8 @@ class InventoryList {
       isActive: m['is_active'] as bool? ?? true,
       isCompleted: m['is_completed'] as bool? ?? false,
       folio: m['folio'] as int?,
+      supplierId: m['supplier_id'] as String?,
+      supplierName: m['supplier_name'] as String?,
       items: rawItems
           .map((e) => InventoryItem.fromMap(Map<String, dynamic>.from(e as Map)))
           .toList(),
