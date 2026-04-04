@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -882,9 +883,10 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
   final _stockCtrl = TextEditingController();
   final _minStockCtrl = TextEditingController();
   final _supplierCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
+  final _categoryCtrl = TextEditingController();
+  final _newNoteCtrl = TextEditingController();
 
-  String? _selectedCategoryId;
+  List<Map<String, String>> _notesHistory = [];
   String? _imageUrl;
   Uint8List? _pendingImageBytes;
   String? _pendingImageExt;
@@ -913,8 +915,9 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
       _stockCtrl.text = p.stock.toString();
       _minStockCtrl.text = p.minStock > 0 ? p.minStock.toString() : '';
       _supplierCtrl.text = p.supplierName ?? '';
-      _notesCtrl.text = p.notes ?? '';
-      _selectedCategoryId = p.categoryId;
+      _categoryCtrl.text = (p.categoryName == 'Sin categoría') ? '' : (p.categoryName ?? '');
+      // Parse notes history from JSON array stored in notes field
+      _notesHistory = _parseNotesHistory(p.notes);
       _imageUrl = p.imageUrl;
       _purchases = List.from(p.purchases);
       _lowStockAlert = p.lowStockAlert;
@@ -936,7 +939,8 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     _stockCtrl.dispose();
     _minStockCtrl.dispose();
     _supplierCtrl.dispose();
-    _notesCtrl.dispose();
+    _categoryCtrl.dispose();
+    _newNoteCtrl.dispose();
     _purchaseQtyCtrl.dispose();
     _purchasePriceCtrl.dispose();
     _purchaseNotesCtrl.dispose();
@@ -944,19 +948,96 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery);
-    if (file == null) return;
-    final compressed = await ImageCompressor.compress(
-      XFile(file.path, name: file.name),
-      maxWidth: 800,
-      maxHeight: 800,
-      quality: 75,
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Elegir de galería'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
     );
+    if (source == null) return;
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: source);
+    if (file == null) return;
+    try {
+      final compressed = await ImageCompressor.compress(
+        file,
+        maxWidth: 800,
+        maxHeight: 800,
+        quality: 75,
+      );
+      setState(() {
+        _pendingImageBytes = compressed.bytes;
+        _pendingImageExt = compressed.ext;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al procesar imagen: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // ── Notes history helpers ──────────────────────────────────────────────────
+
+  List<Map<String, String>> _parseNotesHistory(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return [];
+    try {
+      final list = (jsonDecode(raw) as List)
+          .map((e) => Map<String, String>.from(e as Map))
+          .toList();
+      return list;
+    } catch (_) {
+      // Legacy plain text → convert to single entry
+      return [
+        {'text': raw, 'date': DateTime.now().toIso8601String()}
+      ];
+    }
+  }
+
+  String _serializeNotes() {
+    if (_notesHistory.isEmpty) return '';
+    return jsonEncode(_notesHistory);
+  }
+
+  void _addNote() {
+    final text = _newNoteCtrl.text.trim();
+    if (text.isEmpty) return;
     setState(() {
-      _pendingImageBytes = compressed.bytes;
-      _pendingImageExt = compressed.ext;
+      _notesHistory.insert(0, {
+        'text': text,
+        'date': DateTime.now().toIso8601String(),
+      });
+      _newNoteCtrl.clear();
     });
+  }
+
+  /// Resolve free-text category to a category ID (find or create).
+  Future<String?> _resolveCategoryId() async {
+    final text = _categoryCtrl.text.trim();
+    if (text.isEmpty) return null;
+    // Check existing categories first
+    final existing = widget.categories
+        .where((c) => c.name.toLowerCase() == text.toLowerCase())
+        .toList();
+    if (existing.isNotEmpty) return existing.first.id;
+    // Create new category
+    final created = await _repo.createCategory(text);
+    return created.id;
   }
 
   Future<void> _save() async {
@@ -970,8 +1051,11 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
             await _repo.uploadImage(_pendingImageBytes!, _pendingImageExt!);
       }
 
+      final categoryId = await _resolveCategoryId();
+
       if (_isEditing) {
         final p = widget.product!;
+        p.categoryId = categoryId;
         p.name = _nameCtrl.text.trim();
         p.sku = _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim();
         p.unit = _presentation;
@@ -982,15 +1066,16 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
         p.supplierName = _supplierCtrl.text.trim().isEmpty
             ? null
             : _supplierCtrl.text.trim();
-        p.notes =
-            _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+        final serializedNotes = _serializeNotes();
+        p.notes = serializedNotes.isEmpty ? null : serializedNotes;
         p.lowStockAlert = _lowStockAlert;
         await _repo.updateProduct(p);
       } else {
+        final serializedNotes = _serializeNotes();
         final product = WarehouseProduct(
           id: '',
           floreriaId: '',
-          categoryId: _selectedCategoryId,
+          categoryId: categoryId,
           name: _nameCtrl.text.trim(),
           sku: _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim(),
           unit: _presentation,
@@ -1001,8 +1086,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
           supplierName: _supplierCtrl.text.trim().isEmpty
               ? null
               : _supplierCtrl.text.trim(),
-          notes:
-              _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+          notes: serializedNotes.isEmpty ? null : serializedNotes,
           lowStockAlert: _lowStockAlert,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -1291,33 +1375,13 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                     maxLength: 50,
                   ),
                   const SizedBox(height: 16),
-                  // Categoría
+                  // Categoría (texto libre)
                   _buildLabel('CATEGORÍA'),
                   const SizedBox(height: 6),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedCategoryId,
-                    decoration: InputDecoration(
-                      hintText: 'Seleccionar categoría',
-                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 16),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: Color(0xFFCFC2D4), width: 0.4)),
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                          value: null, child: Text('Sin categoría')),
-                      ...widget.categories.map((c) =>
-                          DropdownMenuItem(value: c.id, child: Text(c.name))),
-                    ],
-                    onChanged: (v) => setState(() => _selectedCategoryId = v),
+                  _buildField(
+                    controller: _categoryCtrl,
+                    hint: 'Ej: Flores, Bases, Cintas...',
+                    maxLength: 500,
                   ),
                 ],
               ),
@@ -1508,49 +1572,91 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ── Notas ─────────────────────────────────────────────────────
+            // ── Notas con historial ─────────────────────────────────────
             _buildSection(
               color: bgSection,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildSectionHeader(
+                      Icons.sticky_note_2_outlined, 'Notas', purple),
+                  const SizedBox(height: 12),
+                  // Add note input
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildLabel('NOTAS Y DESCRIPCIÓN'),
-                      Text('Se registrará automáticamente el historial.',
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[400],
-                              fontStyle: FontStyle.italic)),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _newNoteCtrl,
+                          maxLines: 2,
+                          maxLength: 500,
+                          decoration: InputDecoration(
+                            hintText: 'Agregar nota...',
+                            hintStyle: TextStyle(
+                                color: Colors.grey[400], fontSize: 13),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.all(14),
+                            counterText: '',
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFCFC2D4), width: 0.4)),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                    color: purple, width: 1.5)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _addNote,
+                        style: IconButton.styleFrom(
+                          backgroundColor: purple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.all(14),
+                        ),
+                        icon: const Icon(Icons.send_rounded, size: 20),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _notesCtrl,
-                    maxLines: 4,
-                    maxLength: 1000,
-                    decoration: InputDecoration(
-                      hintText:
-                          'Detalles sobre el cuidado, origen o estacionalidad...',
-                      hintStyle:
-                          TextStyle(color: Colors.grey[400], fontSize: 13),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.all(14),
-                      border: OutlineInputBorder(
+                  if (_notesHistory.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    ..._notesHistory.map((note) {
+                      final date = DateTime.tryParse(note['date'] ?? '');
+                      final dateStr = date != null
+                          ? DateFormat('dd/MM/yyyy HH:mm', 'es').format(date)
+                          : '';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: Color(0xFFCFC2D4), width: 0.4)),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: purple, width: 1.5)),
-                    ),
-                  ),
+                          border: Border.all(
+                              color: const Color(0xFFCFC2D4).withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(note['text'] ?? '',
+                                style: const TextStyle(fontSize: 13)),
+                            const SizedBox(height: 4),
+                            Text(dateStr,
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[400],
+                                    fontStyle: FontStyle.italic)),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
