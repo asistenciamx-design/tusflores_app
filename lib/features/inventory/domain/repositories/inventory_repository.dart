@@ -6,11 +6,14 @@ class InventoryRepository {
 
   String get _userId => _client.auth.currentUser!.id;
 
+  static const _itemFields =
+      'id, list_id, sequence_number, product_name, color, quality, presentation, quantity, unit_price';
+
   // ── Obtener todas las listas con sus items ───────────────────────────────
   Future<List<InventoryList>> getLists() async {
     final data = await _client
         .from('inventory_lists')
-        .select('*, inventory_items(id, list_id, sequence_number, product_name, color, quality, quantity)')
+        .select('*, inventory_items($_itemFields)')
         .eq('floreria_id', _userId)
         .order('created_at', ascending: false);
     return (data as List)
@@ -38,15 +41,14 @@ class InventoryRepository {
   Future<InventoryList> createList({
     required String title,
     required List<InventoryItem> items,
-    int? folio,
   }) async {
+    // Folio se genera automáticamente con trigger en Supabase
     final listData = await _client
         .from('inventory_lists')
         .insert({
           'floreria_id': _userId,
           'created_by_user_id': _userId,
           'title': title,
-          if (folio != null) 'folio': folio,
         })
         .select()
         .single();
@@ -60,7 +62,7 @@ class InventoryRepository {
 
     final full = await _client
         .from('inventory_lists')
-        .select('*, inventory_items(id, list_id, sequence_number, product_name, color, quality, quantity)')
+        .select('*, inventory_items($_itemFields)')
         .eq('id', listId)
         .single();
     return InventoryList.fromMap(Map<String, dynamic>.from(full));
@@ -87,7 +89,7 @@ class InventoryRepository {
 
     final full = await _client
         .from('inventory_lists')
-        .select('*, inventory_items(id, list_id, sequence_number, product_name, color, quality, quantity)')
+        .select('*, inventory_items($_itemFields)')
         .eq('id', listId)
         .single();
     return InventoryList.fromMap(Map<String, dynamic>.from(full));

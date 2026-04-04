@@ -1,5 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -13,6 +13,11 @@ const _kColorBg = Color(0xFFF5F3FF);
 const _kColorBorder = Color(0xFFEDE9FE);
 
 const _kQualities = ['Estándar', 'Campo', 'Primera', 'Premium'];
+const _kPresentations = [
+  'Bonche', 'Ramo', 'Paquete', 'Caja',
+  'Gruesa', 'Media Gruesa',
+  '10 Tallos', '12 Tallos', '24 Tallos',
+];
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -26,6 +31,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   List<InventoryList> _lists = [];
   bool _loading = true;
   String _filter = 'Todas';
+  final Set<String> _expandedCards = {};
 
   @override
   void initState() {
@@ -151,20 +157,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
         padding: const EdgeInsets.all(16),
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (ctx, i) => _NoteCard(
-          list: items[i],
-          onTap: () => _openForm(context, items[i]),
-          onShare: () => _shareList(items[i]),
-          onToggleActive: () async {
-            await _repo.toggleActive(items[i].id, !items[i].isActive);
-            _load();
-          },
-          onToggleComplete: () async {
-            await _repo.toggleCompleted(items[i].id, !items[i].isCompleted);
-            _load();
-          },
-          onDelete: () => _confirmDelete(context, items[i]),
-        ),
+        itemBuilder: (ctx, i) {
+          final list = items[i];
+          final key = list.id;
+          final isExpanded = _expandedCards.contains(key);
+          return _NoteCard(
+            list: list,
+            isExpanded: isExpanded,
+            onTapHeader: () => setState(() {
+              isExpanded ? _expandedCards.remove(key) : _expandedCards.add(key);
+            }),
+            onEdit: () => _openForm(context, list),
+            onShare: () => _shareList(list),
+            onCopy: () => _copyList(list),
+            onToggleActive: () async {
+              await _repo.toggleActive(list.id, !list.isActive);
+              _load();
+            },
+            onToggleComplete: () async {
+              await _repo.toggleCompleted(list.id, !list.isCompleted);
+              _load();
+            },
+            onDelete: () => _confirmDelete(context, list),
+          );
+        },
       ),
     );
   }
@@ -190,7 +206,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (result == true) _load();
   }
 
-  void _shareList(InventoryList list) {
+  String _buildListText(InventoryList list) {
     final buf = StringBuffer();
     buf.writeln('📋 ${list.title}');
     if (list.folio != null) buf.writeln('Folio: ${list.folio}');
@@ -200,13 +216,35 @@ class _InventoryScreenState extends State<InventoryScreen> {
       final parts = <String>[item.productName];
       if (item.color.isNotEmpty) parts.add(item.color);
       if (item.quality.isNotEmpty) parts.add(item.quality);
-      buf.writeln('${item.sequenceNumber}. ${parts.join(' · ')} × ${item.quantity}');
+      if (item.presentation.isNotEmpty) parts.add(item.presentation);
+      final line = '${item.sequenceNumber}. ${parts.join(' · ')} ×${item.quantity}';
+      if (item.unitPrice != null && item.unitPrice! > 0) {
+        buf.writeln('$line  \$${item.unitPrice!.toStringAsFixed(2)}');
+      } else {
+        buf.writeln(line);
+      }
     }
     buf.writeln('─────────────────');
     buf.writeln('Total: ${list.itemCount} productos');
+    if (list.total > 0) {
+      buf.writeln('Monto: \$${list.total.toStringAsFixed(2)}');
+    }
     buf.writeln('\nEnviado desde tusflores.app');
+    return buf.toString().trim();
+  }
 
-    SharePlus.instance.share(ShareParams(text: buf.toString().trim()));
+  void _shareList(InventoryList list) {
+    SharePlus.instance.share(ShareParams(text: _buildListText(list)));
+  }
+
+  void _copyList(InventoryList list) {
+    Clipboard.setData(ClipboardData(text: _buildListText(list)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Lista copiada al portapapeles'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _confirmDelete(BuildContext context, InventoryList list) async {
@@ -233,19 +271,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
-// ── Card de nota ──────────────────────────────────────────────────────────────
+// ── Card de nota (colapsable) ────────────────────────────────────────────────
 class _NoteCard extends StatelessWidget {
   final InventoryList list;
-  final VoidCallback onTap;
+  final bool isExpanded;
+  final VoidCallback onTapHeader;
+  final VoidCallback onEdit;
   final VoidCallback onShare;
+  final VoidCallback onCopy;
   final VoidCallback onToggleActive;
   final VoidCallback onToggleComplete;
   final VoidCallback onDelete;
 
   const _NoteCard({
     required this.list,
-    required this.onTap,
+    required this.isExpanded,
+    required this.onTapHeader,
+    required this.onEdit,
     required this.onShare,
+    required this.onCopy,
     required this.onToggleActive,
     required this.onToggleComplete,
     required this.onDelete,
@@ -276,110 +320,162 @@ class _NoteCard extends StatelessWidget {
 
     return Opacity(
       opacity: isInactive && !isCompleted ? 0.65 : 1.0,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Fila superior: badge, fecha, folio
-              Row(
-                children: [
-                  _StateBadge(isCompleted: isCompleted, isInactive: isInactive),
-                  const SizedBox(width: 8),
-                  Text(
-                    DateFormat("d MMM yyyy", 'es').format(list.createdAt),
-                    style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight),
-                  ),
-                  const Spacer(),
-                  if (list.folio != null)
-                    Text(
-                      'Folio: ${list.folio}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: _kColor,
+      child: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header (tap para expandir) ─────────────────────────────
+            GestureDetector(
+              onTap: onTapHeader,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Fila superior: badge, fecha, folio
+                    Row(
+                      children: [
+                        _StateBadge(isCompleted: isCompleted, isInactive: isInactive),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat("d MMM yyyy", 'es').format(list.createdAt),
+                          style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight),
+                        ),
+                        const Spacer(),
+                        if (list.folio != null)
+                          Text(
+                            'Folio: ${list.folio}',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _kColor),
+                          ),
+                        const SizedBox(width: 4),
+                        AnimatedRotation(
+                          turns: isExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFFBDBDBD)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Título + edit
+                    GestureDetector(
+                      onTap: onEdit,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              list.title,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.edit_outlined, size: 16, color: _kColor.withValues(alpha: 0.5)),
+                        ],
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Título
-              Text(
-                list.title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: titleColor,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              // Cantidad de productos
-              Row(
-                children: [
-                  Icon(Icons.format_list_bulleted, size: 13,
-                      color: isCompleted ? const Color(0xFF16A34A) : _kColor),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${list.itemCount} ${list.itemCount == 1 ? 'producto' : 'productos'}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isCompleted ? const Color(0xFF16A34A) : _kColor,
+                    const SizedBox(height: 4),
+                    // Productos + total
+                    Row(
+                      children: [
+                        Icon(Icons.format_list_bulleted, size: 13,
+                            color: isCompleted ? const Color(0xFF16A34A) : _kColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${list.itemCount} ${list.itemCount == 1 ? 'producto' : 'productos'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isCompleted ? const Color(0xFF16A34A) : _kColor,
+                          ),
+                        ),
+                        if (list.total > 0) ...[
+                          const Spacer(),
+                          Text(
+                            '\$${list.total.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isCompleted ? const Color(0xFF16A34A) : _kColor,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
-              const SizedBox(height: 8),
-              // Fila de acciones en la parte inferior
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _ActionBtn(
-                    icon: Icons.share_outlined,
-                    label: 'Compartir',
-                    color: const Color(0xFF3B82F6),
-                    onTap: onShare,
-                  ),
-                  _ActionBtn(
-                    icon: isCompleted ? Icons.check_circle : Icons.check_circle_outline,
-                    label: isCompleted ? 'Completada' : 'Completar',
-                    color: const Color(0xFF16A34A),
-                    onTap: onToggleComplete,
-                  ),
-                  _ActionBtn(
-                    icon: list.isActive ? Icons.toggle_on : Icons.toggle_off,
-                    label: list.isActive ? 'Activa' : 'Pausada',
-                    color: list.isActive ? _kColor : const Color(0xFFF59E0B),
-                    onTap: onToggleActive,
-                  ),
-                  _ActionBtn(
-                    icon: Icons.delete_outline,
-                    label: 'Eliminar',
-                    color: Colors.red.shade400,
-                    onTap: onDelete,
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            // ── Acciones expandibles ──────────────────────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: isExpanded
+                  ? Column(
+                      children: [
+                        const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _ActionBtn(
+                                icon: Icons.edit_outlined,
+                                label: 'Editar',
+                                color: _kColor,
+                                onTap: onEdit,
+                              ),
+                              _ActionBtn(
+                                icon: Icons.copy_outlined,
+                                label: 'Copiar',
+                                color: const Color(0xFF8B5CF6),
+                                onTap: onCopy,
+                              ),
+                              _ActionBtn(
+                                icon: Icons.share_outlined,
+                                label: 'Compartir',
+                                color: const Color(0xFF3B82F6),
+                                onTap: onShare,
+                              ),
+                              _ActionBtn(
+                                icon: isCompleted ? Icons.check_circle : Icons.check_circle_outline,
+                                label: isCompleted ? 'Completada' : 'Completar',
+                                color: const Color(0xFF16A34A),
+                                onTap: onToggleComplete,
+                              ),
+                              _ActionBtn(
+                                icon: list.isActive ? Icons.toggle_on : Icons.toggle_off,
+                                label: list.isActive ? 'Activa' : 'Pausada',
+                                color: list.isActive ? _kColor : const Color(0xFFF59E0B),
+                                onTap: onToggleActive,
+                              ),
+                              _ActionBtn(
+                                icon: Icons.delete_outline,
+                                label: 'Eliminar',
+                                color: Colors.red.shade400,
+                                onTap: onDelete,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );
@@ -433,12 +529,12 @@ class _ActionBtn extends StatelessWidget {
                 color: color.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 20, color: color),
+              child: Icon(icon, size: 18, color: color),
             ),
             const SizedBox(height: 3),
             Text(
               label,
-              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -450,13 +546,17 @@ class _SubmittedItem {
   final String name;
   final String color;
   final String quality;
+  final String presentation;
   final int qty;
+  double? unitPrice;
 
-  const _SubmittedItem({
+  _SubmittedItem({
     required this.name,
     this.color = '',
     this.quality = '',
+    this.presentation = '',
     this.qty = 1,
+    this.unitPrice,
   });
 }
 
@@ -482,7 +582,6 @@ class _ListFormSheet extends StatefulWidget {
 
 class _ListFormSheetState extends State<_ListFormSheet> {
   late TextEditingController _titleCtrl;
-  late int _folio;
 
   // Productos ya agregados
   final List<_SubmittedItem> _items = [];
@@ -491,6 +590,7 @@ class _ListFormSheetState extends State<_ListFormSheet> {
   final _nameCtrl = TextEditingController();
   final _colorCtrl = TextEditingController();
   String? _selectedQuality;
+  String? _selectedPresentation;
   int _qty = 1;
   bool _saving = false;
 
@@ -498,12 +598,13 @@ class _ListFormSheetState extends State<_ListFormSheet> {
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.initialTitle);
-    _folio = widget.existingFolio ?? (Random().nextInt(90000) + 10000);
     _items.addAll(widget.initialItems.map((i) => _SubmittedItem(
           name: i.productName,
           color: i.color,
           quality: i.quality,
+          presentation: i.presentation,
           qty: i.quantity,
+          unitPrice: i.unitPrice,
         )));
   }
 
@@ -536,6 +637,18 @@ class _ListFormSheetState extends State<_ListFormSheet> {
     if (result != null) setState(() => _qty = result);
   }
 
+  Future<void> _openPriceKeypad(BuildContext context, int itemIndex) async {
+    final current = _items[itemIndex].unitPrice ?? 0;
+    final result = await showModalBottomSheet<double>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DecimalKeypad(initialValue: current, label: 'Precio unitario'),
+    );
+    if (result != null) {
+      setState(() => _items[itemIndex].unitPrice = result > 0 ? result : null);
+    }
+  }
+
   void _addProduct() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
@@ -549,14 +662,18 @@ class _ListFormSheetState extends State<_ListFormSheet> {
         name: name,
         color: _colorCtrl.text.trim(),
         quality: _selectedQuality ?? '',
+        presentation: _selectedPresentation ?? '',
         qty: _qty,
       ));
       _nameCtrl.clear();
       _colorCtrl.clear();
       _selectedQuality = null;
+      _selectedPresentation = null;
       _qty = 1;
     });
   }
+
+  double get _total => _items.fold(0.0, (sum, it) => sum + (it.unitPrice ?? 0) * it.qty);
 
   Future<void> _save() async {
     // Auto-agregar si hay algo escrito en el formulario actual
@@ -576,13 +693,15 @@ class _ListFormSheetState extends State<_ListFormSheet> {
           productName: e.value.name,
           color: e.value.color,
           quality: e.value.quality,
+          presentation: e.value.presentation,
           quantity: e.value.qty,
+          unitPrice: e.value.unitPrice,
         )).toList();
 
     setState(() => _saving = true);
     try {
       if (widget.listId == null) {
-        await widget.repo.createList(title: title, items: items, folio: _folio);
+        await widget.repo.createList(title: title, items: items);
       } else {
         await widget.repo.updateList(listId: widget.listId!, title: title, items: items);
       }
@@ -614,6 +733,43 @@ class _ListFormSheetState extends State<_ListFormSheet> {
           borderSide: const BorderSide(color: _kColor, width: 1.5),
         ),
       );
+
+  Widget _buildDropdown({
+    required String label,
+    required String? value,
+    required String hint,
+    required List<String> options,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
+        const SizedBox(height: 6),
+        Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              hint: Text(hint, style: const TextStyle(fontSize: 13, color: Color(0xFFD1D5DB))),
+              isExpanded: true,
+              isDense: false,
+              style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
+              icon: const Icon(Icons.expand_more, size: 18, color: AppTheme.mutedLight),
+              items: options.map((q) => DropdownMenuItem(value: q, child: Text(q))).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -652,11 +808,13 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                           isEdit ? 'Editar lista' : 'Nueva lista',
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textLight),
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Folio: $_folio',
-                          style: const TextStyle(fontSize: 12, color: _kColor, fontWeight: FontWeight.w600),
-                        ),
+                        if (isEdit && widget.existingFolio != null) ...[
+                          const SizedBox(width: 10),
+                          Text(
+                            'Folio: ${widget.existingFolio}',
+                            style: const TextStyle(fontSize: 12, color: _kColor, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -766,35 +924,13 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            // Calidad
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Calidad', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: _selectedQuality,
-                                        hint: const Text('Selecciona', style: TextStyle(fontSize: 13, color: Color(0xFFD1D5DB))),
-                                        isExpanded: true,
-                                        isDense: false,
-                                        style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
-                                        icon: const Icon(Icons.expand_more, size: 18, color: AppTheme.mutedLight),
-                                        items: _kQualities.map((q) => DropdownMenuItem(value: q, child: Text(q))).toList(),
-                                        onChanged: (val) => setState(() => _selectedQuality = val),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              child: _buildDropdown(
+                                label: 'Calidad',
+                                value: _selectedQuality,
+                                hint: 'Selecciona',
+                                options: _kQualities,
+                                onChanged: (val) => setState(() => _selectedQuality = val),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -831,6 +967,16 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 14),
+
+                        // Presentación (fila completa)
+                        _buildDropdown(
+                          label: 'Presentación',
+                          value: _selectedPresentation,
+                          hint: 'Selecciona presentación',
+                          options: _kPresentations,
+                          onChanged: (val) => setState(() => _selectedPresentation = val),
+                        ),
                         const SizedBox(height: 16),
 
                         // Botón agregar
@@ -863,6 +1009,13 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                           decoration: BoxDecoration(color: _kColorBg, borderRadius: BorderRadius.circular(10)),
                           child: Text('${_items.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kColor)),
                         ),
+                        if (_total > 0) ...[
+                          const Spacer(),
+                          Text(
+                            'Total: \$${_total.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _kColor),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -870,6 +1023,7 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                           item: e.value,
                           index: e.key + 1,
                           onRemove: () => setState(() => _items.removeAt(e.key)),
+                          onSetPrice: () => _openPriceKeypad(context, e.key),
                         )),
                   ],
 
@@ -913,23 +1067,28 @@ class _SubmittedItemTile extends StatelessWidget {
   final _SubmittedItem item;
   final int index;
   final VoidCallback onRemove;
+  final VoidCallback onSetPrice;
 
   const _SubmittedItemTile({
     required this.item,
     required this.index,
     required this.onRemove,
+    required this.onSetPrice,
   });
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = [
+    final details = [
       if (item.color.isNotEmpty) item.color,
       if (item.quality.isNotEmpty) item.quality,
+      if (item.presentation.isNotEmpty) item.presentation,
     ].join(' · ');
+
+    final hasPrice = item.unitPrice != null && item.unitPrice! > 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -945,26 +1104,58 @@ class _SubmittedItemTile extends StatelessWidget {
             child: Text('$index', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _kColor)),
           ),
           if (item.color.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            _ColorDot(hex: flowerColorHex(item.color), size: 20),
+            const SizedBox(width: 6),
+            _ColorDot(hex: flowerColorHex(item.color), size: 18),
           ],
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
-                if (subtitle.isNotEmpty)
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight)),
+                Text(item.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
+                if (details.isNotEmpty)
+                  Text(details, style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight)),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: _kColorBg, borderRadius: BorderRadius.circular(8)),
-            child: Text('×${item.qty}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _kColor)),
+          // Precio
+          GestureDetector(
+            onTap: onSetPrice,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: hasPrice ? const Color(0xFFF0FDF4) : const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: hasPrice ? const Color(0xFF86EFAC) : const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.attach_money,
+                    size: 14,
+                    color: hasPrice ? const Color(0xFF16A34A) : AppTheme.mutedLight,
+                  ),
+                  Text(
+                    hasPrice ? item.unitPrice!.toStringAsFixed(2) : '0.00',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: hasPrice ? const Color(0xFF16A34A) : AppTheme.mutedLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
+          // Cantidad
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: _kColorBg, borderRadius: BorderRadius.circular(8)),
+            child: Text('×${item.qty}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kColor)),
+          ),
+          const SizedBox(width: 6),
           GestureDetector(
             onTap: onRemove,
             child: const Icon(Icons.remove_circle_outline, size: 20, color: Color(0xFFEF4444)),
@@ -1076,10 +1267,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
         ),
         child: Column(
           children: [
-            // Handle
             const SizedBox(height: 12),
             Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2))),
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
               child: Row(
@@ -1096,7 +1285,6 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                 ],
               ),
             ),
-            // Search
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
@@ -1108,10 +1296,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                   hintStyle: const TextStyle(color: Color(0xFFD1D5DB)),
                   prefixIcon: const Icon(Icons.search, color: AppTheme.mutedLight, size: 20),
                   suffixIcon: _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18, color: AppTheme.mutedLight),
-                          onPressed: () => _searchCtrl.clear(),
-                        )
+                      ? IconButton(icon: const Icon(Icons.clear, size: 18, color: AppTheme.mutedLight), onPressed: () => _searchCtrl.clear())
                       : null,
                   filled: true,
                   fillColor: const Color(0xFFF9FAFB),
@@ -1122,15 +1307,11 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                 ),
               ),
             ),
-            // Count
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Text(
-                    '${colors.length} colores',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight, fontWeight: FontWeight.w500),
-                  ),
+                  Text('${colors.length} colores', style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight, fontWeight: FontWeight.w500)),
                   if (_selected != null) ...[
                     const Spacer(),
                     _ColorDot(hex: flowerColorHex(_selected!), size: 14),
@@ -1141,12 +1322,9 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            // Grid
             Expanded(
               child: colors.isEmpty
-                  ? const Center(
-                      child: Text('Sin resultados', style: TextStyle(color: AppTheme.mutedLight, fontSize: 14)),
-                    )
+                  ? const Center(child: Text('Sin resultados', style: TextStyle(color: AppTheme.mutedLight, fontSize: 14)))
                   : GridView.builder(
                       controller: scrollCtrl,
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -1163,9 +1341,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                         return _ColorGridTile(
                           fc: fc,
                           isSelected: isSelected,
-                          onTap: () {
-                            Navigator.pop(context, fc.name);
-                          },
+                          onTap: () => Navigator.pop(context, fc.name),
                         );
                       },
                     ),
@@ -1182,11 +1358,7 @@ class _ColorGridTile extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _ColorGridTile({
-    required this.fc,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _ColorGridTile({required this.fc, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1211,10 +1383,7 @@ class _ColorGridTile extends StatelessWidget {
           children: [
             Expanded(
               child: Container(
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                ),
+                decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(14))),
               ),
             ),
             Container(
@@ -1244,7 +1413,7 @@ class _ColorGridTile extends StatelessWidget {
   }
 }
 
-// ── Teclado numérico grande reutilizable ─────────────────────────────────────
+// ── Teclado numérico entero (reutilizable) ──────────────────────────────────
 class NumericKeypad extends StatefulWidget {
   final int initialValue;
   final Color accentColor;
@@ -1306,7 +1475,6 @@ class _NumericKeypadState extends State<NumericKeypad> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header: Cancelar, display, Guardar
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
               child: Row(
@@ -1319,11 +1487,7 @@ class _NumericKeypadState extends State<NumericKeypad> {
                     child: Text(
                       _display.isEmpty ? '0' : _display,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: widget.accentColor,
-                      ),
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: widget.accentColor),
                     ),
                   ),
                   TextButton(
@@ -1333,7 +1497,152 @@ class _NumericKeypadState extends State<NumericKeypad> {
                 ],
               ),
             ),
-            // Keypad grid
+            ..._buildRows([
+              ['7', '8', '9'],
+              ['4', '5', '6'],
+              ['1', '2', '3'],
+              ['00', '0', '⌫'],
+            ]),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildRows(List<List<String>> rows) {
+    return rows.map((row) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: row.map((key) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: _KeypadButton(
+              label: key,
+              onTap: () {
+                if (key == '⌫') _onBackspace();
+                else if (key == '00') _onDoubleZero();
+                else _onDigit(key);
+              },
+              isBackspace: key == '⌫',
+            ),
+          ),
+        )).toList(),
+      ),
+    )).toList();
+  }
+}
+
+// ── Teclado decimal para precios (reutilizable) ─────────────────────────────
+class DecimalKeypad extends StatefulWidget {
+  final double initialValue;
+  final String label;
+  final Color accentColor;
+
+  const DecimalKeypad({
+    super.key,
+    this.initialValue = 0,
+    this.label = 'Precio',
+    this.accentColor = const Color(0xFF16A34A),
+  });
+
+  @override
+  State<DecimalKeypad> createState() => _DecimalKeypadState();
+}
+
+class _DecimalKeypadState extends State<DecimalKeypad> {
+  late String _display;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialValue > 0) {
+      _display = widget.initialValue.toStringAsFixed(2);
+      // Remove trailing zeros after decimal
+      if (_display.contains('.')) {
+        _display = _display.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+      }
+    } else {
+      _display = '';
+    }
+  }
+
+  void _onDigit(String digit) {
+    // Limit decimal places to 2
+    if (_display.contains('.')) {
+      final parts = _display.split('.');
+      if (parts[1].length >= 2) return;
+    }
+    if (_display.length >= 8) return;
+    setState(() {
+      if (_display == '0' && digit != '0') {
+        _display = digit;
+      } else {
+        _display += digit;
+      }
+    });
+  }
+
+  void _onDot() {
+    if (_display.contains('.')) return;
+    setState(() {
+      _display = _display.isEmpty ? '0.' : '$_display.';
+    });
+  }
+
+  void _onBackspace() {
+    if (_display.isNotEmpty) {
+      setState(() => _display = _display.substring(0, _display.length - 1));
+    }
+  }
+
+  void _onSave() {
+    final value = double.tryParse(_display) ?? 0;
+    Navigator.pop(context, value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayText = _display.isEmpty ? '0.00' : _display;
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(widget.label, style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight, fontWeight: FontWeight.w500)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('\$', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: widget.accentColor)),
+                            const SizedBox(width: 2),
+                            Text(displayText, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: widget.accentColor)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _onSave,
+                    child: const Text('Guardar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
+                  ),
+                ],
+              ),
+            ),
             ..._buildRows(),
             const SizedBox(height: 12),
           ],
@@ -1347,7 +1656,7 @@ class _NumericKeypadState extends State<NumericKeypad> {
       ['7', '8', '9'],
       ['4', '5', '6'],
       ['1', '2', '3'],
-      ['00', '0', '⌫'],
+      ['.', '0', '⌫'],
     ];
     return rows.map((row) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1358,13 +1667,9 @@ class _NumericKeypadState extends State<NumericKeypad> {
             child: _KeypadButton(
               label: key,
               onTap: () {
-                if (key == '⌫') {
-                  _onBackspace();
-                } else if (key == '00') {
-                  _onDoubleZero();
-                } else {
-                  _onDigit(key);
-                }
+                if (key == '⌫') _onBackspace();
+                else if (key == '.') _onDot();
+                else _onDigit(key);
               },
               isBackspace: key == '⌫',
             ),
@@ -1375,6 +1680,7 @@ class _NumericKeypadState extends State<NumericKeypad> {
   }
 }
 
+// ── Botón del teclado numérico ──────────────────────────────────────────────
 class _KeypadButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -1399,11 +1705,7 @@ class _KeypadButton extends StatelessWidget {
                 ? const Icon(Icons.backspace_outlined, size: 26, color: AppTheme.textLight)
                 : Text(
                     label,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textLight,
-                    ),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textLight),
                   ),
           ),
         ),

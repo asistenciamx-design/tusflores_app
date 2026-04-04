@@ -5,7 +5,9 @@ class InventoryItem {
   String productName;
   String color;
   String quality;
+  String presentation;
   int quantity;
+  double? unitPrice;
 
   InventoryItem({
     this.id,
@@ -14,7 +16,9 @@ class InventoryItem {
     required this.productName,
     this.color = '',
     this.quality = '',
+    this.presentation = '',
     this.quantity = 1,
+    this.unitPrice,
   });
 
   factory InventoryItem.fromMap(Map<String, dynamic> m) => InventoryItem(
@@ -24,7 +28,9 @@ class InventoryItem {
         productName: m['product_name'] as String? ?? '',
         color: m['color'] as String? ?? '',
         quality: m['quality'] as String? ?? '',
+        presentation: m['presentation'] as String? ?? '',
         quantity: m['quantity'] as int? ?? 1,
+        unitPrice: (m['unit_price'] as num?)?.toDouble(),
       );
 
   Map<String, dynamic> toInsertMap(String listId) => {
@@ -33,8 +39,12 @@ class InventoryItem {
         'product_name': productName.trim(),
         'color': color.trim().isEmpty ? null : color.trim(),
         'quality': quality.trim().isEmpty ? null : quality.trim(),
+        'presentation': presentation.trim().isEmpty ? null : presentation.trim(),
         'quantity': quantity,
+        'unit_price': unitPrice,
       };
+
+  double get subtotal => (unitPrice ?? 0) * quantity;
 }
 
 class InventoryList {
@@ -81,4 +91,6 @@ class InventoryList {
   }
 
   int get itemCount => items.length;
+
+  double get total => items.fold(0.0, (sum, item) => sum + item.subtotal);
 }
