@@ -15,7 +15,9 @@ String _sanitizeError(Object e) {
   final msg = e.toString();
   // Mostrar errores de validación de negocio tal cual
   if (msg.startsWith('Exception: ')) return msg.replaceFirst('Exception: ', '');
-  // Ocultar detalles técnicos
+  // Mostrar mensaje de Supabase/Postgrest para diagnóstico
+  if (msg.contains('PostgrestException') || msg.contains('StorageException')) return msg;
+  // Ocultar otros detalles técnicos
   return 'Ocurrió un error. Intenta de nuevo.';
 }
 
@@ -180,7 +182,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
         onPressed: () => _openProductForm(),
         backgroundColor: const Color(0xFF7C3AED),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Nuevo Producto',
+        label: const Text('Nuevo Insumo',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
       body: ResponsiveContent(
@@ -1114,9 +1116,9 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Eliminar producto'),
+        title: const Text('Eliminar insumo'),
         content:
-            const Text('¿Estás seguro? Se eliminará el producto y su historial.'),
+            const Text('¿Estás seguro? Se eliminará el insumo y su historial.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -1245,7 +1247,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _isEditing ? 'Editar Producto' : 'Nuevo Producto',
+          _isEditing ? 'Editar Insumo' : 'Nuevo Insumo',
           style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: purple,
@@ -1284,7 +1286,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                           strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.check_circle_rounded, size: 20),
               label: Text(
-                _isEditing ? 'GUARDAR CAMBIOS' : 'CREAR PRODUCTO',
+                _isEditing ? 'GUARDAR CAMBIOS' : 'CREAR INSUMO',
                 style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
