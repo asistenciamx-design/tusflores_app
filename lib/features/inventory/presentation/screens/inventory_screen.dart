@@ -492,8 +492,6 @@ class _ListFormSheetState extends State<_ListFormSheet> {
   final _colorCtrl = TextEditingController();
   String? _selectedQuality;
   int _qty = 1;
-  Key _colorKey = UniqueKey();
-
   bool _saving = false;
 
   @override
@@ -515,6 +513,18 @@ class _ListFormSheetState extends State<_ListFormSheet> {
     _nameCtrl.dispose();
     _colorCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _openColorPicker(BuildContext context) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ColorPickerSheet(initialValue: _colorCtrl.text),
+    );
+    if (result != null) {
+      setState(() => _colorCtrl.text = result);
+    }
   }
 
   Future<void> _openNumericKeypad(BuildContext context) async {
@@ -543,7 +553,6 @@ class _ListFormSheetState extends State<_ListFormSheet> {
       ));
       _nameCtrl.clear();
       _colorCtrl.clear();
-      _colorKey = UniqueKey();
       _selectedQuality = null;
       _qty = 1;
     });
@@ -709,75 +718,45 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Color (fila completa)
+                        // Color (abre panel grid)
                         const Text('Color', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
                         const SizedBox(height: 6),
-                        Autocomplete<FlowerColor>(
-                          key: _colorKey,
-                          displayStringForOption: (fc) => fc.name,
-                          optionsBuilder: (textEditingValue) {
-                            if (textEditingValue.text.isEmpty) return const Iterable<FlowerColor>.empty();
-                            final q = textEditingValue.text.toLowerCase();
-                            final seen = <String>{};
-                            final matches = <FlowerColor>[];
-                            for (final c in kFlowerColorCatalog) {
-                              final lower = c.name.toLowerCase();
-                              if (seen.contains(lower)) continue;
-                              seen.add(lower);
-                              if (lower.startsWith(q)) matches.add(c);
-                            }
-                            matches.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-                            return matches;
-                          },
-                          onSelected: (fc) => setState(() => _colorCtrl.text = fc.name),
-                          fieldViewBuilder: (context, ctrl, focusNode, onFieldSubmitted) {
-                            ctrl.addListener(() => _colorCtrl.text = ctrl.text);
-                            return TextField(
-                              controller: ctrl,
-                              focusNode: focusNode,
-                              decoration: _fieldDec('Ej. Rojo, Blanco...'),
-                            );
-                          },
-                          optionsViewBuilder: (context, onSelected, options) => Align(
-                            alignment: Alignment.topLeft,
-                            child: Material(
-                              elevation: 8,
+                        GestureDetector(
+                          onTap: () => _openColorPicker(context),
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 220, maxWidth: 280),
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
-                                  shrinkWrap: true,
-                                  itemCount: options.length,
-                                  itemBuilder: (_, i) {
-                                    final fc = options.elementAt(i);
-                                    return InkWell(
-                                      onTap: () => onSelected(fc),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        child: Row(
-                                          children: [
-                                            _ColorDot(hex: fc.hex, size: 24),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Text(fc.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                                            ),
-                                            if (fc.isBasic)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFF3F4F6),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: const Text('Básico', style: TextStyle(fontSize: 9, color: AppTheme.mutedLight, fontWeight: FontWeight.w600)),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                            ),
+                            child: Row(
+                              children: [
+                                if (_colorCtrl.text.isNotEmpty) ...[
+                                  _ColorDot(hex: flowerColorHex(_colorCtrl.text), size: 22),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _colorCtrl.text,
+                                      style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => setState(() => _colorCtrl.clear()),
+                                    child: const Icon(Icons.close, size: 18, color: AppTheme.mutedLight),
+                                  ),
+                                ] else ...[
+                                  const Icon(Icons.palette_outlined, size: 18, color: Color(0xFFD1D5DB)),
+                                  const SizedBox(width: 10),
+                                  const Expanded(
+                                    child: Text(
+                                      'Seleccionar color',
+                                      style: TextStyle(fontSize: 14, color: Color(0xFFD1D5DB)),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ),
@@ -1036,6 +1015,232 @@ class _ColorDot extends StatelessWidget {
     final value = int.tryParse(h, radix: 16);
     if (value == null) return null;
     return Color(0xFF000000 | value);
+  }
+}
+
+// ── Selector de color tipo grid ──────────────────────────────────────────────
+class _ColorPickerSheet extends StatefulWidget {
+  final String initialValue;
+
+  const _ColorPickerSheet({this.initialValue = ''});
+
+  @override
+  State<_ColorPickerSheet> createState() => _ColorPickerSheetState();
+}
+
+class _ColorPickerSheetState extends State<_ColorPickerSheet> {
+  final _searchCtrl = TextEditingController();
+  final _focusNode = FocusNode();
+  String? _selected;
+
+  List<FlowerColor> get _filtered {
+    final q = _searchCtrl.text.toLowerCase();
+    final seen = <String>{};
+    final results = <FlowerColor>[];
+    for (final c in kFlowerColorCatalog) {
+      final lower = c.name.toLowerCase();
+      if (seen.contains(lower)) continue;
+      seen.add(lower);
+      if (q.isEmpty || lower.startsWith(q)) results.add(c);
+    }
+    results.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return results;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialValue.isNotEmpty) _selected = widget.initialValue;
+    _searchCtrl.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = _filtered;
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.92,
+      minChildSize: 0.4,
+      builder: (_, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2))),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.palette_outlined, color: _kColor, size: 22),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text('Seleccionar color', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: AppTheme.mutedLight),
+                  ),
+                ],
+              ),
+            ),
+            // Search
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                focusNode: _focusNode,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: 'Buscar color...',
+                  hintStyle: const TextStyle(color: Color(0xFFD1D5DB)),
+                  prefixIcon: const Icon(Icons.search, color: AppTheme.mutedLight, size: 20),
+                  suffixIcon: _searchCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18, color: AppTheme.mutedLight),
+                          onPressed: () => _searchCtrl.clear(),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: _kColor, width: 1.5)),
+                ),
+              ),
+            ),
+            // Count
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    '${colors.length} colores',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.mutedLight, fontWeight: FontWeight.w500),
+                  ),
+                  if (_selected != null) ...[
+                    const Spacer(),
+                    _ColorDot(hex: flowerColorHex(_selected!), size: 14),
+                    const SizedBox(width: 6),
+                    Text(_selected!, style: const TextStyle(fontSize: 12, color: _kColor, fontWeight: FontWeight.w600)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Grid
+            Expanded(
+              child: colors.isEmpty
+                  ? const Center(
+                      child: Text('Sin resultados', style: TextStyle(color: AppTheme.mutedLight, fontSize: 14)),
+                    )
+                  : GridView.builder(
+                      controller: scrollCtrl,
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 0.85,
+                      ),
+                      itemCount: colors.length,
+                      itemBuilder: (_, i) {
+                        final fc = colors[i];
+                        final isSelected = _selected == fc.name;
+                        return _ColorGridTile(
+                          fc: fc,
+                          isSelected: isSelected,
+                          onTap: () {
+                            Navigator.pop(context, fc.name);
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorGridTile extends StatelessWidget {
+  final FlowerColor fc;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ColorGridTile({
+    required this.fc,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _ColorDot._parseHex(fc.hex) ?? Colors.grey;
+    final isLight = color.computeLuminance() > 0.85;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? _kColor : (isLight ? const Color(0xFFE5E7EB) : Colors.transparent),
+            width: isSelected ? 3 : 1.5,
+          ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: _kColor.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))]
+              : [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                ),
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? _kColor : Colors.white,
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+              ),
+              child: Text(
+                fc.name.toUpperCase(),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: isSelected ? Colors.white : AppTheme.textLight,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
