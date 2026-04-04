@@ -197,6 +197,17 @@ class WarehouseRepository {
     return _client.storage.from('warehouse').getPublicUrl(path);
   }
 
+  // ── Proveedores ───────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getProveedores() async {
+    final data = await _client
+        .from('profiles')
+        .select('id, shop_name')
+        .eq('is_proveedor', true)
+        .order('shop_name', ascending: true);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
   // ── Estadísticas rápidas ──────────────────────────────────────────────────
 
   Future<Map<String, int>> getStats() async {

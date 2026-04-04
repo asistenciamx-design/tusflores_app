@@ -896,6 +896,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
   bool _lowStockAlert = true;
   String _presentation = 'Pieza';
   List<WarehousePurchase> _purchases = [];
+  String? _supplierId; // ID del proveedor seleccionado
 
   // Para agregar compra
   final _purchaseQtyCtrl = TextEditingController();
@@ -927,7 +928,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     } else {
       _unitCtrl.text = 'Pieza';
       _stockCtrl.text = '0';
-      _minStockCtrl.text = '10';
+      _minStockCtrl.text = '3';
     }
   }
 
@@ -1477,42 +1478,47 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  // Presentación pills
+                  // Presentación pills (desplazables)
                   _buildLabel('PRESENTACIÓN'),
                   const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _presentations.map((p) {
-                      final selected = _presentation == p;
-                      return GestureDetector(
-                        onTap: () => setState(() => _presentation = p),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: selected ? purple : Colors.white,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: selected
-                                  ? purple
-                                  : const Color(0xFFCFC2D4)
-                                      .withValues(alpha: 0.4),
-                              width: selected ? 2 : 1,
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.none,
+                    child: Row(
+                      children: _presentations.map((p) {
+                        final selected = _presentation == p;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _presentation = p),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: selected ? purple : Colors.white,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: selected
+                                      ? purple
+                                      : const Color(0xFFCFC2D4)
+                                          .withValues(alpha: 0.4),
+                                  width: selected ? 2 : 1,
+                                ),
+                              ),
+                              child: Text(
+                                p,
+                                style: TextStyle(
+                                  color: selected ? Colors.white : Colors.grey[600],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
                           ),
-                          child: Text(
-                            p,
-                            style: TextStyle(
-                              color: selected ? Colors.white : Colors.grey[600],
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   // Stock actual + Stock mínimo
@@ -1567,11 +1573,38 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                   // Proveedor
                   _buildLabel('PROVEEDOR'),
                   const SizedBox(height: 6),
-                  _buildField(
-                    controller: _supplierCtrl,
-                    hint: 'Nombre',
-                    prefixIcon: Icons.local_shipping_outlined,
-                    maxLength: 500,
+                  GestureDetector(
+                    onTap: _openSupplierPicker,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFCFC2D4), width: 0.4),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.local_shipping_outlined, size: 20, color: Colors.grey[500]),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _supplierCtrl.text.isNotEmpty ? _supplierCtrl.text : 'Seleccionar proveedor',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _supplierCtrl.text.isNotEmpty ? Colors.black87 : Colors.grey[400],
+                              ),
+                            ),
+                          ),
+                          if (_supplierCtrl.text.isNotEmpty)
+                            GestureDetector(
+                              onTap: () => setState(() { _supplierCtrl.clear(); _supplierId = null; }),
+                              child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                            )
+                          else
+                            Icon(Icons.chevron_right, size: 20, color: Colors.grey[400]),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1851,6 +1884,29 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     );
   }
 
+  Future<void> _openSupplierPicker() async {
+    final result = await showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _WarehouseSupplierPickerSheet(
+        repo: _repo,
+        currentSupplierName: _supplierCtrl.text.isNotEmpty ? _supplierCtrl.text : null,
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        if (result['name']!.isEmpty) {
+          _supplierCtrl.clear();
+          _supplierId = null;
+        } else {
+          _supplierCtrl.text = result['name']!;
+          _supplierId = result['id'];
+        }
+      });
+    }
+  }
+
   Future<void> _showNumpad(TextEditingController ctrl, {required bool allowDecimal}) async {
     final result = await showModalBottomSheet<String>(
       context: context,
@@ -1910,6 +1966,190 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Selector de Proveedor (Warehouse) ──────────────────────────────────────
+
+class _WarehouseSupplierPickerSheet extends StatefulWidget {
+  final WarehouseRepository repo;
+  final String? currentSupplierName;
+
+  const _WarehouseSupplierPickerSheet({required this.repo, this.currentSupplierName});
+
+  @override
+  State<_WarehouseSupplierPickerSheet> createState() => _WarehouseSupplierPickerSheetState();
+}
+
+class _WarehouseSupplierPickerSheetState extends State<_WarehouseSupplierPickerSheet> {
+  List<Map<String, dynamic>>? _proveedores;
+  bool _loading = true;
+  String _search = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProveedores();
+  }
+
+  Future<void> _loadProveedores() async {
+    try {
+      final data = await widget.repo.getProveedores();
+      if (mounted) setState(() { _proveedores = data; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    if (_proveedores == null) return [];
+    if (_search.isEmpty) return _proveedores!;
+    final q = _search.toLowerCase();
+    return _proveedores!.where((p) {
+      final name = (p['shop_name'] as String? ?? '').toLowerCase();
+      return name.contains(q);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.55,
+      maxChildSize: 0.85,
+      minChildSize: 0.35,
+      builder: (_, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.local_shipping_outlined, color: Color(0xFFF59E0B), size: 22),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text('Asignar proveedor',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: AppTheme.mutedLight),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: TextField(
+                autofocus: true,
+                onChanged: (v) => setState(() => _search = v),
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: 'Buscar proveedor...',
+                  hintStyle: const TextStyle(color: Color(0xFFD1D5DB)),
+                  prefixIcon: const Icon(Icons.search, color: AppTheme.mutedLight, size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFF59E0B), width: 1.5)),
+                ),
+              ),
+            ),
+            // Quitar proveedor
+            if (widget.currentSupplierName != null && widget.currentSupplierName!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: ListTile(
+                  onTap: () => Navigator.pop(context, <String, String>{'id': '', 'name': ''}),
+                  leading: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.person_remove_outlined, color: Colors.red.shade400, size: 20),
+                  ),
+                  title: const Text('Quitar proveedor',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.red)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  tileColor: Colors.red.shade50.withValues(alpha: 0.3),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFF59E0B)))
+                  : _filtered.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.store_outlined, size: 48, color: Colors.grey.shade300),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _proveedores?.isEmpty == true
+                                      ? 'No hay proveedores registrados'
+                                      : 'Sin resultados',
+                                  style: const TextStyle(fontSize: 14, color: AppTheme.mutedLight),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          controller: scrollCtrl,
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          itemCount: _filtered.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 4),
+                          itemBuilder: (_, i) {
+                            final p = _filtered[i];
+                            final id = p['id'] as String;
+                            final name = p['shop_name'] as String? ?? 'Sin nombre';
+                            final isSelected = name == widget.currentSupplierName;
+                            return ListTile(
+                              onTap: () => Navigator.pop(context, <String, String>{'id': id, 'name': name}),
+                              leading: Container(
+                                width: 40, height: 40,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFFFEF3C7) : const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  isSelected ? Icons.check_circle : Icons.store_outlined,
+                                  color: isSelected ? const Color(0xFFF59E0B) : AppTheme.mutedLight,
+                                  size: 20,
+                                ),
+                              ),
+                              title: Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected ? const Color(0xFFF59E0B) : AppTheme.textLight,
+                                ),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check, color: Color(0xFFF59E0B), size: 20)
+                                  : null,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              tileColor: isSelected ? const Color(0xFFFEF3C7).withValues(alpha: 0.3) : null,
+                            );
+                          },
+                        ),
+            ),
+          ],
         ),
       ),
     );
