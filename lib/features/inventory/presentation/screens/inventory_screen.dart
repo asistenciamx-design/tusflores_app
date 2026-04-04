@@ -399,13 +399,13 @@ class _NoteCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           DateFormat("d MMM yyyy", 'es').format(list.createdAt),
-                          style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight),
+                          style: const TextStyle(fontSize: 13, color: AppTheme.mutedLight),
                         ),
                         const Spacer(),
                         if (list.folio != null)
                           Text(
                             'Folio: ${list.folio}',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _kColor),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kColor),
                           ),
                         const SizedBox(width: 4),
                         AnimatedRotation(
@@ -424,7 +424,7 @@ class _NoteCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               list.title,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -438,13 +438,13 @@ class _NoteCard extends StatelessWidget {
                     // Productos + total
                     Row(
                       children: [
-                        Icon(Icons.format_list_bulleted, size: 13,
+                        Icon(Icons.format_list_bulleted, size: 15,
                             color: isCompleted ? const Color(0xFF16A34A) : _kColor),
                         const SizedBox(width: 4),
                         Text(
                           '${list.itemCount} ${list.itemCount == 1 ? 'producto' : 'productos'}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: isCompleted ? const Color(0xFF16A34A) : _kColor,
                           ),
@@ -454,7 +454,7 @@ class _NoteCard extends StatelessWidget {
                           Text(
                             '\$${list.total.toStringAsFixed(2)}',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold,
                               color: isCompleted ? const Color(0xFF16A34A) : _kColor,
                             ),
@@ -467,12 +467,12 @@ class _NoteCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.local_shipping_outlined, size: 13, color: const Color(0xFFF59E0B)),
+                          Icon(Icons.local_shipping_outlined, size: 15, color: const Color(0xFFF59E0B)),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               list.supplierName!,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFF59E0B)),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFF59E0B)),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -573,7 +573,7 @@ class _StateBadge extends StatelessWidget {
   Widget _pill(String label, Color fg, Color bg) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-        child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
       );
 }
 
@@ -1089,18 +1089,18 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Text('Productos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textLight)),
+                        const Text('Productos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textLight)),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(color: _kColorBg, borderRadius: BorderRadius.circular(10)),
-                          child: Text('${_items.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kColor)),
+                          child: Text('${_items.length}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _kColor)),
                         ),
                         if (_total > 0) ...[
                           const Spacer(),
                           Text(
                             'Total: \$${_total.toStringAsFixed(2)}',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _kColor),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _kColor),
                           ),
                         ],
                       ],
@@ -1188,7 +1188,7 @@ class _SubmittedItemTile extends StatelessWidget {
             height: 26,
             alignment: Alignment.center,
             decoration: const BoxDecoration(color: _kColorBg, shape: BoxShape.circle),
-            child: Text('$index', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _kColor)),
+            child: Text('$index', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _kColor)),
           ),
           if (item.color.isNotEmpty) ...[
             const SizedBox(width: 6),
@@ -1199,9 +1199,9 @@ class _SubmittedItemTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
+                Text(item.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
                 if (details.isNotEmpty)
-                  Text(details, style: const TextStyle(fontSize: 11, color: AppTheme.mutedLight)),
+                  Text(details, style: const TextStyle(fontSize: 13, color: AppTheme.mutedLight)),
               ],
             ),
           ),
@@ -1220,13 +1220,13 @@ class _SubmittedItemTile extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.attach_money,
-                    size: 14,
+                    size: 16,
                     color: hasPrice ? const Color(0xFF16A34A) : AppTheme.mutedLight,
                   ),
                   Text(
                     hasPrice ? item.unitPrice!.toStringAsFixed(2) : '0.00',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: hasPrice ? const Color(0xFF16A34A) : AppTheme.mutedLight,
                     ),
@@ -1240,7 +1240,7 @@ class _SubmittedItemTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(color: _kColorBg, borderRadius: BorderRadius.circular(8)),
-            child: Text('×${item.qty}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _kColor)),
+            child: Text('×${item.qty}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _kColor)),
           ),
           const SizedBox(width: 6),
           GestureDetector(
