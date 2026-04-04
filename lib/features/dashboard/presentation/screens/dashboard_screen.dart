@@ -823,7 +823,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'INVENTARIO',
+          'LISTA DE COMPRA',
           style: TextStyle(
             color: AppTheme.mutedLight,
             fontWeight: FontWeight.bold,
