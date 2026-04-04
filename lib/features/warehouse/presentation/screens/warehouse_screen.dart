@@ -890,6 +890,8 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
   String? _pendingImageExt;
   bool _saving = false;
   bool _deleting = false;
+  bool _lowStockAlert = true;
+  String _presentation = 'Pieza';
   List<WarehousePurchase> _purchases = [];
 
   // Para agregar compra
@@ -915,9 +917,12 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
       _selectedCategoryId = p.categoryId;
       _imageUrl = p.imageUrl;
       _purchases = List.from(p.purchases);
+      // Map saved unit to presentation pill
+      _presentation = _unitToPresentation(p.unit);
     } else {
-      _unitCtrl.text = 'unidad';
+      _unitCtrl.text = 'Pieza';
       _stockCtrl.text = '0';
+      _minStockCtrl.text = '10';
     }
   }
 
@@ -968,7 +973,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
         final p = widget.product!;
         p.name = _nameCtrl.text.trim();
         p.sku = _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim();
-        p.unit = _unitCtrl.text.trim();
+        p.unit = _presentation;
         p.unitPrice = double.tryParse(_priceCtrl.text) ?? 0;
         p.stock = int.tryParse(_stockCtrl.text) ?? 0;
         p.minStock = int.tryParse(_minStockCtrl.text) ?? 0;
@@ -986,7 +991,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
           categoryId: _selectedCategoryId,
           name: _nameCtrl.text.trim(),
           sku: _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim(),
-          unit: _unitCtrl.text.trim(),
+          unit: _presentation,
           unitPrice: double.tryParse(_priceCtrl.text) ?? 0,
           stock: int.tryParse(_stockCtrl.text) ?? 0,
           minStock: int.tryParse(_minStockCtrl.text) ?? 0,
@@ -1121,47 +1126,100 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     );
   }
 
+  static const _presentations = ['Pieza', 'Paquete', 'Caja', 'Rollo', 'Bloque'];
+
+  String _unitToPresentation(String unit) {
+    final u = unit.trim();
+    if (_presentations.contains(u)) return u;
+    return 'Pieza';
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('dd/MM/yyyy', 'es');
+    const purple = Color(0xFF500088);
+    const bgSection = Color(0xFFF4F3F6);
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: const Color(0xFFFAF9FC),
+      // ── AppBar ──────────────────────────────────────────────────────────────
       appBar: AppBar(
-        title: Text(_isEditing ? 'Editar Producto' : 'Nuevo Producto',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFAF9FC),
         foregroundColor: AppTheme.textLight,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          _isEditing ? 'Editar Producto' : 'Nuevo Producto',
+          style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: purple,
+              fontSize: 20),
+        ),
         actions: [
           if (_isEditing)
             IconButton(
               icon: _deleting
                   ? const SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: _deleting ? null : _delete,
             ),
         ],
       ),
+      // ── Bottom save bar ──────────────────────────────────────────────────────
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: SizedBox(
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: purple,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                elevation: 0,
+              ),
+              icon: _saving
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.check_circle_rounded, size: 20),
+              label: Text(
+                _isEditing ? 'GUARDAR CAMBIOS' : 'CREAR PRODUCTO',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 0.8),
+              ),
+            ),
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
-            // ── Image ──
-            Center(
+            // ── Image section ──────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: GestureDetector(
                 onTap: _pickImage,
                 child: Container(
-                  width: 140,
-                  height: 140,
+                  width: double.infinity,
+                  height: 180,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(20),
+                    color: const Color(0xFFE8E8EB),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color: const Color(0xFFE5E7EB), width: 1.5),
+                        color: const Color(0xFFCFC2D4).withValues(alpha: 0.4),
+                        width: 1.5),
                     image: _pendingImageBytes != null
                         ? DecorationImage(
                             image: MemoryImage(_pendingImageBytes!),
@@ -1169,7 +1227,8 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                         : (_imageUrl != null && _imageUrl!.isNotEmpty
                             ? DecorationImage(
                                 image: NetworkImage(_imageUrl!),
-                                fit: BoxFit.cover)
+                                fit: BoxFit.cover,
+                                opacity: 0.85)
                             : null),
                   ),
                   child: (_pendingImageBytes == null &&
@@ -1177,79 +1236,165 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.camera_alt_outlined,
-                                color: Colors.grey[400], size: 36),
-                            const SizedBox(height: 4),
-                            Text('Subir foto',
+                            Icon(Icons.add_a_photo_outlined,
+                                color: Colors.grey[500], size: 40),
+                            const SizedBox(height: 8),
+                            Text('Subir Imagen',
                                 style: TextStyle(
-                                    color: Colors.grey[500], fontSize: 12)),
+                                    color: Colors.grey[700],
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14)),
+                            const SizedBox(height: 4),
+                            Text('Formatos sugeridos: JPG, PNG (Max 5MB)',
+                                style: TextStyle(
+                                    color: Colors.grey[500], fontSize: 11)),
                           ],
                         )
                       : null,
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            // ── Name ──
-            _buildField(
-              controller: _nameCtrl,
-              label: 'Nombre del producto *',
-              maxLength: 500,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Requerido';
-                if (v.trim().length > 500) return 'Máximo 500 caracteres';
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            // ── SKU + Category ──
-            Row(
-              children: [
-                Expanded(
-                  child: _buildField(
+            const SizedBox(height: 16),
+
+            // ── Información General ────────────────────────────────────────
+            _buildSection(
+              color: bgSection,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader(
+                      Icons.local_florist_outlined, 'Información General', purple),
+                  const SizedBox(height: 20),
+                  // Nombre
+                  _buildLabel('NOMBRE DEL PRODUCTO'),
+                  const SizedBox(height: 6),
+                  _buildField(
+                    controller: _nameCtrl,
+                    hint: 'florero de vidrio',
+                    maxLength: 500,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Requerido';
+                      if (v.trim().length > 500) return 'Máximo 500 caracteres';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // SKU
+                  _buildLabel('SKU / CÓDIGO'),
+                  const SizedBox(height: 6),
+                  _buildField(
                     controller: _skuCtrl,
-                    label: 'SKU',
+                    hint: 'TLP-2024-RED',
                     maxLength: 50,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
+                  const SizedBox(height: 16),
+                  // Categoría
+                  _buildLabel('CATEGORÍA'),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
                     initialValue: _selectedCategoryId,
                     decoration: InputDecoration(
-                      labelText: 'Categoría',
+                      hintText: 'Seleccionar categoría',
+                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                       filled: true,
                       fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 16),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
                       enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFE5E7EB))),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 14),
+                          borderSide: const BorderSide(
+                              color: Color(0xFFCFC2D4), width: 0.4)),
                     ),
                     items: [
                       const DropdownMenuItem(
                           value: null, child: Text('Sin categoría')),
-                      ...widget.categories.map((c) => DropdownMenuItem(
-                          value: c.id, child: Text(c.name))),
+                      ...widget.categories.map((c) =>
+                          DropdownMenuItem(value: c.id, child: Text(c.name))),
                     ],
                     onChanged: (v) => setState(() => _selectedCategoryId = v),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 12),
-            // ── Price + Unit ──
-            Row(
-              children: [
-                Expanded(
-                  child: _buildField(
+
+            // ── Aviso de stock bajo ────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: bgSection,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4C2FF).withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE4C2FF).withValues(alpha: 0.4),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.notifications_active_outlined,
+                            color: purple, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Aviso de Stock Bajo',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: purple)),
+                            Text('Notificar cuando el inventario sea crítico',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: purple.withValues(alpha: 0.7))),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _lowStockAlert,
+                        onChanged: (v) => setState(() => _lowStockAlert = v),
+                        activeTrackColor: purple,
+                        thumbColor: WidgetStateProperty.all(Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Precios e Inventario ───────────────────────────────────────
+            _buildSection(
+              color: bgSection,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader(
+                      Icons.payments_outlined, 'Precios e Inventario', purple),
+                  const SizedBox(height: 20),
+                  // Precio unitario
+                  _buildLabel('PRECIO UNITARIO'),
+                  const SizedBox(height: 6),
+                  _buildField(
                     controller: _priceCtrl,
-                    label: 'Precio unitario (\$)',
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    hint: '0.00',
+                    prefixText: '\$ ',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (v) {
                       if (v == null || v.isEmpty) return null;
                       final n = double.tryParse(v);
@@ -1258,198 +1403,305 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                       return null;
                     },
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildField(
-                    controller: _unitCtrl,
-                    label: 'Unidad',
-                    hint: 'unidad, rollo, bloque...',
-                    maxLength: 50,
+                  const SizedBox(height: 20),
+                  // Presentación pills
+                  _buildLabel('PRESENTACIÓN'),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _presentations.map((p) {
+                      final selected = _presentation == p;
+                      return GestureDetector(
+                        onTap: () => setState(() => _presentation = p),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selected ? purple : Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: selected
+                                  ? purple
+                                  : const Color(0xFFCFC2D4)
+                                      .withValues(alpha: 0.4),
+                              width: selected ? 2 : 1,
+                            ),
+                          ),
+                          child: Text(
+                            p,
+                            style: TextStyle(
+                              color: selected ? Colors.white : Colors.grey[600],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // ── Stock + Min stock ──
-            Row(
-              children: [
-                Expanded(
-                  child: _buildField(
-                    controller: _stockCtrl,
-                    label: 'Stock actual',
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return null;
-                      final n = int.tryParse(v);
-                      if (n == null || n < 0) return 'Inválido';
-                      if (n > 999999) return 'Máx 999,999';
-                      return null;
-                    },
+                  const SizedBox(height: 20),
+                  // Stock actual + Stock mínimo
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('STOCK ACTUAL'),
+                            const SizedBox(height: 6),
+                            _buildField(
+                              controller: _stockCtrl,
+                              hint: '0',
+                              keyboardType: TextInputType.number,
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return null;
+                                final n = int.tryParse(v);
+                                if (n == null || n < 0) return 'Inválido';
+                                if (n > 999999) return 'Máx 999,999';
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('STOCK MÍNIMO'),
+                            const SizedBox(height: 6),
+                            _buildField(
+                              controller: _minStockCtrl,
+                              hint: '10',
+                              keyboardType: TextInputType.number,
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return null;
+                                final n = int.tryParse(v);
+                                if (n == null || n < 0) return 'Inválido';
+                                if (n > 999999) return 'Máx 999,999';
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildField(
-                    controller: _minStockCtrl,
-                    label: 'Stock mínimo',
-                    hint: 'Alerta si baja de...',
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return null;
-                      final n = int.tryParse(v);
-                      if (n == null || n < 0) return 'Inválido';
-                      if (n > 999999) return 'Máx 999,999';
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // ── Supplier ──
-            _buildField(
-              controller: _supplierCtrl,
-              label: 'Proveedor',
-              prefixIcon: Icons.local_shipping_outlined,
-              maxLength: 500,
-            ),
-            const SizedBox(height: 12),
-            // ── Notes ──
-            _buildField(
-              controller: _notesCtrl,
-              label: 'Notas',
-              maxLength: 1000,
-              maxLines: 3,
-            ),
-            const SizedBox(height: 24),
-            // ── Save button ──
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C3AED),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
-                ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : Text(_isEditing ? 'Guardar cambios' : 'Crear producto',
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ),
-            // ── Purchase history (only for existing products) ──
-            if (_isEditing) ...[
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Historial de compras',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  TextButton.icon(
-                    onPressed: _addPurchaseDialog,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Registrar'),
-                    style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF7C3AED)),
+                  const SizedBox(height: 20),
+                  // Proveedor
+                  _buildLabel('PROVEEDOR'),
+                  const SizedBox(height: 6),
+                  _buildField(
+                    controller: _supplierCtrl,
+                    hint: 'Nombre',
+                    prefixIcon: Icons.local_shipping_outlined,
+                    maxLength: 500,
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              if (_purchases.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFF3F4F6)),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Notas ─────────────────────────────────────────────────────
+            _buildSection(
+              color: bgSection,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildLabel('NOTAS Y DESCRIPCIÓN'),
+                      Text('Se registrará automáticamente el historial.',
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[400],
+                              fontStyle: FontStyle.italic)),
+                    ],
                   ),
-                  child: Center(
-                    child: Text('Sin compras registradas',
-                        style: TextStyle(color: Colors.grey[400])),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _notesCtrl,
+                    maxLines: 4,
+                    maxLength: 1000,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Detalles sobre el cuidado, origen o estacionalidad...',
+                      hintStyle:
+                          TextStyle(color: Colors.grey[400], fontSize: 13),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.all(14),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFFCFC2D4), width: 0.4)),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: purple, width: 1.5)),
+                    ),
                   ),
-                )
-              else
-                ..._purchases
-                    .map((purchase) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border:
-                                Border.all(color: const Color(0xFFF3F4F6)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF7C3AED)
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
+                ],
+              ),
+            ),
+
+            // ── Historial de compras (solo edición) ───────────────────────
+            if (_isEditing) ...[
+              const SizedBox(height: 12),
+              _buildSection(
+                color: bgSection,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSectionHeader(
+                            Icons.history_rounded,
+                            'Historial de compras',
+                            purple),
+                        TextButton.icon(
+                          onPressed: _addPurchaseDialog,
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Registrar'),
+                          style: TextButton.styleFrom(
+                              foregroundColor: purple,
+                              textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_purchases.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Text('Sin compras registradas',
+                              style: TextStyle(
+                                  color: Colors.grey[400], fontSize: 13)),
+                        ),
+                      )
+                    else
+                      ..._purchases.map((purchase) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: purple.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                      Icons.shopping_cart_outlined,
+                                      color: purple,
+                                      size: 20),
                                 ),
-                                child: const Icon(Icons.shopping_cart_outlined,
-                                    color: Color(0xFF7C3AED), size: 20),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                        '+${purchase.quantity} ${_unitCtrl.text}',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14)),
-                                    Text(
-                                        dateFmt
-                                            .format(purchase.purchasedAt),
-                                        style: TextStyle(
-                                            color: Colors.grey[500],
-                                            fontSize: 12)),
-                                  ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                          '+${purchase.quantity} $_presentation',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14)),
+                                      Text(
+                                          dateFmt.format(purchase.purchasedAt),
+                                          style: TextStyle(
+                                              color: Colors.grey[500],
+                                              fontSize: 12)),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              if (purchase.unitPrice != null)
-                                Text(
-                                    '\$${purchase.unitPrice!.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF7C3AED),
-                                        fontSize: 14)),
-                            ],
-                          ),
-                        )),
+                                if (purchase.unitPrice != null)
+                                  Text(
+                                      '\$${purchase.unitPrice!.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: purple,
+                                          fontSize: 14)),
+                              ],
+                            ),
+                          )),
+                  ],
+                ),
+              ),
             ],
-            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildSection({required Color color, required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(IconData icon, String title, Color color) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 8),
+        Text(title,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: AppTheme.textLight)),
+      ],
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.8,
+        color: Color(0xFF4C4452),
+      ),
+    );
+  }
+
   Widget _buildField({
     required TextEditingController controller,
-    required String label,
     String? hint,
     TextInputType? keyboardType,
     int maxLines = 1,
     int? maxLength,
     IconData? prefixIcon,
+    String? prefixText,
     String? Function(String?)? validator,
   }) {
+    const purple = Color(0xFF500088);
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
@@ -1457,22 +1709,32 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
       maxLength: maxLength,
       validator: validator,
       decoration: InputDecoration(
-        labelText: label,
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        prefixIcon: prefixIcon != null
+            ? Icon(prefixIcon, size: 20, color: Colors.grey[500])
+            : null,
+        prefixText: prefixText,
+        prefixStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
         filled: true,
         fillColor: Colors.white,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: const BorderSide(
+              color: Color(0xFFCFC2D4), width: 0.4),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 1.5),
+          borderSide: const BorderSide(color: purple, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
         ),
       ),
     );
