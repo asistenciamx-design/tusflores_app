@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/image_compressor.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 
 class GiftRepository {
   final _supabase = Supabase.instance.client;
@@ -81,8 +82,8 @@ class GiftRepository {
       throw Exception('Tipo de archivo no permitido: .$origExt');
     }
 
-    // Read bytes immediately to avoid blob URL expiration on web
-    final rawBytes = Uint8List.fromList(await file.readAsBytes());
+    // Use platform-specific reader to avoid blob URL issues on web
+    final rawBytes = await ImagePickerHelper.readBytes(file.path, file.name);
 
     // Comprimir y convertir a WebP (excepto .webp y .gif)
     final Uint8List bytes;

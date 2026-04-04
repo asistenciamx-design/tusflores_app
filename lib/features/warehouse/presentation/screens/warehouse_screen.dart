@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/image_compressor.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../domain/models/warehouse_models.dart';
 import '../../domain/repositories/warehouse_repository.dart';
@@ -973,8 +974,8 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     final file = await picker.pickImage(source: source);
     if (file == null) return;
     try {
-      // Read bytes immediately before blob URL can expire
-      final rawBytes = Uint8List.fromList(await file.readAsBytes());
+      // Use platform-specific reader to avoid blob URL issues on web
+      final rawBytes = await ImagePickerHelper.readBytes(file.path, file.name);
       final compressed = await ImageCompressor.compressBytes(
         rawBytes,
         file.name,
