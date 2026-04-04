@@ -517,6 +517,15 @@ class _ListFormSheetState extends State<_ListFormSheet> {
     super.dispose();
   }
 
+  Future<void> _openNumericKeypad(BuildContext context) async {
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => NumericKeypad(initialValue: _qty),
+    );
+    if (result != null) setState(() => _qty = result);
+  }
+
   void _addProduct() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
@@ -628,13 +637,13 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
                         Text(
                           isEdit ? 'Editar lista' : 'Nueva lista',
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textLight),
                         ),
+                        const SizedBox(width: 10),
                         Text(
                           'Folio: $_folio',
                           style: const TextStyle(fontSize: 12, color: _kColor, fontWeight: FontWeight.w600),
@@ -666,10 +675,10 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: TextField(
                       controller: _titleCtrl,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textLight),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textLight),
                       decoration: InputDecoration(
                         hintText: widget.initialTitle,
-                        hintStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.mutedLight.withValues(alpha: 0.4)),
+                        hintStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.mutedLight.withValues(alpha: 0.4)),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
@@ -690,12 +699,6 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Agregar producto',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textLight),
-                        ),
-                        const SizedBox(height: 12),
-
                         // Nombre del producto
                         const Text('Nombre del producto', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
                         const SizedBox(height: 6),
@@ -706,62 +709,56 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Color y Calidad
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Color con autocompletado
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Color', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
-                                  const SizedBox(height: 6),
-                                  Autocomplete<String>(
-                                    key: _colorKey,
-                                    optionsBuilder: (textEditingValue) {
-                                      if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
-                                      final q = textEditingValue.text.toLowerCase();
-                                      return kFlowerColors.where((c) => c.toLowerCase().contains(q));
-                                    },
-                                    onSelected: (val) => setState(() => _colorCtrl.text = val),
-                                    fieldViewBuilder: (context, ctrl, focusNode, onFieldSubmitted) {
-                                      ctrl.addListener(() => _colorCtrl.text = ctrl.text);
-                                      return TextField(
-                                        controller: ctrl,
-                                        focusNode: focusNode,
-                                        decoration: _fieldDec('Ej. Rojo, Blanco...'),
-                                      );
-                                    },
-                                    optionsViewBuilder: (context, onSelected, options) => Align(
-                                      alignment: Alignment.topLeft,
-                                      child: Material(
-                                        elevation: 8,
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(maxHeight: 160, maxWidth: 180),
-                                          child: ListView.builder(
-                                            padding: EdgeInsets.zero,
-                                            shrinkWrap: true,
-                                            itemCount: options.length,
-                                            itemBuilder: (_, i) {
-                                              final opt = options.elementAt(i);
-                                              return ListTile(
-                                                dense: true,
-                                                visualDensity: VisualDensity.compact,
-                                                title: Text(opt, style: const TextStyle(fontSize: 13)),
-                                                onTap: () => onSelected(opt),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                        // Color (fila completa)
+                        const Text('Color', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
+                        const SizedBox(height: 6),
+                        Autocomplete<String>(
+                          key: _colorKey,
+                          optionsBuilder: (textEditingValue) {
+                            if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
+                            final q = textEditingValue.text.toLowerCase();
+                            return kFlowerColors.where((c) => c.toLowerCase().contains(q));
+                          },
+                          onSelected: (val) => setState(() => _colorCtrl.text = val),
+                          fieldViewBuilder: (context, ctrl, focusNode, onFieldSubmitted) {
+                            ctrl.addListener(() => _colorCtrl.text = ctrl.text);
+                            return TextField(
+                              controller: ctrl,
+                              focusNode: focusNode,
+                              decoration: _fieldDec('Ej. Rojo, Blanco...'),
+                            );
+                          },
+                          optionsViewBuilder: (context, onSelected, options) => Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 8,
+                              borderRadius: BorderRadius.circular(10),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 160, maxWidth: 260),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (_, i) {
+                                    final opt = options.elementAt(i);
+                                    return ListTile(
+                                      dense: true,
+                                      visualDensity: VisualDensity.compact,
+                                      title: Text(opt, style: const TextStyle(fontSize: 13)),
+                                      onTap: () => onSelected(opt),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Calidad + Cantidad (misma fila)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
                             // Calidad
                             Expanded(
                               child: Column(
@@ -793,42 +790,37 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Cantidad
-                        Row(
-                          children: [
-                            const Text('Cantidad', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
-                            const Spacer(),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: _kColorBg,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: _kColorBorder),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _QtyBtn(
-                                    icon: Icons.remove,
-                                    onTap: () { if (_qty > 1) setState(() => _qty--); },
-                                  ),
-                                  SizedBox(
-                                    width: 40,
-                                    child: Text(
-                                      '$_qty',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _kColor),
+                            const SizedBox(width: 12),
+                            // Cantidad
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Cantidad', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
+                                const SizedBox(height: 6),
+                                GestureDetector(
+                                  onTap: () => _openNumericKeypad(context),
+                                  child: Container(
+                                    height: 48,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: _kColorBg,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: _kColorBorder),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.dialpad, size: 16, color: _kColor),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '$_qty',
+                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _kColor),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  _QtyBtn(
-                                    icon: Icons.add,
-                                    onTap: () => setState(() => _qty++),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -972,19 +964,168 @@ class _SubmittedItemTile extends StatelessWidget {
   }
 }
 
-// ── Botón de cantidad ─────────────────────────────────────────────────────────
-class _QtyBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
+// ── Teclado numérico grande reutilizable ─────────────────────────────────────
+class NumericKeypad extends StatefulWidget {
+  final int initialValue;
+  final Color accentColor;
 
-  const _QtyBtn({required this.icon, required this.onTap});
+  const NumericKeypad({
+    super.key,
+    this.initialValue = 1,
+    this.accentColor = _kColor,
+  });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, size: 18, color: _kColor),
+  State<NumericKeypad> createState() => _NumericKeypadState();
+}
+
+class _NumericKeypadState extends State<NumericKeypad> {
+  late String _display;
+
+  @override
+  void initState() {
+    super.initState();
+    _display = widget.initialValue > 0 ? '${widget.initialValue}' : '';
+  }
+
+  void _onDigit(String digit) {
+    setState(() {
+      if (_display == '0') {
+        _display = digit;
+      } else if (_display.length < 5) {
+        _display += digit;
+      }
+    });
+  }
+
+  void _onDoubleZero() {
+    if (_display.isNotEmpty && _display != '0' && _display.length < 4) {
+      setState(() => _display += '00');
+    }
+  }
+
+  void _onBackspace() {
+    if (_display.isNotEmpty) {
+      setState(() => _display = _display.substring(0, _display.length - 1));
+    }
+  }
+
+  void _onSave() {
+    final value = int.tryParse(_display) ?? 0;
+    Navigator.pop(context, value < 1 ? 1 : value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFEDE9FE),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header: Cancelar, display, Guardar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _display.isEmpty ? '0' : _display,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: widget.accentColor,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _onSave,
+                    child: const Text('Guardar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textLight)),
+                  ),
+                ],
+              ),
+            ),
+            // Keypad grid
+            ..._buildRows(),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildRows() {
+    final rows = [
+      ['7', '8', '9'],
+      ['4', '5', '6'],
+      ['1', '2', '3'],
+      ['00', '0', '⌫'],
+    ];
+    return rows.map((row) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: row.map((key) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: _KeypadButton(
+              label: key,
+              onTap: () {
+                if (key == '⌫') {
+                  _onBackspace();
+                } else if (key == '00') {
+                  _onDoubleZero();
+                } else {
+                  _onDigit(key);
+                }
+              },
+              isBackspace: key == '⌫',
+            ),
+          ),
+        )).toList(),
+      ),
+    )).toList();
+  }
+}
+
+class _KeypadButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool isBackspace;
+
+  const _KeypadButton({
+    required this.label,
+    required this.onTap,
+    this.isBackspace = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            height: 64,
+            alignment: Alignment.center,
+            child: isBackspace
+                ? const Icon(Icons.backspace_outlined, size: 26, color: AppTheme.textLight)
+                : Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textLight,
+                    ),
+                  ),
+          ),
         ),
       );
 }
