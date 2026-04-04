@@ -81,15 +81,18 @@ class ProfileRepository {
         throw Exception('Tipo de archivo no permitido: .$origExt');
       }
 
+      // Read bytes immediately to avoid blob URL expiration on web
+      final rawBytes = Uint8List.fromList(await file.readAsBytes());
+
       // Comprimir y convertir a WebP (excepto .webp y .gif)
       final Uint8List bytes;
       final String ext;
       if (origExt == 'gif') {
-        bytes = Uint8List.fromList(await file.readAsBytes());
+        bytes = rawBytes;
         ext = origExt;
       } else {
         // heic/heif → comprimir como jpeg/webp (FlutterImageCompress lo maneja)
-        final compressed = await ImageCompressor.compress(file);
+        final compressed = await ImageCompressor.compressBytes(rawBytes, file.name);
         bytes = compressed.bytes;
         ext = compressed.ext;
       }

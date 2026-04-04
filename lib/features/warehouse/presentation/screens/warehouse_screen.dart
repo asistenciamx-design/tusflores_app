@@ -973,8 +973,11 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     final file = await picker.pickImage(source: source);
     if (file == null) return;
     try {
-      final compressed = await ImageCompressor.compress(
-        file,
+      // Read bytes immediately before blob URL can expire
+      final rawBytes = Uint8List.fromList(await file.readAsBytes());
+      final compressed = await ImageCompressor.compressBytes(
+        rawBytes,
+        file.name,
         maxWidth: 800,
         maxHeight: 800,
         quality: 75,

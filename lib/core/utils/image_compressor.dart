@@ -1,33 +1,41 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 /// Comprime y convierte imágenes PNG/JPG a WebP antes de subir.
-/// Las imágenes .webp se devuelven sin procesar.
+/// En Flutter Web la compresión no está soportada — se devuelven los bytes
+/// originales con la extensión original.
 class ImageCompressor {
   ImageCompressor._();
 
-  /// Comprime un [XFile] y retorna los bytes en WebP + la extensión 'webp'.
-  /// Si el archivo ya es .webp, retorna los bytes originales sin reprocesar.
-  /// [maxWidth] y [maxHeight] controlan el resize (default 1200px).
-  /// [quality] controla la calidad WebP (default 80).
-  static Future<({Uint8List bytes, String ext})> compress(
-    XFile file, {
+  /// Compress from raw bytes + extension name.
+  /// This avoids blob URL issues on Flutter Web.
+  static Future<({Uint8List bytes, String ext})> compressBytes(
+    Uint8List rawBytes,
+    String fileName, {
     int maxWidth = 1200,
     int maxHeight = 1200,
     int quality = 80,
   }) async {
-    final originalExt = file.name.split('.').last.toLowerCase();
+    final originalExt = fileName.split('.').last.toLowerCase();
+
+    // Flutter Web no soporta flutter_image_compress → devolver sin procesar
+    if (kIsWeb) {
+      return (bytes: rawBytes, ext: originalExt);
+    }
 
     // WebP ya está optimizado → devolver sin procesar
     if (originalExt == 'webp') {
-      final bytes = await file.readAsBytes();
-      return (bytes: Uint8List.fromList(bytes), ext: 'webp');
+      return (bytes: rawBytes, ext: 'webp');
     }
 
-    final bytes = await file.readAsBytes();
+    // GIF no se comprime
+    if (originalExt == 'gif') {
+      return (bytes: rawBytes, ext: 'gif');
+    }
 
     final compressed = await FlutterImageCompress.compressWithList(
-      Uint8List.fromList(bytes),
+      rawBytes,
       minWidth: maxWidth,
       minHeight: maxHeight,
       quality: quality,
@@ -35,5 +43,22 @@ class ImageCompressor {
     );
 
     return (bytes: compressed, ext: 'webp');
+  }
+
+  /// Legacy: compress from XFile. Reads bytes first to avoid blob URL issues.
+  static Future<({Uint8List bytes, String ext})> compress(
+    XFile file, {
+    int maxWidth = 1200,
+    int maxHeight = 1200,
+    int quality = 80,
+  }) async {
+    final rawBytes = Uint8List.fromList(await file.readAsBytes());
+    return compressBytes(
+      rawBytes,
+      file.name,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      quality: quality,
+    );
   }
 }

@@ -124,6 +124,7 @@ class AdminRepository {
     required String groupName,
     String? parentId,
     String? imageUrl,
+    String? bio,
     int sortOrder = 999,
   }) async {
     if (!await isSuperAdmin()) throw Exception('No autorizado');
@@ -132,6 +133,7 @@ class AdminRepository {
       'group_name': groupName,
       if (parentId != null) 'parent_id': parentId,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (bio != null) 'bio': bio,
       'sort_order': sortOrder,
     });
   }
@@ -144,6 +146,7 @@ class AdminRepository {
     bool clearImage = false,
     String? parentId,
     bool clearParent = false,
+    String? bio,
   }) async {
     if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db.from('categories').update({
@@ -151,6 +154,7 @@ class AdminRepository {
       'group_name': groupName,
       if (clearImage) 'image_url': null else if (imageUrl != null) 'image_url': imageUrl,
       if (clearParent) 'parent_id': null else if (parentId != null) 'parent_id': parentId,
+      'bio': bio,
     }).eq('id', id);
   }
 
@@ -190,6 +194,7 @@ class AdminRepository {
     required String name,
     String? color,
     String? imageUrl,
+    String? bio,
   }) async {
     if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db.from('sub_categories').insert({
@@ -197,6 +202,7 @@ class AdminRepository {
       'name': name,
       if (color != null && color.isNotEmpty) 'color': color,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (bio != null) 'bio': bio,
     });
   }
 
@@ -207,12 +213,14 @@ class AdminRepository {
     bool clearColor = false,
     String? imageUrl,
     bool clearImage = false,
+    String? bio,
   }) async {
     if (!await isSuperAdmin()) throw Exception('No autorizado');
     await _db.from('sub_categories').update({
       'name': name,
       if (clearColor) 'color': null else if (color != null && color.isNotEmpty) 'color': color,
       if (clearImage) 'image_url': null else if (imageUrl != null) 'image_url': imageUrl,
+      'bio': bio,
     }).eq('id', id);
   }
 
@@ -307,14 +315,17 @@ class AdminRepository {
 
   Future<String> uploadCategoryImage(XFile file) async {
     if (!await isSuperAdmin()) throw Exception('No autorizado');
-    const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp'};
+    const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'};
     final origExt = file.name.split('.').last.toLowerCase();
     if (!allowedExtensions.contains(origExt)) {
       throw Exception('Tipo de archivo no permitido: .$origExt');
     }
 
+    // Read bytes immediately to avoid blob URL expiration on web
+    final rawBytes = Uint8List.fromList(await file.readAsBytes());
+
     // Comprimir y convertir a WebP (excepto si ya es .webp)
-    final compressed = await ImageCompressor.compress(file);
+    final compressed = await ImageCompressor.compressBytes(rawBytes, file.name);
     final bytes = compressed.bytes;
     final ext = compressed.ext;
 
@@ -352,6 +363,12 @@ class AdminRepository {
                bytes[2] == 0x46 && bytes[3] == 0x46 &&
                bytes[8] == 0x57 && bytes[9] == 0x45 &&
                bytes[10] == 0x42 && bytes[11] == 0x50;
+      case 'heic':
+      case 'heif':
+        // HEIC/HEIF: ftyp box — bytes 4-7 = 'ftyp'
+        return bytes.length >= 8 &&
+               bytes[4] == 0x66 && bytes[5] == 0x74 &&
+               bytes[6] == 0x79 && bytes[7] == 0x70;
       default:
         return false;
     }
