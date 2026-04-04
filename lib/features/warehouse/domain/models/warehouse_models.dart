@@ -33,6 +33,7 @@ class WarehouseProduct {
   String? supplierName;
   String? notes;
   bool isActive;
+  bool lowStockAlert;
   final DateTime createdAt;
   DateTime updatedAt;
   // Joined
@@ -53,6 +54,7 @@ class WarehouseProduct {
     this.supplierName,
     this.notes,
     this.isActive = true,
+    this.lowStockAlert = true,
     required this.createdAt,
     required this.updatedAt,
     this.categoryName,
@@ -76,6 +78,7 @@ class WarehouseProduct {
       supplierName: m['supplier_name'] as String?,
       notes: m['notes'] as String?,
       isActive: m['is_active'] as bool? ?? true,
+      lowStockAlert: m['low_stock_alert'] as bool? ?? true,
       createdAt: DateTime.parse(m['created_at'] as String),
       updatedAt: DateTime.parse(m['updated_at'] as String),
       categoryName: cat?['name'] as String? ??
@@ -102,6 +105,7 @@ class WarehouseProduct {
         'supplier_name': supplierName?.trim().isEmpty == true ? null : supplierName?.trim(),
         'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
         'is_active': isActive,
+        'low_stock_alert': lowStockAlert,
       };
 
   Map<String, dynamic> toUpdateMap() => {
@@ -116,6 +120,7 @@ class WarehouseProduct {
         'supplier_name': supplierName?.trim().isEmpty == true ? null : supplierName?.trim(),
         'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
         'is_active': isActive,
+        'low_stock_alert': lowStockAlert,
         'updated_at': DateTime.now().toIso8601String(),
       };
 }

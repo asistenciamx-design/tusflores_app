@@ -32,6 +32,10 @@ CREATE POLICY "warehouse_delete" ON storage.objects
 -- ── 2. RLS granular: warehouse_categories ───────────────────────────────────
 
 DROP POLICY IF EXISTS "warehouse_categories_owner" ON warehouse_categories;
+DROP POLICY IF EXISTS "warehouse_categories_select" ON warehouse_categories;
+DROP POLICY IF EXISTS "warehouse_categories_insert" ON warehouse_categories;
+DROP POLICY IF EXISTS "warehouse_categories_update" ON warehouse_categories;
+DROP POLICY IF EXISTS "warehouse_categories_delete" ON warehouse_categories;
 
 CREATE POLICY "warehouse_categories_select" ON warehouse_categories
   FOR SELECT USING (floreria_id = auth.uid());
@@ -49,6 +53,10 @@ CREATE POLICY "warehouse_categories_delete" ON warehouse_categories
 -- ── 3. RLS granular: warehouse_products ─────────────────────────────────────
 
 DROP POLICY IF EXISTS "warehouse_products_owner" ON warehouse_products;
+DROP POLICY IF EXISTS "warehouse_products_select" ON warehouse_products;
+DROP POLICY IF EXISTS "warehouse_products_insert" ON warehouse_products;
+DROP POLICY IF EXISTS "warehouse_products_update" ON warehouse_products;
+DROP POLICY IF EXISTS "warehouse_products_delete" ON warehouse_products;
 
 CREATE POLICY "warehouse_products_select" ON warehouse_products
   FOR SELECT USING (floreria_id = auth.uid());
@@ -66,6 +74,9 @@ CREATE POLICY "warehouse_products_delete" ON warehouse_products
 -- ── 4. RLS granular: warehouse_purchases ────────────────────────────────────
 
 DROP POLICY IF EXISTS "warehouse_purchases_owner" ON warehouse_purchases;
+DROP POLICY IF EXISTS "warehouse_purchases_select" ON warehouse_purchases;
+DROP POLICY IF EXISTS "warehouse_purchases_insert" ON warehouse_purchases;
+DROP POLICY IF EXISTS "warehouse_purchases_delete" ON warehouse_purchases;
 
 CREATE POLICY "warehouse_purchases_select" ON warehouse_purchases
   FOR SELECT USING (floreria_id = auth.uid());

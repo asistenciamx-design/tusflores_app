@@ -917,6 +917,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
       _selectedCategoryId = p.categoryId;
       _imageUrl = p.imageUrl;
       _purchases = List.from(p.purchases);
+      _lowStockAlert = p.lowStockAlert;
       // Map saved unit to presentation pill
       _presentation = _unitToPresentation(p.unit);
     } else {
@@ -983,6 +984,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
             : _supplierCtrl.text.trim();
         p.notes =
             _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+        p.lowStockAlert = _lowStockAlert;
         await _repo.updateProduct(p);
       } else {
         final product = WarehouseProduct(
@@ -1001,6 +1003,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
               : _supplierCtrl.text.trim(),
           notes:
               _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+          lowStockAlert: _lowStockAlert,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );

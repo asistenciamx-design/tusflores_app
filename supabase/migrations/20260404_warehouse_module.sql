@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS warehouse_products (
   supplier_name TEXT,
   notes TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
+  low_stock_alert BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
