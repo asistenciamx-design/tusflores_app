@@ -30,6 +30,7 @@ import '../../features/customer/presentation/screens/order_tracking_screen.dart'
 import '../../features/reviews/presentation/screens/review_form_screen.dart';
 import '../../features/reviews/presentation/screens/shop_reviews_manage_screen.dart';
 import '../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../features/warehouse/presentation/screens/warehouse_screen.dart';
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_screen.dart';
 import '../services/seo_service.dart';
@@ -195,6 +196,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/inventario',
       builder: (context, state) => const InventoryScreen(),
+    ),
+    GoRoute(
+      path: '/bodega',
+      builder: (context, state) => const WarehouseScreen(),
     ),
     GoRoute(
       path: '/resena',
