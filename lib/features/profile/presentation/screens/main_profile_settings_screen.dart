@@ -130,7 +130,7 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
     }
 
     final storeLink = _slug != null
-        ? 'www.tusflores.app/$_slugPais/$_slug'
+        ? 'app.tusflores.app/$_slugPais/$_slug'
         : null;
 
     return Container(
