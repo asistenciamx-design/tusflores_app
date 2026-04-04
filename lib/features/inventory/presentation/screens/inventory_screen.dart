@@ -731,6 +731,8 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                                 contains.add(c);
                               }
                             }
+                            starts.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+                            contains.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
                             return [...starts, ...contains];
                           },
                           onSelected: (fc) => setState(() => _colorCtrl.text = fc.name),
