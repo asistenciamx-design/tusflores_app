@@ -98,7 +98,7 @@ class InventoryRepository {
     await _client.from('inventory_lists').update({
       'is_active': newValue,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', listId);
+    }).eq('id', listId).eq('floreria_id', _userId);
   }
 
   // ── Toggle completada ─────────────────────────────────────────────────────
@@ -106,11 +106,11 @@ class InventoryRepository {
     await _client.from('inventory_lists').update({
       'is_completed': newValue,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', listId);
+    }).eq('id', listId).eq('floreria_id', _userId);
   }
 
   // ── Eliminar lista ────────────────────────────────────────────────────────
   Future<void> deleteList(String listId) async {
-    await _client.from('inventory_lists').delete().eq('id', listId);
+    await _client.from('inventory_lists').delete().eq('id', listId).eq('floreria_id', _userId);
   }
 }

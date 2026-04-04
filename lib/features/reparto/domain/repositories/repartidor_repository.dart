@@ -9,11 +9,12 @@ class RepartidorRepository {
   // ── CRUD repartidores ─────────────────────────────────────────────────────
 
   Future<List<RepartidorModel>> getRepartidores(String shopId) async {
+    if (_uid == null || _uid != shopId) return [];
     try {
       final rows = await _db
           .from('repartidores')
           .select()
-          .eq('shop_id', shopId)
+          .eq('shop_id', _uid!)
           .order('name');
       return rows.map((r) => RepartidorModel.fromJson(r)).toList();
     } catch (_) {
@@ -130,6 +131,7 @@ class RepartidorRepository {
     required DateTime from,
     required DateTime to,
   }) async {
+    if (_uid == null || _uid != shopId) return [];
     try {
       final rows = await _db
           .from('orders')
@@ -137,7 +139,7 @@ class RepartidorRepository {
               'id, folio, delivery_date, sale_date, delivery_city, delivery_state, '
               'delivery_location_type, repartidor_id, delivery_amount, driver_notes, '
               'customer_name, price, quantity, shipping_cost')
-          .eq('shop_id', shopId)
+          .eq('shop_id', _uid!)
           .not('repartidor_id', 'is', null)
           .gte('delivery_date', from.toIso8601String())
           .lte('delivery_date', to.add(const Duration(hours: 23, minutes: 59)).toIso8601String())
