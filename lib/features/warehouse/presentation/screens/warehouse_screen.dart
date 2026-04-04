@@ -1463,11 +1463,11 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                   // Precio unitario
                   _buildLabel('PRECIO UNITARIO'),
                   const SizedBox(height: 6),
-                  _buildField(
+                  _buildNumpadField(
                     controller: _priceCtrl,
                     hint: '0.00',
                     prefixText: '\$ ',
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    allowDecimal: true,
                     validator: (v) {
                       if (v == null || v.isEmpty) return null;
                       final n = double.tryParse(v);
@@ -1524,10 +1524,10 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                           children: [
                             _buildLabel('STOCK ACTUAL'),
                             const SizedBox(height: 6),
-                            _buildField(
+                            _buildNumpadField(
                               controller: _stockCtrl,
                               hint: '0',
-                              keyboardType: TextInputType.number,
+                              allowDecimal: false,
                               validator: (v) {
                                 if (v == null || v.isEmpty) return null;
                                 final n = int.tryParse(v);
@@ -1546,10 +1546,10 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                           children: [
                             _buildLabel('STOCK MÍNIMO'),
                             const SizedBox(height: 6),
-                            _buildField(
+                            _buildNumpadField(
                               controller: _minStockCtrl,
-                              hint: '10',
-                              keyboardType: TextInputType.number,
+                              hint: '0',
+                              allowDecimal: false,
                               validator: (v) {
                                 if (v == null || v.isEmpty) return null;
                                 final n = int.tryParse(v);
@@ -1806,6 +1806,66 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     );
   }
 
+  Widget _buildNumpadField({
+    required TextEditingController controller,
+    String? hint,
+    String? prefixText,
+    required bool allowDecimal,
+    String? Function(String?)? validator,
+  }) {
+    const purple = Color(0xFF500088);
+    return GestureDetector(
+      onTap: () => _showNumpad(controller, allowDecimal: allowDecimal),
+      child: AbsorbPointer(
+        child: TextFormField(
+          controller: controller,
+          readOnly: true,
+          validator: validator,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+            prefixText: prefixText,
+            prefixStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFCFC2D4), width: 0.4),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: purple, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showNumpad(TextEditingController ctrl, {required bool allowDecimal}) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _NumpadModal(
+        initialValue: ctrl.text,
+        allowDecimal: allowDecimal,
+      ),
+    );
+    if (result != null) {
+      ctrl.text = result;
+    }
+  }
+
   Widget _buildField({
     required TextEditingController controller,
     String? hint,
@@ -1851,6 +1911,187 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.red, width: 1),
         ),
+      ),
+    );
+  }
+}
+
+// ── Numpad Modal ────────────────────────────────────────────────────────────
+
+class _NumpadModal extends StatefulWidget {
+  final String initialValue;
+  final bool allowDecimal;
+
+  const _NumpadModal({required this.initialValue, required this.allowDecimal});
+
+  @override
+  State<_NumpadModal> createState() => _NumpadModalState();
+}
+
+class _NumpadModalState extends State<_NumpadModal> {
+  late String _value;
+  static const _purple = Color(0xFF500088);
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.initialValue.isNotEmpty ? widget.initialValue : '0';
+  }
+
+  void _press(String key) {
+    setState(() {
+      if (key == '⌫') {
+        if (_value.length <= 1) {
+          _value = '0';
+        } else {
+          _value = _value.substring(0, _value.length - 1);
+        }
+      } else if (key == '.') {
+        if (!widget.allowDecimal) return;
+        if (!_value.contains('.')) _value += '.';
+      } else if (key == '00') {
+        if (_value == '0') return;
+        if (_value.length < 8) _value += '00';
+      } else {
+        // digit
+        if (_value == '0' && key != '.') {
+          _value = key;
+        } else if (_value.length < 9) {
+          // limit decimal places to 2
+          if (_value.contains('.')) {
+            final parts = _value.split('.');
+            if (parts[1].length < 2) _value += key;
+          } else {
+            _value += key;
+          }
+        }
+      }
+    });
+  }
+
+  Widget _buildKey(String label, {Color? bg, Color? fg}) {
+    final isBackspace = label == '⌫';
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _press(label),
+        child: Container(
+          height: 64,
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: bg ?? Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: isBackspace
+                ? Icon(Icons.backspace_outlined, size: 22, color: fg ?? Colors.black87)
+                : Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w500,
+                      color: fg ?? Colors.black87,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = _value;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF2F2F7),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 4),
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header: Cancelar | valor | Guardar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar',
+                      style: TextStyle(fontSize: 16, color: Colors.grey)),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      displayValue,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w300,
+                        color: Colors.black87,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    String result = _value;
+                    if (widget.allowDecimal) {
+                      // clean trailing dot
+                      if (result.endsWith('.')) result = result.substring(0, result.length - 1);
+                    }
+                    Navigator.pop(context, result == '0' ? '' : result);
+                  },
+                  child: Text('Guardar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _purple,
+                      )),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFDDDDDD)),
+          const SizedBox(height: 8),
+          // Keys
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              children: [
+                Row(children: [_buildKey('1'), _buildKey('2'), _buildKey('3')]),
+                Row(children: [_buildKey('4'), _buildKey('5'), _buildKey('6')]),
+                Row(children: [_buildKey('7'), _buildKey('8'), _buildKey('9')]),
+                Row(children: [
+                  widget.allowDecimal
+                      ? _buildKey('.', bg: Colors.white)
+                      : _buildKey('00', bg: Colors.white),
+                  _buildKey('0'),
+                  _buildKey('⌫', bg: const Color(0xFFE8E8ED), fg: const Color(0xFF500088)),
+                ]),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
