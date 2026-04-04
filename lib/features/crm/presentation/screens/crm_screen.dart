@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../orders/domain/models/order_model.dart';
 import '../../../orders/domain/repositories/order_repository.dart';
 import 'crm_client_profile_screen.dart';
@@ -139,22 +140,25 @@ class _CrmScreenState extends State<CrmScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8F7),
       body: SafeArea(
-        child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  _buildMetricsRow(),
-                  const SizedBox(height: 24),
-                  _buildGrowthChart(),
-                  const SizedBox(height: 24),
-                  _buildInteractionsList(),
-                ],
+        child: ResponsiveContent(
+          maxWidth: 900,
+          child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    _buildMetricsRow(),
+                    const SizedBox(height: 24),
+                    _buildGrowthChart(),
+                    const SizedBox(height: 24),
+                    _buildInteractionsList(),
+                  ],
+                ),
               ),
-            ),
+        ),
       ),
     );
   }

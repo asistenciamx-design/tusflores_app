@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/image_compressor.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../domain/models/warehouse_models.dart';
 import '../../domain/repositories/warehouse_repository.dart';
 
@@ -180,11 +181,13 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
         label: const Text('Nuevo Producto',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadAll,
-              child: CustomScrollView(
+      body: ResponsiveContent(
+        maxWidth: 900,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadAll,
+                child: CustomScrollView(
                 slivers: [
                   // ── Stats header ──────────────────────────────────────
                   SliverToBoxAdapter(child: _buildStatsHeader()),
@@ -232,8 +235,9 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
                       ),
                     ),
                 ],
+                ),
               ),
-            ),
+          ),
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../domain/models/inventory_models.dart';
 import '../../domain/models/flower_colors.dart';
 import '../../domain/repositories/inventory_repository.dart';
@@ -79,14 +80,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Nueva Lista', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _kColor))
-          : Column(
-              children: [
-                _buildFilterBar(),
-                Expanded(child: _buildList()),
-              ],
-            ),
+      body: ResponsiveContent(
+        maxWidth: 900,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: _kColor))
+            : Column(
+                children: [
+                  _buildFilterBar(),
+                  Expanded(child: _buildList()),
+                ],
+              ),
+      ),
     );
   }
 

@@ -21,6 +21,7 @@ import '../../domain/models/order_model.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../../../profile/domain/repositories/shop_settings_repository.dart';
 import '../../../reparto/presentation/widgets/assign_repartidor_sheet.dart';
+import '../../../../core/utils/responsive.dart';
 
 // ─── Notification model ───────────────────────────────────────────────────────
 
@@ -541,27 +542,30 @@ class OrdersScreenState extends State<OrdersScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // ── Header scrolls WITH the list ──────────────────────────────
-            SliverToBoxAdapter(child: _buildHeader()),
+        child: ResponsiveContent(
+          maxWidth: 1000,
+          child: CustomScrollView(
+            slivers: [
+              // ── Header scrolls WITH the list ──────────────────────────────
+              SliverToBoxAdapter(child: _buildHeader()),
 
-            // ── Order list ────────────────────────────────────────────────
-            if (_isLoading)
-              const SliverFillRemaining(
-                child: Center(
-                    child: CircularProgressIndicator(color: AppTheme.primary)),
-              )
-            else if (_filteredOrders.isEmpty)
-              SliverFillRemaining(child: _buildEmptyState())
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate(_buildOrderItems()),
+              // ── Order list ────────────────────────────────────────────────
+              if (_isLoading)
+                const SliverFillRemaining(
+                  child: Center(
+                      child: CircularProgressIndicator(color: AppTheme.primary)),
+                )
+              else if (_filteredOrders.isEmpty)
+                SliverFillRemaining(child: _buildEmptyState())
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate(_buildOrderItems()),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

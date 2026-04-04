@@ -18,6 +18,7 @@ import '../../../reviews/presentation/widgets/dashboard_rating_widget.dart';
 import '../../../reparto/presentation/screens/reparto_historico_screen.dart';
 import '../../../inventory/presentation/screens/inventory_screen.dart';
 import '../../../warehouse/presentation/screens/warehouse_screen.dart';
+import '../../../../core/utils/responsive.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToOrders;
@@ -115,40 +116,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = context.isWide;
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  children: [
-                    _buildSalesCard(context),
-                    const SizedBox(height: 16),
-                    _buildStatsGrid(context),
-                    const SizedBox(height: 16),
-                    _buildActionButtons(context),
-                    const SizedBox(height: 28),
-                    _buildLatestOrder(context),
-                    const SizedBox(height: 16),
-                    _buildRepartoCard(context),
-                    const SizedBox(height: 16),
-                    _buildInventarioCard(context),
-                    const SizedBox(height: 16),
-                    _buildBodegaCard(context),
-                    const SizedBox(height: 16),
-                    DashboardRatingWidget(shopId: Supabase.instance.client.auth.currentUser?.id ?? ''),
-                    const SizedBox(height: 24),
-                  ],
+          child: ResponsiveContent(
+            maxWidth: 1200,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: isWide ? 32.0 : 20.0),
+                  child: isWide
+                      ? _buildDesktopGrid(context)
+                      : _buildMobileColumn(context),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileColumn(BuildContext context) {
+    return Column(
+      children: [
+        _buildSalesCard(context),
+        const SizedBox(height: 16),
+        _buildStatsGrid(context),
+        const SizedBox(height: 16),
+        _buildActionButtons(context),
+        const SizedBox(height: 28),
+        _buildLatestOrder(context),
+        const SizedBox(height: 16),
+        _buildRepartoCard(context),
+        const SizedBox(height: 16),
+        _buildInventarioCard(context),
+        const SizedBox(height: 16),
+        _buildBodegaCard(context),
+        const SizedBox(height: 16),
+        DashboardRatingWidget(shopId: Supabase.instance.client.auth.currentUser?.id ?? ''),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildDesktopGrid(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Columna izquierda: métricas ──
+        Expanded(
+          flex: 5,
+          child: Column(
+            children: [
+              _buildSalesCard(context),
+              const SizedBox(height: 20),
+              _buildStatsGrid(context),
+              const SizedBox(height: 20),
+              _buildActionButtons(context),
+              const SizedBox(height: 20),
+              _buildLatestOrder(context),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+        const SizedBox(width: 28),
+        // ── Columna derecha: módulos ──
+        Expanded(
+          flex: 4,
+          child: Column(
+            children: [
+              const SizedBox(height: 4),
+              _buildRepartoCard(context),
+              const SizedBox(height: 16),
+              _buildInventarioCard(context),
+              const SizedBox(height: 16),
+              _buildBodegaCard(context),
+              const SizedBox(height: 16),
+              DashboardRatingWidget(shopId: Supabase.instance.client.auth.currentUser?.id ?? ''),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

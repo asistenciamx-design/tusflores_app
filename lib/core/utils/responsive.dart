@@ -58,6 +58,79 @@ class ResponsiveLayout extends StatelessWidget {
   }
 }
 
+/// Centra y limita el ancho del contenido en pantallas anchas.
+///
+/// En móvil: ocupa todo el ancho.
+/// En tablet/desktop: max [maxWidth] centrado con padding lateral.
+///
+/// Uso:
+/// ```dart
+/// ResponsiveContent(child: myWidget)
+/// ```
+class ResponsiveContent extends StatelessWidget {
+  final Widget child;
+  final double maxWidth;
+  final EdgeInsetsGeometry? padding;
+
+  const ResponsiveContent({
+    super.key,
+    required this.child,
+    this.maxWidth = 900,
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isWide = context.isWide;
+    if (!isWide) return child;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: padding != null
+            ? Padding(padding: padding!, child: child)
+            : child,
+      ),
+    );
+  }
+}
+
+/// Versión de dos columnas para PC.
+/// Muestra [left] y [right] en columna en móvil, en fila en desktop.
+class ResponsiveTwoColumn extends StatelessWidget {
+  final Widget left;
+  final Widget right;
+  final double spacing;
+  final double leftFlex;
+  final double rightFlex;
+
+  const ResponsiveTwoColumn({
+    super.key,
+    required this.left,
+    required this.right,
+    this.spacing = 24,
+    this.leftFlex = 1,
+    this.rightFlex = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (context.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [left, SizedBox(height: spacing), right],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: leftFlex.toInt(), child: left),
+        SizedBox(width: spacing),
+        Expanded(flex: rightFlex.toInt(), child: right),
+      ],
+    );
+  }
+}
+
 /// Sidebar de navegación para desktop/tablet.
 /// Recibe los mismos [items] que un BottomNavigationBar.
 class AppSidebar extends StatelessWidget {
