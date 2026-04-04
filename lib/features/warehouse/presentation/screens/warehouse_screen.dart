@@ -7,6 +7,15 @@ import '../../../../core/utils/image_compressor.dart';
 import '../../domain/models/warehouse_models.dart';
 import '../../domain/repositories/warehouse_repository.dart';
 
+// ── Sanitizar mensajes de error para no exponer detalles internos ────────────
+String _sanitizeError(Object e) {
+  final msg = e.toString();
+  // Mostrar errores de validación de negocio tal cual
+  if (msg.startsWith('Exception: ')) return msg.replaceFirst('Exception: ', '');
+  // Ocultar detalles técnicos
+  return 'Ocurrió un error. Intenta de nuevo.';
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Pantalla principal — Bodega de Insumos
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -54,7 +63,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(_sanitizeError(e)), backgroundColor: Colors.red),
         );
       }
     }
@@ -76,7 +85,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(_sanitizeError(e)), backgroundColor: Colors.red),
         );
       }
     }
@@ -135,7 +144,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(_sanitizeError(e)), backgroundColor: Colors.red),
         );
       }
     }
@@ -708,7 +717,7 @@ class _CategoryManagerSheetState extends State<_CategoryManagerSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(_sanitizeError(e)), backgroundColor: Colors.red),
         );
       }
     }
@@ -741,7 +750,7 @@ class _CategoryManagerSheetState extends State<_CategoryManagerSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(_sanitizeError(e)), backgroundColor: Colors.red),
         );
       }
     }
@@ -992,7 +1001,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(_sanitizeError(e)), backgroundColor: Colors.red),
         );
       }
     }
@@ -1025,7 +1034,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(_sanitizeError(e)), backgroundColor: Colors.red),
         );
       }
     }
@@ -1095,7 +1104,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text('Error: $e'),
+                        content: Text(_sanitizeError(e)),
                         backgroundColor: Colors.red),
                   );
                 }
@@ -1181,8 +1190,12 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
             _buildField(
               controller: _nameCtrl,
               label: 'Nombre del producto *',
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Requerido' : null,
+              maxLength: 500,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Requerido';
+                if (v.trim().length > 500) return 'Máximo 500 caracteres';
+                return null;
+              },
             ),
             const SizedBox(height: 12),
             // ── SKU + Category ──
@@ -1192,6 +1205,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                   child: _buildField(
                     controller: _skuCtrl,
                     label: 'SKU',
+                    maxLength: 50,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1232,6 +1246,13 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                     label: 'Precio unitario (\$)',
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return null;
+                      final n = double.tryParse(v);
+                      if (n == null || n < 0) return 'Precio inválido';
+                      if (n > 999999.99) return 'Máx \$999,999.99';
+                      return null;
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1240,6 +1261,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                     controller: _unitCtrl,
                     label: 'Unidad',
                     hint: 'unidad, rollo, bloque...',
+                    maxLength: 50,
                   ),
                 ),
               ],
@@ -1253,6 +1275,13 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                     controller: _stockCtrl,
                     label: 'Stock actual',
                     keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return null;
+                      final n = int.tryParse(v);
+                      if (n == null || n < 0) return 'Inválido';
+                      if (n > 999999) return 'Máx 999,999';
+                      return null;
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1262,6 +1291,13 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
                     label: 'Stock mínimo',
                     hint: 'Alerta si baja de...',
                     keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return null;
+                      final n = int.tryParse(v);
+                      if (n == null || n < 0) return 'Inválido';
+                      if (n > 999999) return 'Máx 999,999';
+                      return null;
+                    },
                   ),
                 ),
               ],
@@ -1272,12 +1308,14 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
               controller: _supplierCtrl,
               label: 'Proveedor',
               prefixIcon: Icons.local_shipping_outlined,
+              maxLength: 500,
             ),
             const SizedBox(height: 12),
             // ── Notes ──
             _buildField(
               controller: _notesCtrl,
               label: 'Notas',
+              maxLength: 1000,
               maxLines: 3,
             ),
             const SizedBox(height: 24),
@@ -1404,6 +1442,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
     String? hint,
     TextInputType? keyboardType,
     int maxLines = 1,
+    int? maxLength,
     IconData? prefixIcon,
     String? Function(String?)? validator,
   }) {
@@ -1411,6 +1450,7 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      maxLength: maxLength,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,

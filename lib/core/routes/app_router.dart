@@ -40,7 +40,7 @@ final appRouter = GoRouter(
   redirect: (context, state) {
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final path = state.uri.path;
-    const protectedPaths = ['/', '/reviews/manage', '/admin', '/proveedor'];
+    const protectedPaths = ['/', '/reviews/manage', '/admin', '/proveedor', '/inventario', '/bodega'];
     // Si ya está autenticado y va al login, redirigir al home
     if (isLoggedIn && path == '/login') return '/';
     if (protectedPaths.contains(path) && !isLoggedIn) return '/login';

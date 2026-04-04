@@ -78,7 +78,8 @@ class WarehouseProduct {
       isActive: m['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(m['created_at'] as String),
       updatedAt: DateTime.parse(m['updated_at'] as String),
-      categoryName: cat?['name'] as String?,
+      categoryName: cat?['name'] as String? ??
+          (m['category_id'] != null ? 'Sin categoría' : null),
       purchases: rawPurchases
           .map((e) => WarehousePurchase.fromMap(Map<String, dynamic>.from(e as Map)))
           .toList()
