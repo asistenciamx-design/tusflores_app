@@ -712,17 +712,17 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                         // Color (fila completa)
                         const Text('Color', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedLight)),
                         const SizedBox(height: 6),
-                        Autocomplete<String>(
+                        Autocomplete<FlowerColor>(
                           key: _colorKey,
+                          displayStringForOption: (fc) => fc.name,
                           optionsBuilder: (textEditingValue) {
-                            if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
+                            if (textEditingValue.text.isEmpty) return const Iterable<FlowerColor>.empty();
                             final q = textEditingValue.text.toLowerCase();
-                            // Primero los que empiezan con la búsqueda, luego los que contienen
-                            final starts = <String>[];
-                            final contains = <String>[];
+                            final starts = <FlowerColor>[];
+                            final contains = <FlowerColor>[];
                             final seen = <String>{};
-                            for (final c in kFlowerColors) {
-                              final lower = c.toLowerCase();
+                            for (final c in kFlowerColorCatalog) {
+                              final lower = c.name.toLowerCase();
                               if (seen.contains(lower)) continue;
                               seen.add(lower);
                               if (lower.startsWith(q)) {
@@ -733,7 +733,7 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                             }
                             return [...starts, ...contains];
                           },
-                          onSelected: (val) => setState(() => _colorCtrl.text = val),
+                          onSelected: (fc) => setState(() => _colorCtrl.text = fc.name),
                           fieldViewBuilder: (context, ctrl, focusNode, onFieldSubmitted) {
                             ctrl.addListener(() => _colorCtrl.text = ctrl.text);
                             return TextField(
@@ -746,20 +746,38 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                             alignment: Alignment.topLeft,
                             child: Material(
                               elevation: 8,
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(12),
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 160, maxWidth: 260),
+                                constraints: const BoxConstraints(maxHeight: 220, maxWidth: 280),
                                 child: ListView.builder(
-                                  padding: EdgeInsets.zero,
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
                                   shrinkWrap: true,
                                   itemCount: options.length,
                                   itemBuilder: (_, i) {
-                                    final opt = options.elementAt(i);
-                                    return ListTile(
-                                      dense: true,
-                                      visualDensity: VisualDensity.compact,
-                                      title: Text(opt, style: const TextStyle(fontSize: 13)),
-                                      onTap: () => onSelected(opt),
+                                    final fc = options.elementAt(i);
+                                    return InkWell(
+                                      onTap: () => onSelected(fc),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        child: Row(
+                                          children: [
+                                            _ColorDot(hex: fc.hex, size: 24),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(fc.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                            ),
+                                            if (fc.isBasic)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF3F4F6),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Text('Básico', style: TextStyle(fontSize: 9, color: AppTheme.mutedLight, fontWeight: FontWeight.w600)),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
                                     );
                                   },
                                 ),
@@ -951,6 +969,10 @@ class _SubmittedItemTile extends StatelessWidget {
             decoration: const BoxDecoration(color: _kColorBg, shape: BoxShape.circle),
             child: Text('$index', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _kColor)),
           ),
+          if (item.color.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            _ColorDot(hex: flowerColorHex(item.color), size: 20),
+          ],
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -975,6 +997,49 @@ class _SubmittedItemTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ── Dot de color con hex ─────────────────────────────────────────────────────
+class _ColorDot extends StatelessWidget {
+  final String? hex;
+  final double size;
+
+  const _ColorDot({required this.hex, this.size = 24});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _parseHex(hex);
+    if (color == null) return const SizedBox.shrink();
+    final isLight = color.computeLuminance() > 0.85;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isLight ? const Color(0xFFD1D5DB) : Colors.transparent,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.4),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Color? _parseHex(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final h = hex.replaceFirst('#', '');
+    if (h.length != 6) return null;
+    final value = int.tryParse(h, radix: 16);
+    if (value == null) return null;
+    return Color(0xFF000000 | value);
   }
 }
 
