@@ -707,9 +707,23 @@ class _ListFormSheetState extends State<_ListFormSheet> {
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      debugPrint('Error al guardar lista: $e');
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Error al guardar'),
+            content: Text('$e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        );
       }
     }
   }

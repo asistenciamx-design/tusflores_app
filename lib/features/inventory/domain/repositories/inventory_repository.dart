@@ -6,14 +6,13 @@ class InventoryRepository {
 
   String get _userId => _client.auth.currentUser!.id;
 
-  static const _itemFields =
-      'id, list_id, sequence_number, product_name, color, quality, presentation, quantity, unit_price';
+  static const _itemSelect = '*, inventory_items(*)';
 
   // ── Obtener todas las listas con sus items ───────────────────────────────
   Future<List<InventoryList>> getLists() async {
     final data = await _client
         .from('inventory_lists')
-        .select('*, inventory_items($_itemFields)')
+        .select(_itemSelect)
         .eq('floreria_id', _userId)
         .order('created_at', ascending: false);
     return (data as List)
@@ -62,7 +61,7 @@ class InventoryRepository {
 
     final full = await _client
         .from('inventory_lists')
-        .select('*, inventory_items($_itemFields)')
+        .select(_itemSelect)
         .eq('id', listId)
         .single();
     return InventoryList.fromMap(Map<String, dynamic>.from(full));
@@ -89,7 +88,7 @@ class InventoryRepository {
 
     final full = await _client
         .from('inventory_lists')
-        .select('*, inventory_items($_itemFields)')
+        .select(_itemSelect)
         .eq('id', listId)
         .single();
     return InventoryList.fromMap(Map<String, dynamic>.from(full));
