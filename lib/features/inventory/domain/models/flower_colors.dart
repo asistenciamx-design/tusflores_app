@@ -1,5 +1,25 @@
 /// Colores de flores para autocompletado en inventario.
+/// Los colores básicos van primero para prioridad visual.
 const List<String> kFlowerColors = [
+  // ── Colores básicos ────────────────────────────────────────────────────────
+  'Rojo',
+  'Blanco',
+  'Amarillo',
+  'Rosa',
+  'Naranja',
+  'Morado',
+  'Azul',
+  'Verde',
+  'Lila',
+  'Coral',
+  'Fucsia',
+  'Durazno',
+  'Crema',
+  'Marfil',
+  'Champagne',
+  'Lavanda',
+  'Salmón',
+  // ── Colores del catálogo ───────────────────────────────────────────────────
   'Ébano',
   'Black Baccara',
   'Centro negro',

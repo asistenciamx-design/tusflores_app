@@ -717,7 +717,21 @@ class _ListFormSheetState extends State<_ListFormSheet> {
                           optionsBuilder: (textEditingValue) {
                             if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
                             final q = textEditingValue.text.toLowerCase();
-                            return kFlowerColors.where((c) => c.toLowerCase().contains(q));
+                            // Primero los que empiezan con la búsqueda, luego los que contienen
+                            final starts = <String>[];
+                            final contains = <String>[];
+                            final seen = <String>{};
+                            for (final c in kFlowerColors) {
+                              final lower = c.toLowerCase();
+                              if (seen.contains(lower)) continue;
+                              seen.add(lower);
+                              if (lower.startsWith(q)) {
+                                starts.add(c);
+                              } else if (lower.contains(q)) {
+                                contains.add(c);
+                              }
+                            }
+                            return [...starts, ...contains];
                           },
                           onSelected: (val) => setState(() => _colorCtrl.text = val),
                           fieldViewBuilder: (context, ctrl, focusNode, onFieldSubmitted) {
