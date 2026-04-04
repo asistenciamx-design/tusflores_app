@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 import '../../../../features/auth/domain/repositories/profile_repository.dart';
 
 class ProfileAboutUsEditScreen extends StatefulWidget {
@@ -215,10 +216,10 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
               if (_isUploadingLogo) return;
               
               try {
-                final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                if (image != null) {
+                final picked = await ImagePickerHelper.pickImage(source: ImageSource.gallery);
+                if (picked != null) {
                   setState(() => _isUploadingLogo = true);
-                  final url = await _repo.uploadLogo(image);
+                  final url = await _repo.uploadLogo(picked.bytes, 'logo.${picked.ext}');
                   setState(() {
                     if (url != null) _uploadedLogoUrl = url;
                     _isUploadingLogo = false;
@@ -731,10 +732,10 @@ class _ProfileAboutUsEditScreenState extends State<ProfileAboutUsEditScreen> {
             if (_isUploadingGallery) return;
             
             try {
-               final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-               if (image != null) {
+               final picked = await ImagePickerHelper.pickImage(source: ImageSource.gallery);
+               if (picked != null) {
                  setState(() => _isUploadingGallery = true);
-                 final url = await _repo.uploadImage(image, folder: 'gallery');
+                 final url = await _repo.uploadImage(picked.bytes, 'image.${picked.ext}', folder: 'gallery');
                  setState(() {
                     if (url != null) _galleryPhotos.add(url);
                     _isUploadingGallery = false;

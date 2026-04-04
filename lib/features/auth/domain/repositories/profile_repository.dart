@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/utils/image_compressor.dart';
-import '../../../../core/utils/image_picker_helper.dart';
 
 class ProfileRepository {
   final SupabaseClient _client;
@@ -67,23 +66,20 @@ class ProfileRepository {
     await _client.from('profiles').update(updates).eq('id', user.id);
   }
 
-  Future<String?> uploadLogo(XFile file) async {
-    return uploadImage(file, folder: 'logos');
+  Future<String?> uploadLogo(Uint8List bytes, String fileName) async {
+    return uploadImage(bytes, fileName, folder: 'logos');
   }
 
-  Future<String?> uploadImage(XFile file, {String folder = 'assets'}) async {
+  Future<String?> uploadImage(Uint8List rawBytes, String fileName, {String folder = 'assets'}) async {
     try {
       final user = _client.auth.currentUser;
       if (user == null) return null;
 
       const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'};
-      final origExt = file.name.split('.').last.toLowerCase();
+      final origExt = fileName.split('.').last.toLowerCase();
       if (!allowedExtensions.contains(origExt)) {
         throw Exception('Tipo de archivo no permitido: .$origExt');
       }
-
-      // Use platform-specific reader to avoid blob URL issues on web
-      final rawBytes = await ImagePickerHelper.readBytes(file.path, file.name);
 
       // Comprimir y convertir a WebP (excepto .webp y .gif)
       final Uint8List bytes;
@@ -93,7 +89,7 @@ class ProfileRepository {
         ext = origExt;
       } else {
         // heic/heif → comprimir como jpeg/webp (FlutterImageCompress lo maneja)
-        final compressed = await ImageCompressor.compressBytes(rawBytes, file.name);
+        final compressed = await ImageCompressor.compressBytes(rawBytes, fileName);
         bytes = compressed.bytes;
         ext = compressed.ext;
       }
@@ -105,8 +101,8 @@ class ProfileRepository {
       if (!_isValidImageBytes(bytes, ext)) {
         throw Exception('El archivo no es una imagen válida.');
       }
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final path = '${user.id}/$folder/$fileName';
+      final storageName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final path = '${user.id}/$folder/$storageName';
 
       await _client.storage.from('shop_assets').uploadBinary(
         path,

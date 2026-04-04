@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart' show ImageSource;
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 import '../../domain/repositories/admin_repository.dart';
 
 // Los 10 grupos oficiales (orden fijo)
@@ -348,11 +349,12 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   Future<void> _openSheet({Map<String, dynamic>? existing}) async {
     final nameCtrl = TextEditingController(text: existing?['name'] as String? ?? '');
+    final bioCtrl = TextEditingController(text: existing?['bio'] as String? ?? '');
     final oldGroup = existing?['group_name'] as String?;
     String selectedGroup = existing?['group_name'] as String? ??
         (_selectedGroup ?? (_groups.isNotEmpty ? _groups.first : ''));
     String? existingImageUrl = existing?['image_url'] as String?;
-    XFile? pickedFile;
+    PickedImage? pickedImage;
     bool isSaving = false;
 
     await showModalBottomSheet(
@@ -362,9 +364,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModal) {
           Future<void> pickImage() async {
-            final picker = ImagePicker();
-            final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-            if (file != null) setModal(() => pickedFile = file);
+            final result = await ImagePickerHelper.pickImage(source: ImageSource.gallery, quality: 85);
+            if (result != null) setModal(() => pickedImage = result);
           }
 
           return Container(
@@ -417,21 +418,15 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: pickedFile != null || existingImageUrl != null
+                              color: pickedImage != null || existingImageUrl != null
                                   ? const Color(0xFF4F46E5).withValues(alpha: 0.4)
                                   : Colors.grey.shade300,
                               width: 1.5,
                             ),
                           ),
                           clipBehavior: Clip.antiAlias,
-                          child: pickedFile != null
-                              ? FutureBuilder<dynamic>(
-                                  future: pickedFile!.readAsBytes(),
-                                  builder: (_, snap) {
-                                    if (!snap.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                                    return Image.memory(snap.data!, fit: BoxFit.cover);
-                                  },
-                                )
+                          child: pickedImage != null
+                              ? Image.memory(pickedImage!.bytes, fit: BoxFit.cover)
                               : existingImageUrl != null
                                   ? Image.network(existingImageUrl!, fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.grey))
@@ -460,13 +455,13 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                               ),
                               icon: const Icon(Icons.photo_library_outlined, size: 16),
                               label: Text(
-                                pickedFile != null || existingImageUrl != null ? 'Cambiar imagen' : 'Agregar imagen',
+                                pickedImage != null || existingImageUrl != null ? 'Cambiar imagen' : 'Agregar imagen',
                                 style: const TextStyle(fontSize: 13),
                               ),
                             ),
                             Text('JPG, PNG · máx. 5 MB',
                                 style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
-                            if (existingImageUrl != null && pickedFile == null)
+                            if (existingImageUrl != null && pickedImage == null)
                               TextButton.icon(
                                 onPressed: isSaving ? null : () => setModal(() => existingImageUrl = null),
                                 style: TextButton.styleFrom(
@@ -494,6 +489,23 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                       labelText: 'Nombre de la flor',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Biografía
+                  TextField(
+                    controller: bioCtrl,
+                    maxLength: 600,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      labelText: 'Biografía de la flor',
+                      hintText: 'Escribe una descripción breve sobre el origen, características y curiosidades de esta flor...',
+                      hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      alignLabelWithHint: true,
+                      counterStyle: TextStyle(fontSize: 11, color: Colors.grey.shade400),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -540,18 +552,20 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                           ? null
                           : () async {
                               final name = nameCtrl.text.trim();
+                              final bio = bioCtrl.text.trim();
                               if (name.isEmpty || selectedGroup.isEmpty) return;
                               setModal(() => isSaving = true);
                               try {
                                 String? imageUrl = existingImageUrl;
-                                if (pickedFile != null) {
-                                  imageUrl = await _repo.uploadCategoryImage(pickedFile!);
+                                if (pickedImage != null) {
+                                  imageUrl = await _repo.uploadCategoryImage(pickedImage!.bytes, 'cat.${pickedImage!.ext}');
                                 }
                                 if (existing == null) {
                                   await _repo.createCategory(
                                     name: name,
                                     groupName: selectedGroup,
                                     imageUrl: imageUrl,
+                                    bio: bio.isEmpty ? null : bio,
                                   );
                                   if (ctx.mounted) Navigator.pop(ctx);
                                   setState(() => _selectedGroup = selectedGroup);
@@ -562,7 +576,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                                     name: name,
                                     groupName: selectedGroup,
                                     imageUrl: imageUrl,
-                                    clearImage: existingImageUrl == null && pickedFile == null,
+                                    clearImage: existingImageUrl == null && pickedImage == null,
+                                    bio: bio.isEmpty ? null : bio,
                                   );
                                   if (ctx.mounted) Navigator.pop(ctx);
                                   final groupChanged = oldGroup != null && oldGroup != selectedGroup;
@@ -1247,7 +1262,8 @@ class _VariantsModalState extends State<_VariantsModal> {
 
   final _nameCtrl = TextEditingController();
   final _colorCtrl = TextEditingController();
-  XFile? _pickedFile;
+  final _bioCtrl = TextEditingController();
+  PickedImage? _pickedImage;
   String? _existingImageUrl;
 
   @override
@@ -1260,6 +1276,7 @@ class _VariantsModalState extends State<_VariantsModal> {
   void dispose() {
     _nameCtrl.dispose();
     _colorCtrl.dispose();
+    _bioCtrl.dispose();
     super.dispose();
   }
 
@@ -1287,7 +1304,8 @@ class _VariantsModalState extends State<_VariantsModal> {
       _editing = null;
       _nameCtrl.clear();
       _colorCtrl.clear();
-      _pickedFile = null;
+      _bioCtrl.clear();
+      _pickedImage = null;
       _existingImageUrl = null;
       _showForm = true;
     });
@@ -1298,8 +1316,9 @@ class _VariantsModalState extends State<_VariantsModal> {
       _editing = variant;
       _nameCtrl.text = variant['name'] as String? ?? '';
       _colorCtrl.text = variant['color'] as String? ?? '';
+      _bioCtrl.text = variant['bio'] as String? ?? '';
       _existingImageUrl = variant['image_url'] as String?;
-      _pickedFile = null;
+      _pickedImage = null;
       _showForm = true;
     });
   }
@@ -1309,20 +1328,20 @@ class _VariantsModalState extends State<_VariantsModal> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (file != null) setState(() => _pickedFile = file);
+    final result = await ImagePickerHelper.pickImage(source: ImageSource.gallery, quality: 85);
+    if (result != null) setState(() => _pickedImage = result);
   }
 
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
+    final bio = _bioCtrl.text.trim();
 
     setState(() => _isSaving = true);
     try {
       String? imageUrl = _existingImageUrl;
-      if (_pickedFile != null) {
-        imageUrl = await widget.repo.uploadCategoryImage(_pickedFile!);
+      if (_pickedImage != null) {
+        imageUrl = await widget.repo.uploadCategoryImage(_pickedImage!.bytes, 'cat.${_pickedImage!.ext}');
       }
 
       if (_editing != null) {
@@ -1332,7 +1351,8 @@ class _VariantsModalState extends State<_VariantsModal> {
           color: _colorCtrl.text.trim(),
           clearColor: _colorCtrl.text.trim().isEmpty,
           imageUrl: imageUrl,
-          clearImage: _existingImageUrl == null && _pickedFile == null,
+          clearImage: _existingImageUrl == null && _pickedImage == null,
+          bio: bio.isEmpty ? null : bio,
         );
       } else {
         await widget.repo.createSubCategory(
@@ -1340,6 +1360,7 @@ class _VariantsModalState extends State<_VariantsModal> {
           name: name,
           color: _colorCtrl.text.trim().isEmpty ? null : _colorCtrl.text.trim(),
           imageUrl: imageUrl,
+          bio: bio.isEmpty ? null : bio,
         );
       }
 
@@ -1619,20 +1640,14 @@ class _VariantsModalState extends State<_VariantsModal> {
                                           color: Colors.grey.shade100,
                                           borderRadius: BorderRadius.circular(10),
                                           border: Border.all(
-                                            color: _pickedFile != null || _existingImageUrl != null
+                                            color: _pickedImage != null || _existingImageUrl != null
                                                 ? const Color(0xFF4F46E5).withValues(alpha: 0.4)
                                                 : Colors.grey.shade300,
                                           ),
                                         ),
                                         clipBehavior: Clip.antiAlias,
-                                        child: _pickedFile != null
-                                            ? FutureBuilder<dynamic>(
-                                                future: _pickedFile!.readAsBytes(),
-                                                builder: (_, snap) {
-                                                  if (!snap.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                                                  return Image.memory(snap.data!, fit: BoxFit.cover);
-                                                },
-                                              )
+                                        child: _pickedImage != null
+                                            ? Image.memory(_pickedImage!.bytes, fit: BoxFit.cover)
                                             : _existingImageUrl != null
                                                 ? Image.network(_existingImageUrl!, fit: BoxFit.cover,
                                                     errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 20))
@@ -1674,6 +1689,24 @@ class _VariantsModalState extends State<_VariantsModal> {
                                       ),
                                     ),
                                   ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Biografía de la variante
+                                TextField(
+                                  controller: _bioCtrl,
+                                  maxLength: 600,
+                                  maxLines: 3,
+                                  textCapitalization: TextCapitalization.sentences,
+                                  decoration: InputDecoration(
+                                    labelText: 'Biografía (opcional)',
+                                    hintText: 'Descripción, origen o curiosidades de esta variante...',
+                                    hintStyle: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    alignLabelWithHint: true,
+                                    isDense: true,
+                                    counterStyle: TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
 
@@ -1891,7 +1924,7 @@ class _SubColorsModalState extends State<_SubColorsModal> {
 
   final _nameCtrl = TextEditingController();
   final _colorCtrl = TextEditingController();
-  XFile? _pickedFile;
+  PickedImage? _pickedImage;
   String? _existingImageUrl;
 
   @override
@@ -1922,7 +1955,7 @@ class _SubColorsModalState extends State<_SubColorsModal> {
       _editing = null;
       _nameCtrl.clear();
       _colorCtrl.clear();
-      _pickedFile = null;
+      _pickedImage = null;
       _existingImageUrl = null;
       _showForm = true;
     });
@@ -1934,7 +1967,7 @@ class _SubColorsModalState extends State<_SubColorsModal> {
       _nameCtrl.text = tone['name'] as String? ?? '';
       _colorCtrl.text = tone['color'] as String? ?? '';
       _existingImageUrl = tone['image_url'] as String?;
-      _pickedFile = null;
+      _pickedImage = null;
       _showForm = true;
     });
   }
@@ -1942,9 +1975,8 @@ class _SubColorsModalState extends State<_SubColorsModal> {
   void _cancelForm() => setState(() => _showForm = false);
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (file != null) setState(() => _pickedFile = file);
+    final picked = await ImagePickerHelper.pickImage(source: ImageSource.gallery);
+    if (picked != null) setState(() => _pickedImage = picked);
   }
 
   Future<void> _save() async {
@@ -1954,8 +1986,8 @@ class _SubColorsModalState extends State<_SubColorsModal> {
     setState(() => _isSaving = true);
     try {
       String? imageUrl = _existingImageUrl;
-      if (_pickedFile != null) {
-        imageUrl = await widget.repo.uploadCategoryImage(_pickedFile!);
+      if (_pickedImage != null) {
+        imageUrl = await widget.repo.uploadCategoryImage(_pickedImage!.bytes, 'tone.${_pickedImage!.ext}');
       }
 
       if (_editing != null) {
@@ -1965,7 +1997,7 @@ class _SubColorsModalState extends State<_SubColorsModal> {
           color: _colorCtrl.text.trim(),
           clearColor: _colorCtrl.text.trim().isEmpty,
           imageUrl: imageUrl,
-          clearImage: _existingImageUrl == null && _pickedFile == null,
+          clearImage: _existingImageUrl == null && _pickedImage == null,
         );
       } else {
         await widget.repo.createSubColor(
@@ -2284,20 +2316,14 @@ class _SubColorsModalState extends State<_SubColorsModal> {
                                           color: Colors.grey.shade100,
                                           borderRadius: BorderRadius.circular(10),
                                           border: Border.all(
-                                            color: _pickedFile != null || _existingImageUrl != null
+                                            color: _pickedImage != null || _existingImageUrl != null
                                                 ? const Color(0xFF4F46E5).withValues(alpha: 0.4)
                                                 : Colors.grey.shade300,
                                           ),
                                         ),
                                         clipBehavior: Clip.antiAlias,
-                                        child: _pickedFile != null
-                                            ? FutureBuilder<dynamic>(
-                                                future: _pickedFile!.readAsBytes(),
-                                                builder: (_, snap) {
-                                                  if (!snap.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                                                  return Image.memory(snap.data!, fit: BoxFit.cover);
-                                                },
-                                              )
+                                        child: _pickedImage != null
+                                            ? Image.memory(_pickedImage!.bytes, fit: BoxFit.cover)
                                             : _existingImageUrl != null
                                                 ? Image.network(_existingImageUrl!, fit: BoxFit.cover,
                                                     errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 20))

@@ -1,8 +1,18 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-/// Nativo: lee bytes desde el file path usando dart:io.
-Future<Uint8List> readImageBytes(String path, String name) async {
-  final file = File(path);
-  return Uint8List.fromList(await file.readAsBytes());
+class PickedImageResult {
+  final Uint8List bytes;
+  final String name;
+  const PickedImageResult({required this.bytes, required this.name});
+}
+
+/// No usado en nativo — solo existe para satisfacer imports condicionales.
+Future<PickedImageResult?> pickAndReadImageWeb() {
+  throw UnsupportedError('Web only');
+}
+
+/// Lee bytes de un archivo nativo por path.
+Future<Uint8List> readNativeBytes(String path) async {
+  return Uint8List.fromList(await File(path).readAsBytes());
 }

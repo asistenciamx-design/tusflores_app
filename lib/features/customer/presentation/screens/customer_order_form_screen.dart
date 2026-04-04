@@ -218,21 +218,13 @@ class _CustomerOrderFormScreenState extends State<CustomerOrderFormScreen> {
 
   void _saveDraft() {
     if (_prefs == null || !mounted) return;
+    // Solo persistir preferencias de entrega, NO datos PII sensibles
+    // (nombre, teléfono, email, dirección) para proteger privacidad del cliente.
     _prefs!.setString(
       _draftKey,
       jsonEncode({
         '_savedAt': DateTime.now().millisecondsSinceEpoch,
-        'name': _nameCtrl.text,
-        'phone': _phoneCtrl.text,
         'message': _messageCtrl.text,
-        'buyerName': _buyerNameCtrl.text,
-        'buyerWhatsapp': _buyerWhatsappCtrl.text,
-        'buyerEmail': _buyerEmailCtrl.text,
-        'street': _streetCtrl.text,
-        'suburb': _suburbCtrl.text,
-        'zip': _zipCtrl.text,
-        'ref': _refCtrl.text,
-        'locationDetails': _locationDetailsCtrl.text,
         'isAnonymous': _isAnonymous,
         'selectedDate': _selectedDate,
         'selectedTime': _selectedTime,

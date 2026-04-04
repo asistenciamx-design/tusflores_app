@@ -38,6 +38,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un correo electrónico válido.')),
+      );
+      return;
+    }
+
     if (password.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La contraseña debe tener al menos 8 caracteres.')),
@@ -47,6 +54,18 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     if (!RegExp(r'\d').hasMatch(password)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La contraseña debe incluir al menos un número.')),
+      );
+      return;
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe incluir al menos una mayúscula.')),
+      );
+      return;
+    }
+    if (!RegExp(r'[!@#\$%\^&\*\.\-_]').hasMatch(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe incluir al menos un carácter especial (!@#\$%^&*.-_).')),
       );
       return;
     }

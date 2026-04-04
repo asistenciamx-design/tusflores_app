@@ -1,12 +1,19 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart' show ImageSource;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/currency_cache.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 import '../../domain/models/gift_model.dart';
 import '../../domain/repositories/gift_repository.dart';
+
+class _PendingImage {
+  final Uint8List bytes;
+  final String name;
+  const _PendingImage({required this.bytes, required this.name});
+}
 
 class AddEditGiftScreen extends StatefulWidget {
   final GiftItem? gift;
@@ -52,10 +59,9 @@ class _AddEditGiftScreenState extends State<AddEditGiftScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() => _image = picked);
+    final result = await ImagePickerHelper.pickImage(source: ImageSource.gallery);
+    if (result != null) {
+      setState(() => _image = _PendingImage(bytes: result.bytes, name: 'image.${result.ext}'));
     }
   }
 
@@ -76,12 +82,12 @@ class _AddEditGiftScreenState extends State<AddEditGiftScreen> {
           double.parse(_priceCtrl.text.trim().replaceAll(',', ''));
       final desc = _descCtrl.text.trim();
 
-      // Upload image if a new XFile was picked
       String? imageUrl;
       if (_image is String) {
         imageUrl = _image as String;
-      } else if (_image is XFile) {
-        imageUrl = await _repo.uploadGiftImage(user.id, _image as XFile);
+      } else if (_image is _PendingImage) {
+        final p = _image as _PendingImage;
+        imageUrl = await _repo.uploadGiftImage(user.id, p.bytes, p.name);
       }
 
       // Auto-assign SKU only for new gifts
@@ -350,18 +356,12 @@ class _AddEditGiftScreenState extends State<AddEditGiftScreen> {
                           errorBuilder: (_, __, ___) =>
                               const Icon(Icons.broken_image),
                         )
-                      : _image is XFile
-                          ? (kIsWeb
-                              ? Image.network(
-                                  (_image as XFile).path,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.file(
-                                  File((_image as XFile).path),
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ))
+                      : _image is _PendingImage
+                          ? Image.memory(
+                              (_image as _PendingImage).bytes,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
                           : const SizedBox(),
                 ),
               ),

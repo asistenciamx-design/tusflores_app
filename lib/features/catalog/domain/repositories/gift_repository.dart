@@ -1,8 +1,6 @@
 import 'dart:typed_data';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/image_compressor.dart';
-import '../../../../core/utils/image_picker_helper.dart';
 
 class GiftRepository {
   final _supabase = Supabase.instance.client;
@@ -75,15 +73,12 @@ class GiftRepository {
         .eq('florist_id', floristId);
   }
 
-  Future<String?> uploadGiftImage(String floristId, XFile file) async {
+  Future<String?> uploadGiftImage(String floristId, Uint8List rawBytes, String fileName) async {
     const allowedExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
-    final origExt = file.name.split('.').last.toLowerCase();
+    final origExt = fileName.split('.').last.toLowerCase();
     if (!allowedExtensions.contains(origExt)) {
       throw Exception('Tipo de archivo no permitido: .$origExt');
     }
-
-    // Use platform-specific reader to avoid blob URL issues on web
-    final rawBytes = await ImagePickerHelper.readBytes(file.path, file.name);
 
     // Comprimir y convertir a WebP (excepto .webp y .gif)
     final Uint8List bytes;
@@ -92,7 +87,7 @@ class GiftRepository {
       bytes = rawBytes;
       ext = origExt;
     } else {
-      final compressed = await ImageCompressor.compressBytes(rawBytes, file.name);
+      final compressed = await ImageCompressor.compressBytes(rawBytes, fileName);
       bytes = compressed.bytes;
       ext = compressed.ext;
     }
@@ -104,8 +99,8 @@ class GiftRepository {
     if (!_isValidImageBytes(bytes, ext)) {
       throw Exception('El archivo no es una imagen válida.');
     }
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-    final path = 'gifts/$floristId/$fileName';
+    final storageName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
+    final path = 'gifts/$floristId/$storageName';
     await _supabase.storage.from('products').uploadBinary(
           path,
           bytes,

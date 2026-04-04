@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/image_compressor.dart';
 import '../../../../core/utils/image_picker_helper.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../domain/models/warehouse_models.dart';
@@ -949,43 +949,45 @@ class _ProductFormScreenState extends State<_ProductFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded),
-              title: const Text('Tomar foto'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded),
-              title: const Text('Elegir de galería'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
+    // En web: el bottom sheet no aplica (no hay cámara nativa desde browser de escritorio)
+    // En nativo: mostramos opciones de cámara o galería
+    ImageSource source = ImageSource.gallery;
+    if (!kIsWeb) {
+      final picked = await showModalBottomSheet<ImageSource>(
+        context: context,
+        builder: (_) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Tomar foto'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Elegir de galería'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-    if (source == null) return;
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: source);
-    if (file == null) return;
+      );
+      if (picked == null) return;
+      source = picked;
+    }
+
     try {
-      // Use platform-specific reader to avoid blob URL issues on web
-      final rawBytes = await ImagePickerHelper.readBytes(file.path, file.name);
-      final compressed = await ImageCompressor.compressBytes(
-        rawBytes,
-        file.name,
+      final result = await ImagePickerHelper.pickImage(
+        source: source,
         maxWidth: 800,
         maxHeight: 800,
         quality: 75,
       );
+      if (result == null) return;
       setState(() {
-        _pendingImageBytes = compressed.bytes;
-        _pendingImageExt = compressed.ext;
+        _pendingImageBytes = result.bytes;
+        _pendingImageExt = result.ext;
       });
     } catch (e) {
       if (mounted) {

@@ -34,6 +34,13 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un correo electrónico válido.')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -86,16 +93,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String _authErrorMessage(String raw) {
     final lower = raw.toLowerCase();
-    if (lower.contains('invalid login') || lower.contains('invalid credentials')) {
-      return 'Correo o contraseña incorrectos.';
-    }
-    if (lower.contains('email not confirmed')) {
-      return 'Tu correo aún no ha sido confirmado. Revisa tu bandeja de entrada.';
-    }
     if (lower.contains('too many requests') || lower.contains('rate limit')) {
       return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
     }
-    return 'No se pudo iniciar sesión. Intenta de nuevo.';
+    // Mensaje genérico para evitar enumeración de cuentas
+    return 'Correo o contraseña incorrectos.';
   }
 
   Future<void> _showForgotPassword() async {

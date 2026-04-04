@@ -1,8 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 import '../../domain/models/shop_settings_model.dart';
 import '../../domain/repositories/shop_settings_repository.dart';
 import '../../../../features/auth/domain/repositories/profile_repository.dart';
@@ -62,9 +64,9 @@ class ProfileBranchEditScreen extends StatefulWidget {
 
 class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
   // Image
-  final ImagePicker _picker = ImagePicker();
   String? _branchImagePath;
-  XFile? _selectedImageFile;
+  Uint8List? _selectedImageBytes;
+  String _selectedImageExt = 'jpg';
 
   // Location
   String _selectedCountry = 'México';
@@ -245,11 +247,12 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
     setState(() => _isSaving = true);
 
     String? finalImagePath = _branchImagePath;
-    if (_selectedImageFile != null) {
+    if (_selectedImageBytes != null) {
       final profileRepo = ProfileRepository();
-      final uploadedUrl = await profileRepo.uploadImage(_selectedImageFile!, folder: 'sucursales');
+      final uploadedUrl = await profileRepo.uploadImage(
+        _selectedImageBytes!, 'branch.$_selectedImageExt', folder: 'sucursales');
       if (uploadedUrl != null) {
-         finalImagePath = uploadedUrl;
+        finalImagePath = uploadedUrl;
       }
     }
 
@@ -369,11 +372,12 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
     return GestureDetector(
       onTap: () async {
         try {
-          final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-          if (image != null) {
+          final picked = await ImagePickerHelper.pickImage(source: ImageSource.gallery);
+          if (picked != null) {
             setState(() {
-              _branchImagePath = image.path;
-              _selectedImageFile = image;
+              _selectedImageBytes = picked.bytes;
+              _selectedImageExt = picked.ext;
+              _branchImagePath = null; // will be set after upload
             });
           }
         } catch (_) {}
@@ -385,17 +389,19 @@ class _ProfileBranchEditScreenState extends State<ProfileBranchEditScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-          image: _branchImagePath != null
-              ? DecorationImage(image: NetworkImage(_branchImagePath!), fit: BoxFit.cover)
-              : null,
+          image: _selectedImageBytes != null
+              ? DecorationImage(image: MemoryImage(_selectedImageBytes!), fit: BoxFit.cover)
+              : (_branchImagePath != null
+                  ? DecorationImage(image: NetworkImage(_branchImagePath!), fit: BoxFit.cover)
+                  : null),
         ),
-        child: _branchImagePath != null
+        child: (_branchImagePath != null || _selectedImageBytes != null)
             ? Stack(children: [
                 Positioned(top: 8, right: 8,
                   child: GestureDetector(
                     onTap: () => setState(() {
                       _branchImagePath = null;
-                      _selectedImageFile = null;
+                      _selectedImageBytes = null;
                     }),
                     child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle), child: const Icon(Icons.close, color: Colors.white, size: 16)),
                   ),

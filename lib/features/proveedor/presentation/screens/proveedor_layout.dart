@@ -14,6 +14,8 @@ class _ProveedorLayoutState extends State<ProveedorLayout> {
   int _currentIndex = 0;
   String _shopName = '';
   bool _isShopOwner = false;
+  bool _authorized = false;
+  bool _checking = true;
 
   @override
   void initState() {
@@ -23,24 +25,39 @@ class _ProveedorLayoutState extends State<ProveedorLayout> {
 
   Future<void> _loadProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      if (mounted) context.go('/login');
+      return;
+    }
     try {
       final row = await Supabase.instance.client
           .from('profiles')
           .select('shop_name, role')
           .eq('id', user.id)
           .maybeSingle();
-      if (mounted && row != null) {
-        setState(() {
-          _shopName = row['shop_name'] as String? ?? '';
-          _isShopOwner = (row['role'] as String?) == 'shop_owner';
-        });
+      if (!mounted) return;
+      final role = row?['role'] as String? ?? '';
+      if (role != 'proveedor') {
+        context.go('/');
+        return;
       }
-    } catch (_) {}
+      setState(() {
+        _shopName = row?['shop_name'] as String? ?? '';
+        _isShopOwner = role == 'shop_owner';
+        _authorized = true;
+        _checking = false;
+      });
+    } catch (_) {
+      if (mounted) context.go('/');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!_authorized) return const SizedBox.shrink();
     return Scaffold(
       backgroundColor: const Color(0xFFFBF8FF),
       appBar: AppBar(

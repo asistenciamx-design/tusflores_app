@@ -15,6 +15,7 @@ import 'slug_editor_screen.dart'; // To navigate to "Tu URL"
 import '../../../reparto/presentation/screens/reparto_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 import '../../../auth/domain/repositories/profile_repository.dart';
 import '../../../../features/orders/domain/repositories/order_repository.dart';
 
@@ -82,11 +83,11 @@ class _MainProfileSettingsScreenState extends State<MainProfileSettingsScreen> {
 
   Future<void> _pickAndUploadImage() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-      if (image == null) return;
-      
+      final picked = await ImagePickerHelper.pickImage(source: ImageSource.gallery, quality: 70);
+      if (picked == null) return;
+
       setState(() => _isLoading = true);
-      final url = await _repo.uploadLogo(image);
+      final url = await _repo.uploadLogo(picked.bytes, 'logo.${picked.ext}');
       if (url != null) {
         setState(() => _logoUrl = url);
         await _repo.updateProfile(logoUrl: url);

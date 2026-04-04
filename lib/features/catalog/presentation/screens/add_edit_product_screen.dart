@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,8 +7,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/currency_cache.dart';
+import '../../../../core/utils/image_picker_helper.dart';
 import '../../domain/repositories/product_repository.dart';
 import 'catalog_screen.dart' show ProductItem;
+
+/// Imagen pendiente de subir — bytes leídos al momento de selección.
+class _PendingImage {
+  final Uint8List bytes;
+  final String name;
+  const _PendingImage({required this.bytes, required this.name});
+}
 
 // ─── Category model ───────────────────────────────────────────────────────────
 
@@ -183,14 +192,23 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Future<void> _pickImages() async {
     if (_images.length >= 5) return;
-    final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
-    if (pickedFiles.isNotEmpty) {
-      setState(() {
+    if (kIsWeb) {
+      // Web: leer bytes inmediatamente para evitar blob URL revocado
+      final result = await ImagePickerHelper.pickImage(source: ImageSource.gallery);
+      if (result != null && _images.length < 5) {
+        setState(() => _images.add(_PendingImage(bytes: result.bytes, name: 'image.${result.ext}')));
+      }
+    } else {
+      final picker = ImagePicker();
+      final pickedFiles = await picker.pickMultiImage();
+      if (pickedFiles.isNotEmpty) {
         for (var file in pickedFiles) {
-          if (_images.length < 5) _images.add(file);
+          if (_images.length < 5) {
+            final rawBytes = await file.readAsBytes();
+            setState(() => _images.add(_PendingImage(bytes: Uint8List.fromList(rawBytes), name: file.name)));
+          }
         }
-      });
+      }
     }
   }
 
@@ -372,8 +390,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           final item = _images[i];
           if (item is String) {
             finalImageUrls.add(item);
-          } else {
-            final uploadedUrl = await _repo.uploadProductImage(user.id, item as XFile);
+          } else if (item is _PendingImage) {
+            final uploadedUrl = await _repo.uploadProductImage(user.id, item.bytes, item.name);
             if (uploadedUrl != null) finalImageUrls.add(uploadedUrl);
           }
         }
@@ -977,16 +995,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                             ? Image.network(item,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
-                            : item is XFile
-                                ? (kIsWeb
-                                    ? Image.network(item.path,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.broken_image))
-                                    : Image.file(File(item.path),
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.broken_image)))
+                            : item is _PendingImage
+                                ? Image.memory(item.bytes, fit: BoxFit.cover)
                                 : const SizedBox(),
                       ),
                     ),

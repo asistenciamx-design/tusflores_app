@@ -33,13 +33,17 @@ class _AdminLayoutState extends State<AdminLayout> {
   }
 
   Future<void> _checkRole() async {
-    final isAdmin = await AdminRepository().isSuperAdmin();
-    if (!mounted) return;
-    if (!isAdmin) {
-      context.go('/');
-      return;
+    try {
+      final isAdmin = await AdminRepository().isSuperAdmin();
+      if (!mounted) return;
+      if (!isAdmin) {
+        context.go('/');
+        return;
+      }
+      setState(() { _authorized = true; _checking = false; });
+    } catch (_) {
+      if (mounted) context.go('/');
     }
-    setState(() { _authorized = true; _checking = false; });
   }
 
   @override
