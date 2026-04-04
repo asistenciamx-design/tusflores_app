@@ -46,6 +46,7 @@ class InventoryList {
   DateTime updatedAt;
   bool isActive;
   bool isCompleted;
+  final int? folio;
   List<InventoryItem> items;
 
   InventoryList({
@@ -57,6 +58,7 @@ class InventoryList {
     required this.updatedAt,
     required this.isActive,
     required this.isCompleted,
+    this.folio,
     this.items = const [],
   });
 
@@ -71,6 +73,7 @@ class InventoryList {
       updatedAt: DateTime.parse(m['updated_at'] as String),
       isActive: m['is_active'] as bool? ?? true,
       isCompleted: m['is_completed'] as bool? ?? false,
+      folio: m['folio'] as int?,
       items: rawItems
           .map((e) => InventoryItem.fromMap(Map<String, dynamic>.from(e as Map)))
           .toList(),

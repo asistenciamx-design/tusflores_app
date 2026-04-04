@@ -38,6 +38,7 @@ class InventoryRepository {
   Future<InventoryList> createList({
     required String title,
     required List<InventoryItem> items,
+    int? folio,
   }) async {
     final listData = await _client
         .from('inventory_lists')
@@ -45,6 +46,7 @@ class InventoryRepository {
           'floreria_id': _userId,
           'created_by_user_id': _userId,
           'title': title,
+          if (folio != null) 'folio': folio,
         })
         .select()
         .single();
