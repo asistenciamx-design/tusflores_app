@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS warehouse_rate_limits (
 
 ALTER TABLE warehouse_rate_limits ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "warehouse_rate_limits_own" ON warehouse_rate_limits;
 CREATE POLICY "warehouse_rate_limits_own" ON warehouse_rate_limits
   FOR ALL USING (floreria_id = auth.uid());
 
@@ -188,6 +189,7 @@ CREATE TABLE IF NOT EXISTS warehouse_audit_log (
 
 ALTER TABLE warehouse_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "warehouse_audit_log_own" ON warehouse_audit_log;
 CREATE POLICY "warehouse_audit_log_own" ON warehouse_audit_log
   FOR SELECT USING (floreria_id = auth.uid());
 
