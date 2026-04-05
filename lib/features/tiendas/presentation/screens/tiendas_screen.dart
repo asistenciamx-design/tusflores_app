@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../domain/tiendas_repository.dart';
+import 'proveedor_catalogo_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class TiendasScreen extends StatefulWidget {
@@ -503,7 +504,14 @@ class _TiendasScreenState extends State<TiendasScreen> {
 
   Widget _buildCard(ProveedorTienda p) {
     final groupColor = _groupColor(p.groupName);
-    return AspectRatio(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProveedorCatalogoScreen(proveedor: p),
+        ),
+      ),
+      child: AspectRatio(
       aspectRatio: 4 / 5,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
@@ -595,6 +603,7 @@ class _TiendasScreenState extends State<TiendasScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

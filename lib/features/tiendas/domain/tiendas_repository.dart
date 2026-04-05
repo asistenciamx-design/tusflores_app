@@ -16,6 +16,76 @@ class ProveedorTienda {
   });
 }
 
+class ProveedorProductoPublic {
+  final String id;
+  final String sku;
+  final double precio;
+  final int cantidad;
+  final String? calidad;
+  final String? presentacion;
+  final String? fotoUrl;
+  final String? categoryName;
+  final String? categoryGroupName;
+  final String? categoryImageUrl;
+  final String? subCategoryName;
+  final String? subCategoryImageUrl;
+  final String? subColorName;
+  final String? subColorHex;
+  final String? subColorImageUrl;
+
+  const ProveedorProductoPublic({
+    required this.id,
+    required this.sku,
+    required this.precio,
+    required this.cantidad,
+    this.calidad,
+    this.presentacion,
+    this.fotoUrl,
+    this.categoryName,
+    this.categoryGroupName,
+    this.categoryImageUrl,
+    this.subCategoryName,
+    this.subCategoryImageUrl,
+    this.subColorName,
+    this.subColorHex,
+    this.subColorImageUrl,
+  });
+
+  factory ProveedorProductoPublic.fromMap(Map<String, dynamic> map) {
+    final cat = map['categories'] as Map<String, dynamic>?;
+    final sub = map['sub_categories'] as Map<String, dynamic>?;
+    final color = map['sub_colors'] as Map<String, dynamic>?;
+    return ProveedorProductoPublic(
+      id: map['id'] as String,
+      sku: map['sku'] as String,
+      precio: (map['precio'] as num).toDouble(),
+      cantidad: (map['cantidad'] as int?) ?? 0,
+      calidad: map['calidad'] as String?,
+      presentacion: map['presentacion'] as String?,
+      fotoUrl: map['foto_url'] as String?,
+      categoryName: cat?['name'] as String?,
+      categoryGroupName: cat?['group_name'] as String?,
+      categoryImageUrl: cat?['image_url'] as String?,
+      subCategoryName: sub?['name'] as String?,
+      subCategoryImageUrl: sub?['image_url'] as String?,
+      subColorName: color?['name'] as String?,
+      subColorHex: color?['color'] as String?,
+      subColorImageUrl: color?['image_url'] as String?,
+    );
+  }
+
+  String get displayName {
+    final parts = <String>[categoryName ?? sku];
+    if (subCategoryName != null) parts.add(subCategoryName!);
+    if (subColorName != null) parts.add(subColorName!);
+    return parts.join(' · ');
+  }
+
+  /// Mejor imagen disponible: foto propia > sub-color > sub-categoría > categoría
+  String? get bestImageUrl =>
+      fotoUrl ?? subColorImageUrl ?? subCategoryImageUrl ?? categoryImageUrl;
+}
+
 class TiendasRepository {
   final _db = Supabase.instance.client;
 
@@ -91,5 +161,23 @@ class TiendasRepository {
     // Ordenar por más activos primero
     result.sort((a, b) => b.activeCount.compareTo(a.activeCount));
     return result;
+  }
+
+  /// Devuelve los productos activos de un proveedor para vista pública.
+  Future<List<ProveedorProductoPublic>> getProductosProveedor(
+      String proveedorId) async {
+    final rows = await _db
+        .from('proveedor_productos')
+        .select('''
+          id, sku, precio, cantidad, calidad, presentacion, foto_url,
+          categories(name, group_name, image_url),
+          sub_categories(name, image_url),
+          sub_colors(name, color, image_url)
+        ''')
+        .eq('proveedor_id', proveedorId)
+        .eq('is_active', true)
+        .order('created_at', ascending: false);
+
+    return rows.map((r) => ProveedorProductoPublic.fromMap(r)).toList();
   }
 }
