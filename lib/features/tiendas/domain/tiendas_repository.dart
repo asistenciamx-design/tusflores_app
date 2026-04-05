@@ -94,11 +94,13 @@ class TiendasRepository {
   Future<List<ProveedorTienda>> getProveedoresActivos({
     String pais = 'mx',
   }) async {
-    // 1. Obtener conteos por proveedor desde proveedor_productos
+    // 1. Obtener conteos por proveedor — condiciones directas, no depende de is_active
     final counts = await _db
         .from('proveedor_productos')
         .select('proveedor_id')
-        .eq('is_active', true);
+        .not('precio', 'is', null)
+        .gt('cantidad', 0)
+        .eq('is_paused', false);
 
     // Agrupar conteos en Dart
     final countMap = <String, int>{};
@@ -120,7 +122,9 @@ class TiendasRepository {
     final groupRows = await _db
         .from('proveedor_productos')
         .select('proveedor_id, categories(group_name)')
-        .eq('is_active', true)
+        .not('precio', 'is', null)
+        .gt('cantidad', 0)
+        .eq('is_paused', false)
         .inFilter('proveedor_id', ids);
 
     // Mapa proveedor → grupo más frecuente
@@ -175,7 +179,9 @@ class TiendasRepository {
           sub_colors(name, color, image_url)
         ''')
         .eq('proveedor_id', proveedorId)
-        .eq('is_active', true)
+        .not('precio', 'is', null)
+        .gt('cantidad', 0)
+        .eq('is_paused', false)
         .order('created_at', ascending: false);
 
     return rows.map((r) => ProveedorProductoPublic.fromMap(r)).toList();
