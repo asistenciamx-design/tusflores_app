@@ -87,6 +87,20 @@ class _ProveedorInventoryScreenState extends State<ProveedorInventoryScreen>
     }
   }
 
+  Future<void> _togglePause(ProveedorProducto p) async {
+    try {
+      await _repo.togglePause(id: p.id, isPaused: !p.isPaused);
+      _loadMios();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
+
   Future<void> _openEdit(ProveedorProducto p) async {
     final refreshed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -159,6 +173,7 @@ class _ProveedorInventoryScreenState extends State<ProveedorInventoryScreen>
                 onRefresh: _loadMios,
                 onEdit: _openEdit,
                 onDelete: _deleteProducto,
+                onTogglePause: _togglePause,
                 onGoToMaestro: () => _tabController.animateTo(1),
               ),
               const ProveedorMaestroScreen(),
@@ -179,6 +194,7 @@ class _MiCatalogoTab extends StatelessWidget {
   final VoidCallback onRefresh;
   final Future<void> Function(ProveedorProducto) onEdit;
   final Future<void> Function(ProveedorProducto) onDelete;
+  final Future<void> Function(ProveedorProducto) onTogglePause;
   final VoidCallback onGoToMaestro;
 
   const _MiCatalogoTab({
@@ -188,6 +204,7 @@ class _MiCatalogoTab extends StatelessWidget {
     required this.onRefresh,
     required this.onEdit,
     required this.onDelete,
+    required this.onTogglePause,
     required this.onGoToMaestro,
   });
 
@@ -256,6 +273,7 @@ class _MiCatalogoTab extends StatelessWidget {
           producto: productos[i],
           onEdit: () => onEdit(productos[i]),
           onDelete: () => onDelete(productos[i]),
+          onTogglePause: () => onTogglePause(productos[i]),
         ),
       ),
     );
@@ -266,176 +284,204 @@ class _ProductoCard extends StatelessWidget {
   final ProveedorProducto producto;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onTogglePause;
 
   const _ProductoCard({
     required this.producto,
     required this.onEdit,
     required this.onDelete,
+    required this.onTogglePause,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = producto;
     final hasLowStock = p.cantidad > 0 && p.cantidad <= 5;
+    final imgUrl = p.bestImageUrl;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: hasLowStock
-              ? Colors.orange.shade200
-              : p.isActive
-                  ? Colors.green.shade100
-                  : Colors.grey.shade200,
+    return Opacity(
+      opacity: p.isPaused ? 0.55 : 1.0,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: p.isPaused
+                ? Colors.grey.shade300
+                : hasLowStock
+                    ? Colors.orange.shade200
+                    : p.isActive
+                        ? Colors.green.shade100
+                        : Colors.grey.shade200,
+          ),
         ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onEdit,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Photo or placeholder
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: p.fotoUrl != null
-                    ? Image.network(
-                        p.fotoUrl!,
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _imgPlaceholder(),
-                      )
-                    : p.categoryImageUrl != null
-                        ? Image.network(
-                            p.categoryImageUrl!,
-                            width: 64,
-                            height: 64,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _imgPlaceholder(),
-                          )
-                        : _imgPlaceholder(),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name
-                    Text(
-                      p.displayName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1F2937),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Thumbnail: mejor imagen disponible
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: imgUrl != null
+                      ? Image.network(
+                          imgUrl,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _imgPlaceholder(),
+                        )
+                      : _imgPlaceholder(),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.displayName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F2937),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 4),
+                      Text(
+                        p.sku,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (p.isPaused)
+                            _Chip(
+                              label: 'Pausado',
+                              color: Colors.orange.shade800,
+                              bg: Colors.orange.shade50,
+                            )
+                          else if (p.precio != null)
+                            _Chip(
+                              label: '\$${p.precio!.toStringAsFixed(2)}',
+                              color: Colors.green.shade700,
+                              bg: Colors.green.shade50,
+                            )
+                          else
+                            _Chip(
+                              label: 'Sin precio',
+                              color: Colors.orange.shade700,
+                              bg: Colors.orange.shade50,
+                            ),
+                          _Chip(
+                            label: '${p.cantidad} uds',
+                            color: hasLowStock
+                                ? Colors.orange.shade700
+                                : Colors.grey.shade700,
+                            bg: hasLowStock
+                                ? Colors.orange.shade50
+                                : Colors.grey.shade100,
+                          ),
+                          if (p.presentacion != null)
+                            _Chip(
+                              label: p.presentacion!,
+                              color: const Color(0xFF500088),
+                              bg: const Color(0xFF500088)
+                                  .withValues(alpha: 0.08),
+                            ),
+                          if (p.calidad != null)
+                            _Chip(
+                              label: p.calidad!,
+                              color: Colors.teal.shade700,
+                              bg: Colors.teal.shade50,
+                            ),
+                        ],
+                      ),
+                      if (hasLowStock && !p.isPaused) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded,
+                                size: 12, color: Colors.orange.shade600),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Stock bajo',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.orange.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Actions
+                Column(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: p.isPaused
+                            ? Colors.orange.shade400
+                            : p.isActive
+                                ? Colors.green.shade400
+                                : Colors.grey.shade300,
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    // SKU
-                    Text(
-                      p.sku,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
+                    // Pause/resume
+                    IconButton(
+                      icon: Icon(
+                        p.isPaused
+                            ? Icons.play_circle_outline_rounded
+                            : Icons.pause_circle_outline_rounded,
+                        size: 20,
                       ),
+                      color: p.isPaused
+                          ? Colors.green.shade600
+                          : Colors.orange.shade600,
+                      onPressed: onTogglePause,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                          minWidth: 32, minHeight: 32),
+                      tooltip: p.isPaused ? 'Reanudar' : 'Pausar',
                     ),
-                    const SizedBox(height: 8),
-                    // Status row
-                    Row(
-                      children: [
-                        if (p.precio != null)
-                          _Chip(
-                            label: '\$${p.precio!.toStringAsFixed(2)}',
-                            color: Colors.green.shade700,
-                            bg: Colors.green.shade50,
-                          )
-                        else
-                          _Chip(
-                            label: 'Sin precio',
-                            color: Colors.orange.shade700,
-                            bg: Colors.orange.shade50,
-                          ),
-                        const SizedBox(width: 6),
-                        _Chip(
-                          label: '${p.cantidad} uds',
-                          color: hasLowStock
-                              ? Colors.orange.shade700
-                              : Colors.grey.shade700,
-                          bg: hasLowStock
-                              ? Colors.orange.shade50
-                              : Colors.grey.shade100,
-                        ),
-                        if (p.presentacion != null) ...[
-                          const SizedBox(width: 6),
-                          _Chip(
-                            label: p.presentacion!,
-                            color: const Color(0xFF500088),
-                            bg: const Color(0xFF500088).withValues(alpha: 0.08),
-                          ),
-                        ],
-                      ],
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      color: const Color(0xFF500088),
+                      onPressed: onEdit,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                          minWidth: 32, minHeight: 32),
                     ),
-                    if (hasLowStock) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded,
-                              size: 12, color: Colors.orange.shade600),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Stock bajo',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.orange.shade600,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    IconButton(
+                      icon:
+                          const Icon(Icons.delete_outline_rounded, size: 18),
+                      color: Colors.red.shade400,
+                      onPressed: onDelete,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                          minWidth: 32, minHeight: 32),
+                    ),
                   ],
                 ),
-              ),
-              // Actions
-              Column(
-                children: [
-                  // Active indicator
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: p.isActive
-                          ? Colors.green.shade400
-                          : Colors.grey.shade300,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: const Color(0xFF500088),
-                    onPressed: onEdit,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                        minWidth: 32, minHeight: 32),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                    color: Colors.red.shade400,
-                    onPressed: onDelete,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                        minWidth: 32, minHeight: 32),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -49,8 +49,8 @@ class ProveedorRepository {
         .select('''
           *,
           categories(name, group_name, image_url),
-          sub_categories(name),
-          sub_colors(name, color)
+          sub_categories(name, image_url),
+          sub_colors(name, color, image_url)
         ''')
         .eq('proveedor_id', _uid)
         .order('created_at', ascending: false);
@@ -99,19 +99,28 @@ class ProveedorRepository {
 
   Future<void> updateProducto({
     required String id,
-    double? precio,
-    int? cantidad,
-    String? calidad,
-    String? presentacion,
+    required double? precio,
+    required int cantidad,
+    required String? calidad,
+    required String? presentacion,
     String? fotoUrl,
     bool clearFoto = false,
   }) async {
     await _db.from('proveedor_productos').update({
-      if (precio != null) 'precio': precio,
-      if (cantidad != null) 'cantidad': cantidad,
-      if (calidad != null) 'calidad': calidad,
-      if (presentacion != null) 'presentacion': presentacion,
+      'precio': precio,
+      'cantidad': cantidad,
+      'calidad': calidad,
+      'presentacion': presentacion,
       if (clearFoto) 'foto_url': null else if (fotoUrl != null) 'foto_url': fotoUrl,
+    }).eq('id', id).eq('proveedor_id', _uid);
+  }
+
+  Future<void> togglePause({
+    required String id,
+    required bool isPaused,
+  }) async {
+    await _db.from('proveedor_productos').update({
+      'is_paused': isPaused,
     }).eq('id', id).eq('proveedor_id', _uid);
   }
 

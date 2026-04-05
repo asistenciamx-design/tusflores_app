@@ -25,6 +25,7 @@ class _ProveedorEditProductoScreenState
   late String? _calidad;
   late String? _presentacion;
   late String? _fotoUrl;
+  String? _originalFotoUrl;
 
   bool _saving = false;
   bool _uploadingPhoto = false;
@@ -58,6 +59,7 @@ class _ProveedorEditProductoScreenState
     _calidad = widget.producto.calidad;
     _presentacion = widget.producto.presentacion;
     _fotoUrl = widget.producto.fotoUrl;
+    _originalFotoUrl = widget.producto.fotoUrl;
   }
 
   Future<void> _pickPhoto() async {
@@ -98,6 +100,7 @@ class _ProveedorEditProductoScreenState
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
+      final clearedFoto = _originalFotoUrl != null && _fotoUrl == null;
       await _repo.updateProducto(
         id: widget.producto.id,
         precio: _precio,
@@ -105,6 +108,7 @@ class _ProveedorEditProductoScreenState
         calidad: _calidad,
         presentacion: _presentacion,
         fotoUrl: _fotoUrl,
+        clearFoto: clearedFoto,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -176,19 +180,27 @@ class _ProveedorEditProductoScreenState
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: widget.producto.isActive
-                        ? Colors.green.shade50
-                        : Colors.grey.shade100,
+                    color: widget.producto.isPaused
+                        ? Colors.orange.shade50
+                        : widget.producto.isActive
+                            ? Colors.green.shade50
+                            : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    widget.producto.isActive ? 'Activo en tienda' : 'Inactivo',
+                    widget.producto.isPaused
+                        ? 'Pausado'
+                        : widget.producto.isActive
+                            ? 'Activo en tienda'
+                            : 'Inactivo',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: widget.producto.isActive
-                          ? Colors.green.shade700
-                          : Colors.grey.shade600,
+                      color: widget.producto.isPaused
+                          ? Colors.orange.shade800
+                          : widget.producto.isActive
+                              ? Colors.green.shade700
+                              : Colors.grey.shade600,
                     ),
                   ),
                 ),
@@ -196,7 +208,24 @@ class _ProveedorEditProductoScreenState
             ),
             const SizedBox(height: 24),
 
-            // Photo
+            // Imagen del catálogo maestro (si existe y no tiene foto propia)
+            if (_fotoUrl == null && widget.producto.bestImageUrl != null) ...[
+              _buildSection('Imagen del catálogo'),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.network(
+                  widget.producto.bestImageUrl!,
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Photo del proveedor
             _buildSection('Foto del producto (opcional)'),
             const SizedBox(height: 10),
             GestureDetector(

@@ -11,6 +11,7 @@ class ProveedorProducto {
   final String? presentacion;
   final String? fotoUrl;
   final bool isActive;
+  final bool isPaused;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -19,8 +20,10 @@ class ProveedorProducto {
   final String? categoryGroupName;
   final String? categoryImageUrl;
   final String? subCategoryName;
+  final String? subCategoryImageUrl;
   final String? subColorName;
   final String? subColorHex;
+  final String? subColorImageUrl;
 
   const ProveedorProducto({
     required this.id,
@@ -35,14 +38,17 @@ class ProveedorProducto {
     this.presentacion,
     this.fotoUrl,
     required this.isActive,
+    this.isPaused = false,
     required this.createdAt,
     required this.updatedAt,
     this.categoryName,
     this.categoryGroupName,
     this.categoryImageUrl,
     this.subCategoryName,
+    this.subCategoryImageUrl,
     this.subColorName,
     this.subColorHex,
+    this.subColorImageUrl,
   });
 
   factory ProveedorProducto.fromMap(Map<String, dynamic> map) {
@@ -62,14 +68,17 @@ class ProveedorProducto {
       presentacion: map['presentacion'] as String?,
       fotoUrl: map['foto_url'] as String?,
       isActive: map['is_active'] as bool? ?? false,
+      isPaused: map['is_paused'] as bool? ?? false,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       categoryName: cat?['name'] as String?,
       categoryGroupName: cat?['group_name'] as String?,
       categoryImageUrl: cat?['image_url'] as String?,
       subCategoryName: sub?['name'] as String?,
+      subCategoryImageUrl: sub?['image_url'] as String?,
       subColorName: color?['name'] as String?,
       subColorHex: color?['color'] as String?,
+      subColorImageUrl: color?['image_url'] as String?,
     );
   }
 
@@ -79,6 +88,10 @@ class ProveedorProducto {
     if (subColorName != null) parts.add(subColorName!);
     return parts.join(' · ');
   }
+
+  /// Mejor imagen disponible: foto propia > sub-color > sub-categoría > categoría
+  String? get bestImageUrl =>
+      fotoUrl ?? subColorImageUrl ?? subCategoryImageUrl ?? categoryImageUrl;
 }
 
 class MaestroCategory {
