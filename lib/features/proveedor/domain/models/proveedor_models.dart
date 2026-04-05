@@ -142,6 +142,7 @@ class MaestroSubColor {
   final String parentId;
   final String name;
   final String? color;
+  final String? imageUrl;
   final bool isActive;
 
   const MaestroSubColor({
@@ -149,6 +150,7 @@ class MaestroSubColor {
     required this.parentId,
     required this.name,
     this.color,
+    this.imageUrl,
     required this.isActive,
   });
 
@@ -157,6 +159,7 @@ class MaestroSubColor {
         parentId: map['parent_id'] as String,
         name: map['name'] as String,
         color: map['color'] as String?,
+        imageUrl: map['image_url'] as String?,
         isActive: map['is_active'] as bool? ?? true,
       );
 }

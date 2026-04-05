@@ -34,7 +34,7 @@ class ProveedorRepository {
       String subCategoryId) async {
     final rows = await _db
         .from('sub_colors')
-        .select('id, parent_id, name, color, is_active')
+        .select('id, parent_id, name, color, image_url, is_active')
         .eq('parent_id', subCategoryId)
         .eq('is_active', true)
         .order('name');

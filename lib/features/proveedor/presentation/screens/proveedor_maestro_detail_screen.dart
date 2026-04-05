@@ -317,8 +317,15 @@ class _ProveedorMaestroDetailScreenState
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Fondo: imagen de sub-categoría si existe, sino color hex
-              if (sub.imageUrl != null)
+              // Fondo: imagen propia del color > imagen de sub-categoría > color hex
+              if (c.imageUrl != null)
+                Image.network(
+                  c.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      _colorBackground(baseColor, sub),
+                )
+              else if (sub.imageUrl != null)
                 Image.network(
                   sub.imageUrl!,
                   fit: BoxFit.cover,
@@ -328,8 +335,10 @@ class _ProveedorMaestroDetailScreenState
               else
                 _colorBackground(baseColor, sub),
 
-              // Overlay de color para tonalizar la imagen con el hex
-              if (baseColor != null && sub.imageUrl != null)
+              // Overlay de color solo si usa imagen heredada (no propia)
+              if (baseColor != null &&
+                  c.imageUrl == null &&
+                  sub.imageUrl != null)
                 Container(
                   color: baseColor.withValues(alpha: 0.30),
                 ),
