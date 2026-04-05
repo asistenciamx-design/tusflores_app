@@ -33,6 +33,7 @@ import '../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../features/warehouse/presentation/screens/warehouse_screen.dart';
 import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
 import '../../features/legal/presentation/screens/terms_screen.dart';
+import '../../features/tiendas/presentation/screens/tiendas_screen.dart';
 import '../services/seo_service.dart';
 
 final appRouter = GoRouter(
@@ -41,6 +42,7 @@ final appRouter = GoRouter(
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final path = state.uri.path;
     const protectedPaths = ['/', '/reviews/manage', '/admin', '/proveedor', '/inventario', '/bodega'];
+    // /tiendas es pública — no requiere autenticación
     // Si ya está autenticado y va al login, redirigir al home
     if (isLoggedIn && path == '/login') return '/';
     if (protectedPaths.contains(path) && !isLoggedIn) return '/login';
@@ -92,6 +94,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/proveedor',
       builder: (context, state) => const ProveedorLayout(),
+    ),
+    // ── Directorio público de proveedores ─────────────────────────────────
+    GoRoute(
+      path: '/tiendas',
+      builder: (context, state) => const TiendasScreen(),
     ),
     // ── Rutas legales (públicas, sin autenticación) ────────────────────────
     GoRoute(
