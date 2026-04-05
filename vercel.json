@@ -22,7 +22,7 @@
       ]
     },
     {
-      "source": "/index.html",
+      "source": "/app.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, max-age=0" }
       ]
@@ -46,7 +46,7 @@
     { "source": "/galeria", "destination": "/galeria.html" },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/app.html"
     }
   ]
 }
