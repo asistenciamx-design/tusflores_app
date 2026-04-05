@@ -41,14 +41,6 @@
       ]
     }
   ],
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.tusflores.app" }],
-      "destination": "https://tusflores.app/$1",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     { "source": "/",        "destination": "/landing.html" },
     { "source": "/galeria", "destination": "/galeria.html" },
