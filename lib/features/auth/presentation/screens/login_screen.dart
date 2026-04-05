@@ -201,10 +201,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Container(
                   width: 72, height: 72,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.local_florist, color: AppTheme.primary, size: 36),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.network(
+                    '/landing_assets/logo_tusflores.webp',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      child: const Icon(Icons.local_florist, color: AppTheme.primary, size: 36),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
