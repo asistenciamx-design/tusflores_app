@@ -16,22 +16,20 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
   bool _saving = false;
   String? _error;
 
-  // grouped: groupName → [categories]
+  // grouped alfabéticamente: groupName → [categories ordenadas a-z]
   Map<String, List<MaestroCategory>> _grouped = {};
+  List<String> _groups = [];
   String? _selectedGroup;
 
-  // Expansion state per category
-  final Map<String, bool> _expanded = {};
-  // Sub-categories and sub-colors loaded on demand
+  // Sub-categorías y sub-colores cargados bajo demanda
   final Map<String, List<MaestroSubCategory>> _subCats = {};
   final Map<String, List<MaestroSubColor>> _subColors = {};
 
-  // Already in proveedor catalog
+  // Ya en el catálogo del proveedor
   Set<MaestroSelection> _existing = {};
 
-  // Newly selected in this session
+  // Seleccionados en esta sesión
   final Set<MaestroSelection> _newSelections = {};
-  final Set<MaestroSelection> _toRemove = {};
 
   @override
   void initState() {
@@ -52,15 +50,25 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
       final cats = results[0] as List<MaestroCategory>;
       final existing = results[1] as Set<MaestroSelection>;
 
+      // Agrupar y ordenar todo alfabéticamente
       final grouped = <String, List<MaestroCategory>>{};
       for (final c in cats) {
         grouped.putIfAbsent(c.groupName, () => []).add(c);
       }
+      // Ordenar categorías dentro de cada grupo A→Z
+      for (final g in grouped.keys) {
+        grouped[g]!.sort((a, b) =>
+            a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      }
+      // Ordenar grupos A→Z
+      final groups = grouped.keys.toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
       setState(() {
         _grouped = grouped;
+        _groups = groups;
         _existing = existing;
-        _selectedGroup = grouped.keys.isNotEmpty ? grouped.keys.first : null;
+        _selectedGroup = groups.isNotEmpty ? groups.first : null;
         _loading = false;
       });
     } catch (e) {
@@ -71,66 +79,53 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
     }
   }
 
-  Future<void> _toggleCategory(MaestroCategory cat) async {
-    final expanded = _expanded[cat.id] ?? false;
-    if (!expanded) {
-      // Load sub-categories if not loaded
-      if (_subCats[cat.id] == null) {
-        final subs = await _repo.getMaestroSubCategories(cat.id);
-        setState(() => _subCats[cat.id] = subs);
-        // Load sub-colors for each sub-category
-        for (final sub in subs) {
-          if (_subColors[sub.id] == null) {
-            final colors = await _repo.getMaestroSubColors(sub.id);
-            setState(() => _subColors[sub.id] = colors);
-          }
+  Future<List<MaestroSubCategory>> _loadSubCats(String catId) async {
+    if (_subCats[catId] == null) {
+      final subs = await _repo.getMaestroSubCategories(catId);
+      // Ordenar A→Z
+      subs.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      _subCats[catId] = subs;
+      // Cargar sub-colores de cada sub-categoría
+      for (final sub in subs) {
+        if (_subColors[sub.id] == null) {
+          final colors = await _repo.getMaestroSubColors(sub.id);
+          colors.sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          _subColors[sub.id] = colors;
         }
       }
     }
-    setState(() => _expanded[cat.id] = !expanded);
+    return _subCats[catId]!;
   }
 
   bool _isExisting(MaestroSelection sel) => _existing.contains(sel);
+  bool _isNew(MaestroSelection sel) => _newSelections.contains(sel);
+  bool _isSelected(MaestroSelection sel) =>
+      _isExisting(sel) || _isNew(sel);
 
   void _toggleSelection(MaestroSelection sel) {
-    if (_isExisting(sel)) {
-      // Toggle removal of existing
-      setState(() {
-        if (_toRemove.contains(sel)) {
-          _toRemove.remove(sel);
-        } else {
-          _toRemove.add(sel);
-        }
-      });
-    } else {
-      setState(() {
-        if (_newSelections.contains(sel)) {
-          _newSelections.remove(sel);
-        } else {
-          _newSelections.add(sel);
-        }
-      });
-    }
+    if (_isExisting(sel)) return; // ya está — no se puede desmarcar aquí
+    setState(() {
+      if (_newSelections.contains(sel)) {
+        _newSelections.remove(sel);
+      } else {
+        _newSelections.add(sel);
+      }
+    });
   }
 
-  bool _isMarkedForRemoval(MaestroSelection sel) => _toRemove.contains(sel);
-
   Future<void> _save() async {
-    if (_newSelections.isEmpty && _toRemove.isEmpty) return;
+    if (_newSelections.isEmpty) return;
     setState(() => _saving = true);
     try {
-      if (_newSelections.isNotEmpty) {
-        await _repo.addProductosFromMaestro(_newSelections.toList());
-      }
-      // Remove is done from Mi Catálogo — we only add here
+      await _repo.addProductosFromMaestro(_newSelections.toList());
       setState(() {
         _existing = {..._existing, ..._newSelections};
         _newSelections.clear();
-        _toRemove.clear();
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Catálogo actualizado'),
+          content: Text('Productos agregados a tu catálogo'),
           backgroundColor: Color(0xFF059669),
         ));
       }
@@ -146,7 +141,362 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
     }
   }
 
-  int get _pendingCount => _newSelections.length + _toRemove.length;
+  // Cuántos items del catálogo tiene una categoría (existing + new)
+  int _selectedCountForCat(MaestroCategory cat) {
+    int count = 0;
+    for (final sel in {..._existing, ..._newSelections}) {
+      if (sel.categoryId == cat.id) count++;
+    }
+    return count;
+  }
+
+  Future<void> _openCategorySheet(MaestroCategory cat) async {
+    // Cargar sub-cats y sub-colors si no están
+    await _loadSubCats(cat.id);
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final subs = _subCats[cat.id] ?? [];
+
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFFBF8FF),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: Row(
+                    children: [
+                      if (cat.imageUrl != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            cat.imageUrl!,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _imgPlaceholder(48),
+                          ),
+                        )
+                      else
+                        _imgPlaceholder(48),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              cat.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF500088),
+                              ),
+                            ),
+                            Text(
+                              subs.isEmpty
+                                  ? 'Sin variantes registradas'
+                                  : '${subs.length} variante${subs.length != 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // Lista de variantes
+                Flexible(
+                  child: subs.isEmpty
+                      ? _buildDirectSelection(cat, setSheetState)
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: subs.length,
+                          itemBuilder: (_, i) => _buildSubCatRow(
+                              cat, subs[i], setSheetState),
+                        ),
+                ),
+                // Botón guardar dentro del sheet
+                if (_newSelections.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _saving
+                            ? null
+                            : () async {
+                                Navigator.of(ctx).pop();
+                                await _save();
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF500088),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Agregar ${_newSelections.length} producto${_newSelections.length != 1 ? 's' : ''} a Mi Catálogo',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    // Al cerrar el sheet, refrescar el grid para mostrar checkmarks
+    setState(() {});
+  }
+
+  Widget _buildDirectSelection(
+      MaestroCategory cat, StateSetter setSheetState) {
+    final sel = MaestroSelection(categoryId: cat.id);
+    final selected = _isSelected(sel);
+    final isExisting = _isExisting(sel);
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: GestureDetector(
+        onTap: isExisting
+            ? null
+            : () {
+                _toggleSelection(sel);
+                setSheetState(() {});
+              },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFF500088).withValues(alpha: 0.06)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF500088)
+                  : Colors.grey.shade200,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  cat.name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              _sheetCheckbox(sel, setSheetState),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubCatRow(MaestroCategory cat, MaestroSubCategory sub,
+      StateSetter setSheetState) {
+    final colors = _subColors[sub.id] ?? [];
+
+    if (colors.isEmpty) {
+      // Sub-categoría directamente seleccionable
+      final sel =
+          MaestroSelection(categoryId: cat.id, subCategoryId: sub.id);
+      return _buildSelectionRow(
+        label: sub.name,
+        colorHex: sub.color,
+        sel: sel,
+        indent: 20,
+        setSheetState: setSheetState,
+      );
+    }
+
+    // Sub-categoría con sub-colores
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+          child: Row(
+            children: [
+              if (sub.color != null && sub.color!.isNotEmpty) ...[
+                Container(
+                  width: 12,
+                  height: 12,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: _hexColor(sub.color!),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                ),
+              ],
+              Text(
+                sub.name,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade500,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...colors.map(
+          (c) => _buildSelectionRow(
+            label: c.name,
+            colorHex: c.color,
+            sel: MaestroSelection(
+                categoryId: cat.id,
+                subCategoryId: sub.id,
+                subColorId: c.id),
+            indent: 32,
+            setSheetState: setSheetState,
+          ),
+        ),
+        const Divider(height: 1, indent: 20, endIndent: 20),
+      ],
+    );
+  }
+
+  Widget _buildSelectionRow({
+    required String label,
+    required String? colorHex,
+    required MaestroSelection sel,
+    required double indent,
+    required StateSetter setSheetState,
+  }) {
+    final selected = _isSelected(sel);
+    final isExisting = _isExisting(sel);
+
+    return InkWell(
+      onTap: isExisting
+          ? null
+          : () {
+              _toggleSelection(sel);
+              setSheetState(() {});
+            },
+      child: Container(
+        color: selected && !isExisting
+            ? const Color(0xFF500088).withValues(alpha: 0.04)
+            : null,
+        padding:
+            EdgeInsets.fromLTRB(indent, 12, 20, 12),
+        child: Row(
+          children: [
+            if (colorHex != null && colorHex.isNotEmpty) ...[
+              Container(
+                width: 14,
+                height: 14,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: _hexColor(colorHex),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+              ),
+            ],
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight:
+                      selected ? FontWeight.w600 : FontWeight.w400,
+                  color: selected
+                      ? const Color(0xFF500088)
+                      : const Color(0xFF1F2937),
+                ),
+              ),
+            ),
+            _sheetCheckbox(sel, setSheetState),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sheetCheckbox(MaestroSelection sel, StateSetter setSheetState) {
+    final isExisting = _isExisting(sel);
+    final isNew = _isNew(sel);
+
+    Color boxColor;
+    Widget? icon;
+
+    if (isExisting) {
+      boxColor = const Color(0xFF059669);
+      icon = const Icon(Icons.check, size: 14, color: Colors.white);
+    } else if (isNew) {
+      boxColor = const Color(0xFF500088);
+      icon = const Icon(Icons.check, size: 14, color: Colors.white);
+    } else {
+      boxColor = Colors.grey.shade100;
+      icon = null;
+    }
+
+    return GestureDetector(
+      onTap: isExisting
+          ? null
+          : () {
+              _toggleSelection(sel);
+              setSheetState(() {});
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: boxColor,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: isNew || isExisting
+                ? Colors.transparent
+                : Colors.grey.shade300,
+          ),
+        ),
+        child: icon != null ? Center(child: icon) : null,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,29 +516,30 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
       );
     }
 
-    final groups = _grouped.keys.toList();
     final currentCats = _grouped[_selectedGroup] ?? [];
 
     return Stack(
       children: [
         Column(
           children: [
-            // Group pill selector
+            // ── Pills de grupo A→Z ──────────────────────────────────────
             SizedBox(
-              height: 48,
+              height: 52,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: groups.length,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                itemCount: _groups.length,
                 itemBuilder: (_, i) {
-                  final g = groups[i];
+                  final g = _groups[i];
                   final active = g == _selectedGroup;
                   return GestureDetector(
                     onTap: () => setState(() => _selectedGroup = g),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 18),
                       decoration: BoxDecoration(
                         color: active
                             ? const Color(0xFF500088)
@@ -206,7 +557,9 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: active ? Colors.white : Colors.grey.shade700,
+                            color: active
+                                ? Colors.white
+                                : Colors.grey.shade700,
                           ),
                         ),
                       ),
@@ -215,55 +568,108 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
                 },
               ),
             ),
-            // Category list
+            // ── Grid 2 columnas A→Z ─────────────────────────────────────
             Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 8,
-                  bottom: _pendingCount > 0 ? 88 : 16,
+              child: GridView.builder(
+                padding: EdgeInsets.fromLTRB(
+                    16, 8, 16, _newSelections.isNotEmpty ? 96 : 16),
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.78,
                 ),
                 itemCount: currentCats.length,
-                itemBuilder: (_, i) => _buildCategoryTile(currentCats[i]),
+                itemBuilder: (_, i) =>
+                    _buildCategoryCard(currentCats[i]),
               ),
             ),
           ],
         ),
-        // Floating save bar
-        if (_pendingCount > 0)
+        // ── Barra flotante de guardado ──────────────────────────────────
+        if (_newSelections.isNotEmpty)
           Positioned(
             left: 16,
             right: 16,
             bottom: 16,
             child: SafeArea(
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF500088),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF500088),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF500088).withValues(alpha: 0.35),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-                child: _saving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        'Agregar $_pendingCount producto${_pendingCount != 1 ? 's' : ''} a Mi Catálogo',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${_newSelections.length}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'productos seleccionados',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _saving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF500088),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF500088),
+                              ),
+                            )
+                          : const Text(
+                              'Guardar',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -271,207 +677,174 @@ class _ProveedorMaestroScreenState extends State<ProveedorMaestroScreen> {
     );
   }
 
-  Widget _buildCategoryTile(MaestroCategory cat) {
-    final isExpanded = _expanded[cat.id] ?? false;
-    final subs = _subCats[cat.id] ?? [];
+  Widget _buildCategoryCard(MaestroCategory cat) {
+    final selectedCount = _selectedCountForCat(cat);
+    final hasAnySelected = selectedCount > 0;
 
-    // Direct category selection (no sub-categories)
-    final directSel = MaestroSelection(categoryId: cat.id);
-    final hasSubs = isExpanded && subs.isNotEmpty;
+    // Contar sub-categorías cargadas para mostrar "N variantes"
+    final subs = _subCats[cat.id];
+    final variantLabel = subs != null
+        ? '${subs.length} variante${subs.length != 1 ? 's' : ''}'
+        : null;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _toggleCategory(cat),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
+    // Puntos de colores de las sub-categorías
+    final colorDots = subs
+        ?.where((s) => s.color != null && s.color!.isNotEmpty)
+        .take(5)
+        .toList();
+
+    return GestureDetector(
+      onTap: () => _openCategorySheet(cat),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasAnySelected
+                ? const Color(0xFF500088).withValues(alpha: 0.4)
+                : Colors.grey.shade200,
+            width: hasAnySelected ? 1.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Imagen
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  if (cat.imageUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        cat.imageUrl!,
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholderIcon(),
-                      ),
-                    )
-                  else
-                    _placeholderIcon(),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          cat.name,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(15)),
+                    child: cat.imageUrl != null
+                        ? Image.network(
+                            cat.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _gridImgPlaceholder(),
+                          )
+                        : _gridImgPlaceholder(),
                   ),
-                  // If no sub-cats are loaded yet or subs is empty after expand,
-                  // show checkbox for direct selection
-                  if (!isExpanded)
-                    const Icon(Icons.chevron_right_rounded,
-                        color: Colors.grey),
-                  if (isExpanded && subs.isEmpty)
-                    _buildCheckbox(directSel),
-                  if (isExpanded && subs.isNotEmpty)
-                    const Icon(Icons.expand_less_rounded,
-                        color: Colors.grey),
+                  // Badge de seleccionados
+                  if (hasAnySelected)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF500088),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white, width: 2),
+                        ),
+                        child: Center(
+                          child: selectedCount > 9
+                              ? const Icon(Icons.check,
+                                  size: 14, color: Colors.white)
+                              : Text(
+                                  '$selectedCount',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-          ),
-          if (hasSubs)
-            ...subs.map((sub) => _buildSubCategoryTile(cat.id, sub)),
-        ],
+            // Info
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    cat.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1F2937),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (variantLabel != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      variantLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                  if (colorDots != null && colorDots.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: colorDots.map((s) {
+                        return Container(
+                          width: 12,
+                          height: 12,
+                          margin: const EdgeInsets.only(right: 4),
+                          decoration: BoxDecoration(
+                            color: _hexColor(s.color!),
+                            shape: BoxShape.circle,
+                            border:
+                                Border.all(color: Colors.grey.shade200),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSubCategoryTile(String catId, MaestroSubCategory sub) {
-    final colors = _subColors[sub.id] ?? [];
-    final subSel = MaestroSelection(
-        categoryId: catId, subCategoryId: sub.id);
-
-    return Column(
-      children: [
-        const Divider(height: 1, indent: 16, endIndent: 16),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 10, 16, 10),
-          child: Row(
-            children: [
-              if (sub.color != null && sub.color!.isNotEmpty)
-                Container(
-                  width: 14,
-                  height: 14,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: _hexColor(sub.color!),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                ),
-              Expanded(
-                child: Text(
-                  sub.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (colors.isEmpty) _buildCheckbox(subSel),
-            ],
-          ),
-        ),
-        if (colors.isNotEmpty)
-          ...colors.map((c) => _buildSubColorTile(catId, sub.id, c)),
-      ],
-    );
-  }
-
-  Widget _buildSubColorTile(
-      String catId, String subCatId, MaestroSubColor color) {
-    final sel = MaestroSelection(
-        categoryId: catId, subCategoryId: subCatId, subColorId: color.id);
-    return Column(
-      children: [
-        const Divider(height: 1, indent: 40, endIndent: 16),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(44, 8, 16, 8),
-          child: Row(
-            children: [
-              if (color.color != null && color.color!.isNotEmpty)
-                Container(
-                  width: 12,
-                  height: 12,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: _hexColor(color.color!),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                ),
-              Expanded(
-                child: Text(
-                  color.name,
-                  style: const TextStyle(fontSize: 13),
-                ),
-              ),
-              _buildCheckbox(sel),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCheckbox(MaestroSelection sel) {
-    final isExisting = _isExisting(sel);
-    final isNew = _newSelections.contains(sel);
-    final forRemoval = _isMarkedForRemoval(sel);
-
-    Color boxColor;
-    Widget? icon;
-
-    if (isExisting && !forRemoval) {
-      boxColor = const Color(0xFF059669);
-      icon = const Icon(Icons.check, size: 14, color: Colors.white);
-    } else if (forRemoval) {
-      boxColor = Colors.red.shade400;
-      icon = const Icon(Icons.remove, size: 14, color: Colors.white);
-    } else if (isNew) {
-      boxColor = const Color(0xFF500088);
-      icon = const Icon(Icons.check, size: 14, color: Colors.white);
-    } else {
-      boxColor = Colors.grey.shade200;
-      icon = null;
-    }
-
-    return GestureDetector(
-      onTap: () => _toggleSelection(sel),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          color: boxColor,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isNew || isExisting ? Colors.transparent : Colors.grey.shade400,
-          ),
-        ),
-        child: icon != null ? Center(child: icon) : null,
-      ),
-    );
-  }
-
-  Widget _placeholderIcon() {
+  Widget _gridImgPlaceholder() {
     return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
+      color: const Color(0xFFF3EEF8),
+      child: Center(
+        child: Icon(
+          Icons.local_florist_rounded,
+          size: 40,
+          color: const Color(0xFF500088).withValues(alpha: 0.25),
+        ),
       ),
-      child: Icon(Icons.local_florist_rounded,
-          color: Colors.grey.shade400, size: 22),
+    );
+  }
+
+  Widget _imgPlaceholder(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3EEF8),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        Icons.local_florist_rounded,
+        size: size * 0.5,
+        color: const Color(0xFF500088).withValues(alpha: 0.3),
+      ),
     );
   }
 
