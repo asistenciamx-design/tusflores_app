@@ -52,9 +52,6 @@ class ProveedorProductoPublic {
   });
 
   factory ProveedorProductoPublic.fromMap(Map<String, dynamic> map) {
-    final cat = map['categories'] as Map<String, dynamic>?;
-    final sub = map['sub_categories'] as Map<String, dynamic>?;
-    final color = map['sub_colors'] as Map<String, dynamic>?;
     return ProveedorProductoPublic(
       id: map['id'] as String,
       sku: map['sku'] as String,
@@ -63,14 +60,14 @@ class ProveedorProductoPublic {
       calidad: map['calidad'] as String?,
       presentacion: map['presentacion'] as String?,
       fotoUrl: map['foto_url'] as String?,
-      categoryName: cat?['name'] as String?,
-      categoryGroupName: cat?['group_name'] as String?,
-      categoryImageUrl: cat?['image_url'] as String?,
-      subCategoryName: sub?['name'] as String?,
-      subCategoryImageUrl: sub?['image_url'] as String?,
-      subColorName: color?['name'] as String?,
-      subColorHex: color?['color'] as String?,
-      subColorImageUrl: color?['image_url'] as String?,
+      categoryName: map['category_name'] as String?,
+      categoryGroupName: map['category_group_name'] as String?,
+      categoryImageUrl: map['category_image_url'] as String?,
+      subCategoryName: map['sub_category_name'] as String?,
+      subCategoryImageUrl: map['sub_category_image_url'] as String?,
+      subColorName: map['sub_color_name'] as String?,
+      subColorHex: map['sub_color_hex'] as String?,
+      subColorImageUrl: map['sub_color_image_url'] as String?,
     );
   }
 
@@ -90,100 +87,28 @@ class TiendasRepository {
   final _db = Supabase.instance.client;
 
   /// Devuelve proveedores con al menos 1 producto activo.
-  /// Incluye shop_name, logo_url y cuenta de productos activos.
-  Future<List<ProveedorTienda>> getProveedoresActivos({
-    String pais = 'mx',
-  }) async {
-    // 1. Obtener conteos por proveedor — condiciones directas, no depende de is_active
-    final counts = await _db
-        .from('proveedor_productos')
-        .select('proveedor_id')
-        .not('precio', 'is', null)
-        .gt('cantidad', 0)
-        .eq('is_paused', false);
-
-    // Agrupar conteos en Dart
-    final countMap = <String, int>{};
-    for (final r in counts) {
-      final pid = r['proveedor_id'] as String;
-      countMap[pid] = (countMap[pid] ?? 0) + 1;
-    }
-
-    if (countMap.isEmpty) return [];
-
-    // 2. Fetch perfiles de esos proveedores
-    final ids = countMap.keys.toList();
-    final profiles = await _db
-        .from('profiles')
-        .select('id, shop_name, logo_url, can_be_proveedor, is_proveedor, role')
-        .inFilter('id', ids);
-
-    // 3. Fetch grupo más común por proveedor (categoría con más productos)
-    final groupRows = await _db
-        .from('proveedor_productos')
-        .select('proveedor_id, categories(group_name)')
-        .not('precio', 'is', null)
-        .gt('cantidad', 0)
-        .eq('is_paused', false)
-        .inFilter('proveedor_id', ids);
-
-    // Mapa proveedor → grupo más frecuente
-    final groupFreq = <String, Map<String, int>>{};
-    for (final r in groupRows) {
-      final pid = r['proveedor_id'] as String;
-      final cat = r['categories'] as Map<String, dynamic>?;
-      final gn = cat?['group_name'] as String? ?? '';
-      if (gn.isEmpty) continue;
-      groupFreq.putIfAbsent(pid, () => {});
-      groupFreq[pid]![gn] = (groupFreq[pid]![gn] ?? 0) + 1;
-    }
-
-    String? _topGroup(String pid) {
-      final freq = groupFreq[pid];
-      if (freq == null || freq.isEmpty) return null;
-      return freq.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
-    }
-
-    final result = <ProveedorTienda>[];
-    for (final p in profiles) {
-      final role = p['role'] as String? ?? '';
-      final isProveedor = p['is_proveedor'] as bool? ?? false;
-      final canBe = p['can_be_proveedor'] as bool? ?? false;
-      // Solo proveedores autorizados
-      if (role != 'proveedor' && !(isProveedor && canBe)) continue;
-
-      final pid = p['id'] as String;
-      result.add(ProveedorTienda(
-        id: pid,
-        shopName: p['shop_name'] as String? ?? 'Proveedor',
-        logoUrl: p['logo_url'] as String?,
-        groupName: _topGroup(pid),
-        activeCount: countMap[pid] ?? 0,
-      ));
-    }
-
-    // Ordenar por más activos primero
-    result.sort((a, b) => b.activeCount.compareTo(a.activeCount));
-    return result;
+  /// Usa RPC con SECURITY DEFINER para acceso público (anon).
+  Future<List<ProveedorTienda>> getProveedoresActivos() async {
+    final data = await _db.rpc('get_proveedores_tienda');
+    final list = (data as List).cast<Map<String, dynamic>>();
+    return list
+        .map((r) => ProveedorTienda(
+              id: r['id'] as String,
+              shopName: r['shop_name'] as String? ?? 'Proveedor',
+              logoUrl: r['logo_url'] as String?,
+              groupName: r['group_name'] as String?,
+              activeCount: r['active_count'] as int,
+            ))
+        .toList();
   }
 
   /// Devuelve los productos activos de un proveedor para vista pública.
+  /// Usa RPC con SECURITY DEFINER para acceso público (anon).
   Future<List<ProveedorProductoPublic>> getProductosProveedor(
       String proveedorId) async {
-    final rows = await _db
-        .from('proveedor_productos')
-        .select('''
-          id, sku, precio, cantidad, calidad, presentacion, foto_url,
-          categories(name, group_name, image_url),
-          sub_categories(name, image_url),
-          sub_colors(name, color, image_url)
-        ''')
-        .eq('proveedor_id', proveedorId)
-        .not('precio', 'is', null)
-        .gt('cantidad', 0)
-        .eq('is_paused', false)
-        .order('created_at', ascending: false);
-
-    return rows.map((r) => ProveedorProductoPublic.fromMap(r)).toList();
+    final data = await _db.rpc('get_productos_proveedor',
+        params: {'p_proveedor_id': proveedorId});
+    final list = (data as List).cast<Map<String, dynamic>>();
+    return list.map((r) => ProveedorProductoPublic.fromMap(r)).toList();
   }
 }
