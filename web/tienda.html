@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tienda — tusflores.app</title>
+  <meta name="description" content="Descubre proveedores de flores verificados. Catálogos con precios, disponibilidad y variedad. Conecta tu florería con los mejores proveedores de México." />
+  <link rel="icon" type="image/png" href="/landing_assets/favicon-32.png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/landing_assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #FAFAF9;
+      color: #1f2937;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── BLOBS ─────────────────────────────────── */
+    .blobs { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+    .blob { position: absolute; width: 288px; height: 288px; border-radius: 50%; filter: blur(80px); mix-blend-mode: multiply; opacity: 0.15; animation: blob 7s infinite; }
+    .blob-pink  { background: #EC4899; top: -10%; left: -10%; animation-delay: 0s; }
+    .blob-green { background: #10B981; top: 20%; right: -10%; animation-delay: 2s; }
+    .blob-purple{ background: #8B5CF6; bottom: -20%; left: 20%; animation-delay: 4s; }
+    @keyframes blob {
+      0%   { transform: translate(0,0) scale(1); }
+      33%  { transform: translate(30px,-50px) scale(1.1); }
+      66%  { transform: translate(-20px,20px) scale(0.9); }
+      100% { transform: translate(0,0) scale(1); }
+    }
+
+    /* ── NAVBAR ────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 40;
+      background: rgba(255,255,255,0.80);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid #f3f4f6;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .nav-icon { width: 34px; height: 34px; border-radius: 10px; overflow: hidden; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .nav-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .nav-brand { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: #111827; }
+
+    .nav-links { display: none; gap: 28px; }
+    .nav-links a { font-size: 14px; font-weight: 600; color: #4b5563; text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: #EC4899; }
+
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-btn {
+      font-size: 13px; font-weight: 700; color: #10B981;
+      background: #ecfdf5; border: none; padding: 8px 16px;
+      border-radius: 100px; cursor: pointer; transition: background 0.2s;
+      text-decoration: none; display: none;
+    }
+    .nav-btn:hover { background: #d1fae5; }
+
+    .nav-hamburger { display: flex; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
+    .nav-hamburger span { display: block; width: 22px; height: 2px; background: #111827; border-radius: 2px; transition: transform 0.3s, opacity 0.3s; }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .mobile-menu {
+      position: fixed; top: 62px; left: 0; right: 0; z-index: 39;
+      background: rgba(255,255,255,0.97); backdrop-filter: blur(20px);
+      border-bottom: 1px solid #f3f4f6; padding: 16px 24px 24px;
+      display: flex; flex-direction: column; gap: 8px;
+      transform: translateY(-110%); transition: transform 0.3s ease;
+    }
+    .mobile-menu.open { transform: translateY(0); }
+    .mobile-menu-link { font-size: 16px; font-weight: 600; color: #374151; text-decoration: none; padding: 12px 0; border-bottom: 1px solid #f3f4f6; transition: color 0.2s; }
+    .mobile-menu-link:hover { color: #EC4899; }
+    .mobile-menu-cta { display: block; text-align: center; margin-top: 8px; font-size: 14px; font-weight: 700; color: #fff; background: #10B981; padding: 12px; border-radius: 100px; text-decoration: none; }
+
+    /* ── HERO ──────────────────────────────────── */
+    .tienda-hero {
+      padding: 100px 24px 48px;
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .tienda-hero-label {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 100px;
+      background: rgba(255,255,255,0.80); border: 1px solid #e0e7ff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06); color: #6d28d9;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase; margin-bottom: 20px;
+    }
+    .tienda-hero-title {
+      font-size: clamp(36px, 8vw, 56px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 16px;
+    }
+    .tienda-hero-title .grad {
+      background: linear-gradient(90deg, #7c3aed, #6d28d9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .tienda-hero-desc {
+      font-size: 17px;
+      color: #6b7280;
+      line-height: 1.6;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* ── STATS ─────────────────────────────────── */
+    .tienda-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .tienda-stat {
+      text-align: center;
+    }
+    .tienda-stat-num {
+      font-size: 28px;
+      font-weight: 900;
+      color: #6d28d9;
+      letter-spacing: -1px;
+    }
+    .tienda-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── CONTENIDO PRINCIPAL ───────────────────── */
+    .tienda-content {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    /* ── GRID DE PROVEEDORES ───────────────────── */
+    .proveedores-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .proveedor-card {
+      position: relative;
+      border-radius: 24px;
+      overflow: hidden;
+      aspect-ratio: 4/5;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .proveedor-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+    }
+    .proveedor-card-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, #6b21a8, #3b0764);
+    }
+    .proveedor-card-bg img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .proveedor-card-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.75) 100%);
+    }
+    .proveedor-card-badge {
+      position: absolute; top: 12px; left: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .proveedor-card-info {
+      position: absolute; left: 12px; right: 12px; bottom: 14px;
+    }
+    .proveedor-card-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.3px;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .proveedor-card-count {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.7);
+      letter-spacing: 0.8px; text-transform: uppercase;
+    }
+    .proveedor-card-count .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #92F5A4;
+    }
+
+    /* ── DETALLE: CATÁLOGO DEL PROVEEDOR ───────── */
+    .catalogo-section {
+      display: none;
+      margin-top: 32px;
+    }
+    .catalogo-section.open { display: block; }
+
+    .catalogo-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .catalogo-back {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .catalogo-back:hover { background: #f3f4f6; }
+    .catalogo-back svg { width: 18px; height: 18px; color: #374151; }
+    .catalogo-prov-logo {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #f3e8ff;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .catalogo-prov-logo img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .catalogo-prov-name {
+      font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.3px;
+    }
+    .catalogo-prov-count {
+      font-size: 12px; color: #9ca3af; font-weight: 500;
+    }
+
+    /* Filter pills */
+    .catalogo-filters {
+      display: flex; gap: 8px; overflow-x: auto;
+      padding-bottom: 12px; margin-bottom: 20px;
+      scrollbar-width: none;
+    }
+    .catalogo-filters::-webkit-scrollbar { display: none; }
+    .catalogo-pill {
+      flex-shrink: 0;
+      font-size: 13px; font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 100px;
+      border: 1.5px solid #e5e7eb;
+      background: #fff;
+      color: #4b5563;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .catalogo-pill:hover { border-color: #c4b5fd; }
+    .catalogo-pill.active {
+      background: #6d28d9; color: #fff; border-color: #6d28d9;
+    }
+
+    /* Product grid */
+    .productos-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .producto-card {
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .producto-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    .producto-img {
+      position: relative;
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #e9d5ff 0%, #c4b5fd 100%);
+      overflow: hidden;
+    }
+    .producto-img img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .producto-price {
+      position: absolute; top: 8px; right: 8px;
+      padding: 4px 8px; border-radius: 12px;
+      background: rgba(255,255,255,0.92);
+      font-size: 12px; font-weight: 800; color: #111827;
+    }
+    .producto-info {
+      padding: 10px 12px 12px;
+    }
+    .producto-name {
+      font-size: 14px; font-weight: 800; color: #111827;
+      letter-spacing: -0.2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .producto-sub {
+      font-size: 11px; color: #6b7280; font-weight: 500;
+      margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .producto-variant {
+      display: flex; align-items: center; gap: 5px;
+      margin-top: 8px;
+    }
+    .producto-variant-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .producto-variant-name {
+      font-size: 10px; color: #9ca3af; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .producto-stock {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #ecfdf5;
+      font-size: 9px; font-weight: 700; color: #10B981;
+    }
+
+    /* ── LOADING / EMPTY ──────────────────────── */
+    .loading {
+      text-align: center;
+      padding: 64px 0;
+      color: #9ca3af;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .loading-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #6d28d9;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center;
+      padding: 64px 20px;
+      color: #9ca3af;
+    }
+    .empty-state svg {
+      width: 56px; height: 56px; color: #d1d5db; margin-bottom: 16px;
+    }
+
+    /* ── RESPONSIVE ────────────────────────────── */
+    @media (min-width: 640px) {
+      .proveedores-grid { grid-template-columns: repeat(3, 1fr); }
+      .productos-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 768px) {
+      .nav-hamburger { display: none; }
+      .nav-links { display: flex; }
+      .nav-btn { display: inline-block; }
+      .proveedores-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .productos-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    }
+    @media (min-width: 1024px) {
+      .proveedores-grid { grid-template-columns: repeat(4, 1fr); }
+      .productos-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Blobs de fondo -->
+  <div class="blobs">
+    <div class="blob blob-pink"></div>
+    <div class="blob blob-green"></div>
+    <div class="blob blob-purple"></div>
+  </div>
+
+  <!-- NAVBAR -->
+  <nav>
+    <a href="/" class="nav-logo">
+      <div class="nav-icon">
+        <img src="/landing_assets/logo_tusflores.webp" alt="tusflores logo" />
+      </div>
+      <span class="nav-brand">tusflores.app</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="/">Inicio</a>
+      <a href="/#funciones">Funciones</a>
+      <a href="/tienda" class="active">Tienda</a>
+      <a href="/galeria">Galeria</a>
+      <a href="/#contacto">Contacto</a>
+    </div>
+
+    <div class="nav-right">
+      <a class="nav-btn" href="/login" target="_blank" rel="noopener">Entrar</a>
+      <button class="nav-hamburger" id="navHamburger" aria-label="Abrir menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile menu overlay -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="/" class="mobile-menu-link">Inicio</a>
+    <a href="/#funciones" class="mobile-menu-link">Funciones</a>
+    <a href="/tienda" class="mobile-menu-link" style="color:#6d28d9;">Tienda</a>
+    <a href="/galeria" class="mobile-menu-link">Galeria</a>
+    <a href="/#contacto" class="mobile-menu-link">Contacto</a>
+    <a class="mobile-menu-cta" href="/login" target="_blank" rel="noopener">Entrar</a>
+  </div>
+
+  <!-- HERO -->
+  <section class="tienda-hero">
+    <div class="tienda-hero-label">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="#6d28d9"><path d="M3 13h1v7c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-7h1a1 1 0 00.7-1.7l-9-9a1 1 0 00-1.4 0l-9 9A1 1 0 003 13z"/></svg>
+      Marketplace floral
+    </div>
+    <h1 class="tienda-hero-title">
+      Proveedores<br/><span class="grad">Selectos</span>
+    </h1>
+    <p class="tienda-hero-desc">
+      Descubre los mejores proveedores de flores y conecta tu floreria directamente con ellos.
+    </p>
+    <div class="tienda-stats">
+      <div class="tienda-stat">
+        <div class="tienda-stat-num" id="statProveedores">-</div>
+        <div class="tienda-stat-label">Proveedores</div>
+      </div>
+      <div class="tienda-stat">
+        <div class="tienda-stat-num" id="statProductos">-</div>
+        <div class="tienda-stat-label">Productos</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTENIDO -->
+  <section class="tienda-content">
+    <!-- Lista de proveedores -->
+    <div id="proveedoresSection">
+      <div class="loading" id="proveedoresLoading">
+        <div class="loading-spinner"></div>
+        Cargando proveedores...
+      </div>
+      <div class="proveedores-grid" id="proveedoresGrid"></div>
+    </div>
+
+    <!-- Catalogo de un proveedor (oculto por defecto) -->
+    <div class="catalogo-section" id="catalogoSection">
+      <div class="catalogo-header">
+        <button class="catalogo-back" id="catalogoBack" title="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="catalogo-prov-logo" id="catalogoLogo"></div>
+        <div>
+          <div class="catalogo-prov-name" id="catalogoName"></div>
+          <div class="catalogo-prov-count" id="catalogoCount"></div>
+        </div>
+      </div>
+      <div class="catalogo-filters" id="catalogoFilters"></div>
+      <div class="loading" id="productosLoading" style="display:none;">
+        <div class="loading-spinner"></div>
+        Cargando productos...
+      </div>
+      <div class="productos-grid" id="productosGrid"></div>
+    </div>
+  </section>
+
+  <script>
+    // ── Hamburger toggle ──
+    (function () {
+      var btn = document.getElementById('navHamburger');
+      var menu = document.getElementById('mobileMenu');
+      btn.addEventListener('click', function () {
+        btn.classList.toggle('open');
+        menu.classList.toggle('open');
+      });
+      menu.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () {
+          btn.classList.remove('open');
+          menu.classList.remove('open');
+        });
+      });
+    })();
+
+    // ── Tienda desde Supabase RPC ──
+    (function () {
+      var SUPABASE_URL = 'https://ltaaogwpjpkuwdcicfeu.supabase.co';
+      var ANON_KEY = 'sb_publishable_D983upH1a6cxaByCQj-_fw_UqUamvt7';
+      var headers = {
+        'apikey': ANON_KEY,
+        'Authorization': 'Bearer ' + ANON_KEY,
+        'Content-Type': 'application/json'
+      };
+
+      var proveedoresGrid = document.getElementById('proveedoresGrid');
+      var proveedoresLoading = document.getElementById('proveedoresLoading');
+      var proveedoresSection = document.getElementById('proveedoresSection');
+      var catalogoSection = document.getElementById('catalogoSection');
+      var productosGrid = document.getElementById('productosGrid');
+      var productosLoading = document.getElementById('productosLoading');
+      var catalogoFilters = document.getElementById('catalogoFilters');
+      var statProveedores = document.getElementById('statProveedores');
+      var statProductos = document.getElementById('statProductos');
+
+      var allProveedores = [];
+      var allProductos = [];
+      var activeGroup = null;
+
+      function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+      }
+
+      function groupColor(group) {
+        if (!group) return '#6d28d9';
+        var g = group.toLowerCase();
+        if (g.indexOf('flor') !== -1) return '#006D30';
+        if (g.indexOf('follaj') !== -1) return '#2D6A4F';
+        if (g.indexOf('florero') !== -1 || g.indexOf('recipiente') !== -1) return '#5A2500';
+        if (g.indexOf('espuma') !== -1 || g.indexOf('insumo') !== -1) return '#374151';
+        return '#6d28d9';
+      }
+
+      // ── Fetch proveedores ──
+      fetch(SUPABASE_URL + '/rest/v1/rpc/get_proveedores_tienda', {
+        method: 'POST',
+        headers: headers,
+        body: '{}'
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        proveedoresLoading.style.display = 'none';
+        if (!data || !data.length) {
+          proveedoresGrid.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72"/></svg><p>Aun no hay proveedores activos</p></div>';
+          return;
+        }
+        allProveedores = data;
+        statProveedores.textContent = data.length;
+        var totalProds = 0;
+        data.forEach(function (p) { totalProds += p.active_count; });
+        statProductos.textContent = totalProds;
+        renderProveedores();
+      })
+      .catch(function () {
+        proveedoresLoading.innerHTML = '<p style="color:#ef4444;">Error al cargar proveedores</p>';
+      });
+
+      function renderProveedores() {
+        var html = '';
+        allProveedores.forEach(function (p) {
+          var bg = p.logo_url
+            ? '<img src="' + escapeHtml(p.logo_url) + '" alt="' + escapeHtml(p.shop_name) + '" loading="lazy"/>'
+            : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><svg width="48" height="48" viewBox="0 0 24 24" fill="rgba(255,255,255,0.15)" stroke="none"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 002 2zm-4-5c-.6.5-1 1.2-1 2h10c0-.8-.4-1.5-1-2l-1-4c0-2.8-1.6-5-4-5s-4 2.2-4 5l-1 4z"/></svg></div>';
+          var badge = p.group_name
+            ? '<div class="proveedor-card-badge" style="background:' + groupColor(p.group_name) + ';">' + escapeHtml(p.group_name).toUpperCase() + '</div>'
+            : '';
+          html += '<div class="proveedor-card" data-id="' + p.id + '" data-name="' + escapeHtml(p.shop_name) + '" data-logo="' + escapeHtml(p.logo_url || '') + '" data-count="' + p.active_count + '">'
+            + '<div class="proveedor-card-bg">' + bg + '</div>'
+            + '<div class="proveedor-card-overlay"></div>'
+            + badge
+            + '<div class="proveedor-card-info">'
+            + '<div class="proveedor-card-name">' + escapeHtml(p.shop_name) + '</div>'
+            + '<div class="proveedor-card-count"><span class="dot"></span>' + p.active_count + ' ACTIVOS</div>'
+            + '</div>'
+            + '</div>';
+        });
+        proveedoresGrid.innerHTML = html;
+
+        // Click handlers
+        proveedoresGrid.querySelectorAll('.proveedor-card').forEach(function (card) {
+          card.addEventListener('click', function () {
+            openCatalogo(
+              card.getAttribute('data-id'),
+              card.getAttribute('data-name'),
+              card.getAttribute('data-logo'),
+              parseInt(card.getAttribute('data-count'))
+            );
+          });
+        });
+      }
+
+      // ── Abrir catalogo de un proveedor ──
+      function openCatalogo(provId, name, logoUrl, count) {
+        proveedoresSection.style.display = 'none';
+        catalogoSection.classList.add('open');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Header
+        document.getElementById('catalogoName').textContent = name;
+        document.getElementById('catalogoCount').textContent = count + ' productos';
+        var logoEl = document.getElementById('catalogoLogo');
+        if (logoUrl) {
+          logoEl.innerHTML = '<img src="' + escapeHtml(logoUrl) + '" alt="' + escapeHtml(name) + '"/>';
+        } else {
+          logoEl.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#6d28d9" stroke="none"><path d="M3 13h1v7c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-7h1a1 1 0 00.7-1.7l-9-9a1 1 0 00-1.4 0l-9 9A1 1 0 003 13z"/></svg>';
+        }
+
+        // Fetch productos
+        productosGrid.innerHTML = '';
+        catalogoFilters.innerHTML = '';
+        productosLoading.style.display = 'block';
+        activeGroup = null;
+
+        fetch(SUPABASE_URL + '/rest/v1/rpc/get_productos_proveedor', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ p_proveedor_id: provId })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          productosLoading.style.display = 'none';
+          allProductos = data || [];
+          renderFilters();
+          renderProductos();
+        })
+        .catch(function () {
+          productosLoading.innerHTML = '<p style="color:#ef4444;">Error al cargar productos</p>';
+        });
+      }
+
+      // ── Back button ──
+      document.getElementById('catalogoBack').addEventListener('click', function () {
+        catalogoSection.classList.remove('open');
+        proveedoresSection.style.display = 'block';
+      });
+
+      // ── Render filter pills ──
+      function renderFilters() {
+        var groups = {};
+        allProductos.forEach(function (p) {
+          var g = p.category_group_name || '';
+          if (g) groups[g] = (groups[g] || 0) + 1;
+        });
+        var keys = Object.keys(groups).sort();
+        if (keys.length <= 1) { catalogoFilters.innerHTML = ''; return; }
+
+        var html = '<div class="catalogo-pill active" data-group="">Todos</div>';
+        keys.forEach(function (k) {
+          html += '<div class="catalogo-pill" data-group="' + escapeHtml(k) + '">' + escapeHtml(k) + '</div>';
+        });
+        catalogoFilters.innerHTML = html;
+
+        catalogoFilters.querySelectorAll('.catalogo-pill').forEach(function (pill) {
+          pill.addEventListener('click', function () {
+            catalogoFilters.querySelectorAll('.catalogo-pill').forEach(function (p) { p.classList.remove('active'); });
+            pill.classList.add('active');
+            activeGroup = pill.getAttribute('data-group') || null;
+            renderProductos();
+          });
+        });
+      }
+
+      // ── Render product cards ──
+      function renderProductos() {
+        var filtered = activeGroup
+          ? allProductos.filter(function (p) { return p.category_group_name === activeGroup; })
+          : allProductos;
+
+        if (!filtered.length) {
+          productosGrid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Sin productos disponibles</p></div>';
+          return;
+        }
+
+        var html = '';
+        filtered.forEach(function (p) {
+          var imgUrl = p.foto_url || p.sub_color_image_url || p.sub_category_image_url || p.category_image_url;
+          var imgHtml = imgUrl
+            ? '<img src="' + escapeHtml(imgUrl) + '" alt="' + escapeHtml(p.category_name) + '" loading="lazy"/>'
+            : '';
+          var variant = '';
+          if (p.sub_color_name) {
+            var dotColor = p.sub_color_hex || '#6d28d9';
+            if (dotColor.charAt(0) !== '#') dotColor = '#' + dotColor;
+            variant = '<div class="producto-variant">'
+              + '<div class="producto-variant-dot" style="background:' + dotColor + ';"></div>'
+              + '<span class="producto-variant-name">' + escapeHtml(p.sub_color_name) + '</span>'
+              + '</div>';
+          }
+
+          html += '<div class="producto-card">'
+            + '<div class="producto-img">' + imgHtml
+            + '<div class="producto-price">$' + Math.round(p.precio) + '</div>'
+            + '</div>'
+            + '<div class="producto-info">'
+            + '<div class="producto-name">' + escapeHtml(p.category_name || p.sku) + '</div>'
+            + (p.sub_category_name ? '<div class="producto-sub">' + escapeHtml(p.sub_category_name) + '</div>' : '')
+            + variant
+            + '<div class="producto-stock">' + p.cantidad + ' disponibles</div>'
+            + '</div>'
+            + '</div>';
+        });
+        productosGrid.innerHTML = html;
+      }
+
+    })();
+  </script>
+</body>
+</html>

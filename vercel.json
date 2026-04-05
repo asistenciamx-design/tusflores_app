@@ -44,6 +44,7 @@
   "rewrites": [
     { "source": "/",        "destination": "/landing.html" },
     { "source": "/galeria", "destination": "/galeria.html" },
+    { "source": "/tienda",  "destination": "/tienda.html" },
     {
       "source": "/(.*)",
       "destination": "/app.html"
