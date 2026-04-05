@@ -331,6 +331,9 @@ class _ProductoCardState extends State<_ProductoCard> {
     final p = widget.producto;
     final hasLowStock = p.cantidad > 0 && p.cantidad <= 5;
     final imgUrl = p.bestImageUrl;
+    // Listo para público: tiene precio y cantidad > 0
+    final isReady = p.precio != null && p.cantidad > 0;
+    final needsData = !isReady && !p.isPaused;
 
     return Opacity(
       opacity: p.isPaused ? 0.55 : 1.0,
@@ -339,22 +342,29 @@ class _ProductoCardState extends State<_ProductoCard> {
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: p.isPaused
+                ? Colors.grey.shade50
+                : isReady
+                    ? const Color(0xFFF0FFF4) // verde suave
+                    : const Color(0xFFFFF8F0), // naranja suave
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: p.isPaused
                   ? Colors.grey.shade300
-                  : hasLowStock
-                      ? Colors.orange.shade200
-                      : p.isActive
-                          ? Colors.green.shade100
-                          : Colors.grey.shade200,
+                  : isReady
+                      ? const Color(0xFF22C55E).withValues(alpha: 0.4)
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.4),
+              width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: p.isPaused
+                    ? Colors.black.withValues(alpha: 0.03)
+                    : isReady
+                        ? const Color(0xFF22C55E).withValues(alpha: 0.10)
+                        : const Color(0xFFF59E0B).withValues(alpha: 0.10),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -451,7 +461,29 @@ class _ProductoCardState extends State<_ProductoCard> {
                                 ),
                             ],
                           ),
-                          if (hasLowStock && !p.isPaused) ...[
+                          if (needsData) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline_rounded,
+                                    size: 12,
+                                    color: Colors.orange.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  p.precio == null && p.cantidad == 0
+                                      ? 'Falta precio y cantidad'
+                                      : p.precio == null
+                                          ? 'Falta precio'
+                                          : 'Falta cantidad',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.orange.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else if (hasLowStock && !p.isPaused) ...[
                             const SizedBox(height: 6),
                             Row(
                               children: [
@@ -477,15 +509,15 @@ class _ProductoCardState extends State<_ProductoCard> {
                     Column(
                       children: [
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 10,
+                          height: 10,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: p.isPaused
-                                ? Colors.orange.shade400
-                                : p.isActive
-                                    ? Colors.green.shade400
-                                    : Colors.grey.shade300,
+                                ? Colors.grey.shade400
+                                : isReady
+                                    ? const Color(0xFF22C55E)
+                                    : const Color(0xFFF59E0B),
                           ),
                         ),
                         const SizedBox(height: 6),
