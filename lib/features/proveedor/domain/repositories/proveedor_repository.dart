@@ -130,7 +130,7 @@ class ProveedorRepository {
     required String ext,
   }) async {
     final storageName = 'proveedor/$_uid/${DateTime.now().millisecondsSinceEpoch}.$ext';
-    await _db.storage.from('product-images').uploadBinary(
+    await _db.storage.from('products').uploadBinary(
           storageName,
           rawBytes,
           fileOptions: FileOptions(
@@ -138,6 +138,6 @@ class ProveedorRepository {
             upsert: true,
           ),
         );
-    return _db.storage.from('product-images').getPublicUrl(storageName);
+    return _db.storage.from('products').getPublicUrl(storageName);
   }
 }
