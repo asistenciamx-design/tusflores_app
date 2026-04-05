@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../domain/tiendas_repository.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TiendasScreen extends StatefulWidget {
   const TiendasScreen({super.key});
@@ -64,28 +66,248 @@ class _TiendasScreenState extends State<TiendasScreen> {
     }
   }
 
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFFBF8FF),
+      endDrawer: _buildDrawer(),
       body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? _buildError()
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(child: _buildHeader()),
-                        _buildGrid(),
-                        const SliverToBoxAdapter(
-                            child: SizedBox(height: 32)),
-                      ],
-                    ),
-                  ),
+        child: Column(
+          children: [
+            _buildNavBar(),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? _buildError()
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: CustomScrollView(
+                            slivers: [
+                              SliverToBoxAdapter(child: _buildHeader()),
+                              _buildGrid(),
+                              const SliverToBoxAdapter(
+                                  child: SizedBox(height: 32)),
+                            ],
+                          ),
+                        ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildNavBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Logo
+          GestureDetector(
+            onTap: () => _openUrl('https://tusflores.app'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF500088).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.local_florist_rounded,
+                      color: Color(0xFF500088), size: 18),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'tusflores',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF500088),
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  '.app',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey.shade500,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          // Hamburger
+          GestureDetector(
+            onTap: () => _scaffoldKey.currentState?.openEndDrawer(),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.menu_rounded,
+                  color: Color(0xFF374151), size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF500088).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.local_florist_rounded,
+                        color: Color(0xFF500088), size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'tusflores.app',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF500088),
+                        ),
+                      ),
+                      Text(
+                        'Directorio floral',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            _drawerLink(Icons.home_outlined, 'Inicio', () {
+              Navigator.pop(context);
+              _openUrl('https://tusflores.app');
+            }),
+            _drawerLink(Icons.auto_awesome_outlined, 'Funciones', () {
+              Navigator.pop(context);
+              _openUrl('https://tusflores.app#funciones');
+            }),
+            _drawerLink(Icons.storefront_rounded, 'Tienda', () {
+              Navigator.pop(context);
+              // Ya estamos en /tiendas
+            }, active: true),
+            _drawerLink(Icons.photo_library_outlined, 'Galería', () {
+              Navigator.pop(context);
+              _openUrl('https://tusflores.app/galeria');
+            }),
+            _drawerLink(Icons.mail_outline_rounded, 'Contacto', () {
+              Navigator.pop(context);
+              _openUrl('https://tusflores.app#contacto');
+            }),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/login');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Entrar',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerLink(
+      IconData icon, String label, VoidCallback onTap,
+      {bool active = false}) {
+    return ListTile(
+      leading: Icon(icon,
+          size: 22,
+          color: active ? const Color(0xFF500088) : Colors.grey.shade600),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+          color: active ? const Color(0xFF500088) : const Color(0xFF374151),
+        ),
+      ),
+      onTap: onTap,
+      tileColor: active
+          ? const Color(0xFF500088).withValues(alpha: 0.05)
+          : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+    );
+  }
+
+  void _openUrl(String url) {
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
   Widget _buildError() {

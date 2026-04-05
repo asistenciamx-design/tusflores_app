@@ -3,14 +3,14 @@
 ALTER TABLE proveedor_productos
 ADD COLUMN IF NOT EXISTS is_paused boolean NOT NULL DEFAULT false;
 
--- Actualizar trigger: is_active = false si is_paused = true
+-- Actualizar trigger: is_active requiere solo precio + cantidad (no presentación)
+-- is_active = false si is_paused = true
 CREATE OR REPLACE FUNCTION fn_proveedor_producto_active()
 RETURNS trigger AS $$
 BEGIN
   NEW.is_active := (
     NEW.precio IS NOT NULL
     AND NEW.cantidad > 0
-    AND NEW.presentacion IS NOT NULL
     AND NEW.is_paused = false
   );
   RETURN NEW;
