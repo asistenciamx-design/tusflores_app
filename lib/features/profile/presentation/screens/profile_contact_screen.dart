@@ -404,7 +404,7 @@ class _ProfileContactScreenState extends State<ProfileContactScreen> {
 
   Widget _buildStoreLinkCard() {
     final hasSlug = _slug != null && _slug!.isNotEmpty;
-    final storeLink = hasSlug ? 'app.tusflores.app/$_slugPais/$_slug' : null;
+    final storeLink = hasSlug ? 'tusflores.app/$_slugPais/$_slug' : null;
 
     return Container(
       padding: const EdgeInsets.all(16),

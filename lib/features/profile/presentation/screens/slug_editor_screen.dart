@@ -233,8 +233,8 @@ class _SlugEditorScreenState extends State<SlugEditorScreen> {
   Widget build(BuildContext context) {
     final slug = _ctrl.text.toLowerCase().trim();
     final previewUrl = slug.isNotEmpty
-        ? 'app.tusflores.app/$_selectedPais/$slug'
-        : 'app.tusflores.app/$_selectedPais/tu-slug';
+        ? 'tusflores.app/$_selectedPais/$slug'
+        : 'tusflores.app/$_selectedPais/tu-slug';
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
@@ -370,7 +370,7 @@ class _SlugEditorScreenState extends State<SlugEditorScreen> {
                           width: 2,
                         ),
                       ),
-                      prefixText: 'app.tusflores.app/$_selectedPais/',
+                      prefixText: 'tusflores.app/$_selectedPais/',
                       prefixStyle: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade500,

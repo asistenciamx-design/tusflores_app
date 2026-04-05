@@ -1,0 +1,3484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TusFlores — Vende flores en minutos</title>
+  <meta name="description" content="La plataforma todo-en-uno para florerías. Catálogo digital, gestión de pedidos, seguimiento en tiempo real, CRM y más. Empieza gratis hoy." />
+  <meta property="og:title" content="TusFlores — Vende flores en minutos" />
+  <meta property="og:description" content="Catálogo digital, pedidos por WhatsApp, seguimiento y CRM para florerías. Sin comisiones. Empieza gratis." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://www.tusflores.app" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="TusFlores — Vende flores en minutos" />
+  <meta name="twitter:description" content="La plataforma todo-en-uno para florerías en Latinoamérica." />
+  <link rel="icon" href="https://www.tusflores.app/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #FAFAF9;
+      color: #1f2937;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      padding-bottom: 96px;
+    }
+
+    ::selection { background: #EC4899; color: #fff; }
+
+    /* ── BLOBS ─────────────────────────────────── */
+    .blobs {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: absolute;
+      width: 288px;
+      height: 288px;
+      border-radius: 50%;
+      filter: blur(80px);
+      mix-blend-mode: multiply;
+      opacity: 0.20;
+      animation: blob 7s infinite;
+    }
+
+    .blob-pink  { background: #EC4899; top: -10%; left: -10%; animation-delay: 0s; }
+    .blob-green { background: #10B981; top: 20%; right: -10%; animation-delay: 2s; }
+    .blob-purple{ background: #8B5CF6; bottom: -20%; left: 20%; animation-delay: 4s; }
+
+    @keyframes blob {
+      0%   { transform: translate(0,0) scale(1); }
+      33%  { transform: translate(30px,-50px) scale(1.1); }
+      66%  { transform: translate(-20px,20px) scale(0.9); }
+      100% { transform: translate(0,0) scale(1); }
+    }
+
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+
+    @keyframes scroll-x {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ── NAVBAR ────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 40;
+      background: rgba(255,255,255,0.70);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid #f3f4f6;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-icon {
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #10B981, #047857);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 16px rgba(16,185,129,0.30);
+      flex-shrink: 0;
+    }
+
+    /* SVG inline para el sparkle */
+    .nav-icon svg { width: 18px; height: 18px; color: #fff; }
+
+    .nav-brand {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #111827;
+    }
+
+    .nav-btn {
+      font-size: 13px;
+      font-weight: 700;
+      color: #10B981;
+      background: #ecfdf5;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .nav-btn:hover { background: #d1fae5; }
+
+    /* ── MAIN CONTAINER ────────────────────────── */
+    main {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 96px 20px 0;
+    }
+
+    /* ── HERO ───────────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 32px 0 40px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 100px;
+      background: rgba(255,255,255,0.80);
+      border: 1px solid #fce7f3;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      color: #db2777;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      animation: float 4s ease-in-out infinite;
+    }
+
+    .chip svg { width: 12px; height: 12px; fill: #ec4899; color: #ec4899; }
+
+    h1 {
+      font-size: clamp(40px, 10vw, 44px);
+      line-height: 1.08;
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      color: #111827;
+      margin-bottom: 24px;
+    }
+
+    h1 .grad {
+      background: linear-gradient(90deg, #10B981, #059669, #10B981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 19px;
+      line-height: 1.65;
+      color: #4b5563;
+      padding: 0 8px;
+      margin-bottom: 32px;
+    }
+
+    /* ── PHONE MOCKUP ───────────────────────────── */
+    .phone-wrap {
+      position: relative;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 280px;
+      animation: float 4s ease-in-out infinite;
+      margin-bottom: 48px;
+    }
+
+    /* glow detrás */
+    .phone-glow {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #10B981, #EC4899);
+      border-radius: 48px;
+      filter: blur(32px);
+      opacity: 0.30;
+    }
+
+    .phone-shell {
+      position: relative;
+      border: 6px solid #111827;
+      border-radius: 40px;
+      overflow: hidden;
+      box-shadow: 0 32px 64px rgba(0,0,0,0.25);
+      background: #fff;
+      aspect-ratio: 9/19;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* notch */
+    .phone-notch {
+      position: absolute;
+      top: 0; left: 50%; transform: translateX(-50%);
+      width: 96px; height: 20px;
+      background: #111827;
+      border-radius: 0 0 16px 16px;
+      z-index: 10;
+    }
+
+    .phone-img {
+      width: 100%;
+      height: 60%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .price-badge {
+      position: absolute;
+      top: 32px; right: 16px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(6px);
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+      z-index: 5;
+    }
+
+    .phone-card {
+      flex: 1;
+      background: #fff;
+      margin-top: -24px;
+      border-radius: 24px 24px 0 0;
+      position: relative;
+      z-index: 3;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .phone-card-title {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: #111827;
+    }
+
+    .phone-card-desc {
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .btn-whatsapp {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px;
+      background: #25D366;
+      color: #fff;
+      border: none;
+      border-radius: 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(37,211,102,0.30);
+    }
+
+    .btn-whatsapp svg { width: 16px; height: 16px; fill: #fff; }
+
+    /* ── SOCIAL PROOF ───────────────────────────── */
+    .social-proof {
+      margin-bottom: 64px;
+    }
+
+    .social-label {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #9ca3af;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .scroll-track-wrap {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+      mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    }
+
+    .scroll-track {
+      display: flex;
+      gap: 16px;
+      width: max-content;
+      animation: scroll-x 25s linear infinite;
+    }
+
+    .scroll-item {
+      flex-shrink: 0;
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.60);
+      backdrop-filter: blur(6px);
+      border: 1px solid #f3f4f6;
+      border-radius: 18px;
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 17px;
+      color: #6b7280;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    /* ── SECCIÓN 2 ──────────────────────────────── */
+    .section2 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section2-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section2-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section2-title .grad-pink {
+      background: linear-gradient(90deg, #EC4899, #db2777);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section2-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 32px;
+    }
+
+    /* phone image wrapper */
+    .phone2-wrap {
+      position: relative;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 260px;
+      animation: float 4.5s ease-in-out infinite;
+    }
+
+    .phone2-glow {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #EC4899, #8B5CF6);
+      border-radius: 48px;
+      filter: blur(32px);
+      opacity: 0.28;
+    }
+
+    .phone2-img {
+      position: relative;
+      width: 100%;
+      border-radius: 5px;
+      box-shadow: 0 32px 64px rgba(0,0,0,0.22);
+      display: block;
+    }
+
+    /* ── SECCIÓN 3 ──────────────────────────────── */
+    .section3 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section3-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section3-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section3-title .grad-green {
+      background: linear-gradient(90deg, #10B981, #059669);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section3-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 32px;
+    }
+
+    .section3-placeholder {
+      display: inline-block;
+      border: 1.5px dashed #d1d5db;
+      color: #9ca3af;
+      font-size: 13px;
+      padding: 48px 32px;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 260px;
+    }
+
+    /* url card */
+    .url-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #fff;
+      border: 1.5px solid #d1fae5;
+      border-radius: 20px;
+      padding: 16px 20px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(16,185,129,0.10);
+      text-decoration: none;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .url-card:hover { border-color: #10B981; box-shadow: 0 6px 24px rgba(16,185,129,0.18); }
+
+    .url-text {
+      font-size: 15px;
+      font-weight: 800;
+      color: #059669;
+      letter-spacing: -0.3px;
+      word-break: break-all;
+      text-align: left;
+      line-height: 1.3;
+    }
+
+    .url-text span {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      letter-spacing: 0;
+      margin-bottom: 2px;
+    }
+
+    .url-copy-btn {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #ecfdf5;
+      border: none;
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #059669;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .url-copy-btn:hover { background: #d1fae5; }
+    .url-copy-btn svg { width: 14px; height: 14px; }
+
+    /* ── SECCIÓN 4 ──────────────────────────────── */
+    .section4 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section4-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section4-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section4-title .grad-orange {
+      background: linear-gradient(90deg, #F59E0B, #D97706);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section4-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 32px;
+    }
+
+    /* status pills */
+    .status-track {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 36px;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-pill.waiting    { background: #fef3c7; color: #92400e; }
+    .status-pill.processing { background: #dbeafe; color: #1e40af; }
+    .status-pill.transit    { background: #ede9fe; color: #5b21b6; }
+    .status-pill.delivered  { background: #d1fae5; color: #065f46; }
+
+    .status-arrow { font-size: 12px; color: #d1d5db; }
+
+    .section4-placeholder {
+      display: inline-block;
+      border: 1.5px dashed #d1d5db;
+      color: #9ca3af;
+      font-size: 13px;
+      padding: 48px 32px;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 260px;
+    }
+
+    /* ── SECCIÓN 5 ──────────────────────────────── */
+    .section5 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section5-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section5-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section5-title .grad-blue {
+      background: linear-gradient(90deg, #3B82F6, #1D4ED8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section5-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 32px;
+    }
+
+    /* folio tracker widget */
+    .folio-card {
+      background: #fff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 24px;
+      padding: 20px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.08);
+      text-align: left;
+    }
+
+    .folio-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      margin-bottom: 10px;
+    }
+
+    .folio-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .folio-input {
+      flex: 1;
+      background: #f9fafb;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #1D4ED8;
+      letter-spacing: 2px;
+      font-family: 'Inter', monospace;
+      pointer-events: none;
+    }
+
+    .folio-btn {
+      flex-shrink: 0;
+      background: #3B82F6;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: default;
+    }
+
+    .folio-divider {
+      height: 1px;
+      background: #f3f4f6;
+      margin: 16px 0;
+    }
+
+    .folio-status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .folio-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #3B82F6;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+
+    .folio-status-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .folio-status-sub {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .folio-stat {
+      background: #eff6ff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .folio-stat-num {
+      font-size: 28px;
+      font-weight: 900;
+      color: #1D4ED8;
+      letter-spacing: -1px;
+    }
+
+    .folio-stat-desc {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.4;
+      text-align: left;
+    }
+
+    /* ── SECCIÓN 5 — TRACKING CARD ─────────────── */
+    .tracking-wrap {
+      position: relative;
+      max-width: 320px;
+      margin: 0 auto;
+      animation: float 5s ease-in-out infinite;
+    }
+
+    .tracking-glow {
+      position: absolute;
+      inset: -16px;
+      background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+      border-radius: 40px;
+      filter: blur(36px);
+      opacity: 0.22;
+    }
+
+    .tracking-card {
+      position: relative;
+      background: #fff;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 20px 56px rgba(0,0,0,0.13);
+      text-align: left;
+    }
+
+    .tc-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .tc-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #fce7f3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .tc-shop {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .tc-folio {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .tc-status-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f3e8ff;
+      border-radius: 14px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+    }
+
+    .tc-truck { font-size: 16px; }
+
+    .tc-status-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: #7C3AED;
+    }
+
+    .tc-timeline-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 12px;
+    }
+
+    .tc-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: 16px;
+    }
+
+    .tc-step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      grid-template-rows: auto auto;
+      align-items: start;
+      column-gap: 10px;
+    }
+
+    .tc-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+      grid-row: 1;
+    }
+
+    .tc-dot.orange { background: #F59E0B; }
+    .tc-dot.blue   { background: #3B82F6; }
+    .tc-dot.purple { background: #7C3AED; }
+    .tc-dot.empty  { background: #f3f4f6; border: 2px solid #e5e7eb; color: #d1d5db; font-size: 11px; }
+
+    .tc-line {
+      width: 2px;
+      height: 18px;
+      background: #7C3AED;
+      margin: 2px 0 2px 13px;
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .tc-line.gray { background: #e5e7eb; }
+
+    .tc-step-label {
+      font-size: 13px;
+      color: #9ca3af;
+      align-self: center;
+      padding-top: 4px;
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .tc-step-label.done   { font-weight: 600; color: #374151; }
+    .tc-step-label.active { font-weight: 700; color: #111827; }
+    .tc-step-label.muted  { color: #d1d5db; }
+
+    .tc-details {
+      background: #f9fafb;
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 4px;
+    }
+
+    .tc-details-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 10px;
+    }
+
+    .tc-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+
+    .tc-icon { font-size: 12px; flex-shrink: 0; }
+    .tc-key  { color: #9ca3af; min-width: 60px; flex-shrink: 0; }
+    .tc-val  { color: #111827; font-weight: 600; }
+
+    .tc-powered {
+      text-align: center;
+      font-size: 10px;
+      color: #d1d5db;
+      margin-top: 14px;
+    }
+
+    /* ── SECCIÓN 2 — WA FEED ───────────────────── */
+    .wa-feed-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      height: 310px;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 70%, transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 70%, transparent 100%);
+    }
+
+    .wa-feed { position: relative; padding-top: 8px; }
+
+    .wa-notif {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 11px 13px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.09);
+      margin-bottom: 9px;
+      animation: waDrop 0.45s cubic-bezier(0.22,1,0.36,1) forwards;
+      opacity: 0;
+      transform: translateY(-44px);
+    }
+
+    @keyframes waDrop {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .wa-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .wa-body { flex: 1; text-align: left; min-width: 0; }
+
+    .wa-app-badge {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 3px;
+    }
+
+    .wa-app-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      background: #25D366;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wa-app-dot svg { width: 9px; height: 9px; fill: #fff; }
+    .wa-app-name { font-size: 10px; color: #9ca3af; font-weight: 600; letter-spacing: 0.3px; }
+
+    .wa-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 2px;
+    }
+
+    .wa-name { font-size: 13px; font-weight: 700; color: #111827; }
+    .wa-time { font-size: 10px; color: #9ca3af; flex-shrink: 0; }
+    .wa-msg { font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── SECCIÓN 6 — EXTRAS / ADD-ONS ───────────── */
+    .section6 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section6-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section6-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section6-title .grad-rose {
+      background: linear-gradient(90deg, #f43f5e, #e11d48);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section6-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+
+    /* scroll-x strip of add-on cards */
+    .addon-strip-wrap {
+      overflow: hidden;
+      margin: 0 -20px;
+      padding: 8px 0 16px;
+      mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
+    }
+
+    .addon-strip {
+      display: flex;
+      gap: 14px;
+      width: max-content;
+      animation: scroll-x 18s linear infinite;
+    }
+
+    .addon-strip:hover { animation-play-state: paused; }
+
+    .addon-card {
+      flex-shrink: 0;
+      width: 130px;
+      background: #fff;
+      border: 1.5px solid #fce7f3;
+      border-radius: 20px;
+      padding: 18px 12px 14px;
+      box-shadow: 0 4px 14px rgba(244,63,94,0.07);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      cursor: default;
+      transition: transform 0.2s;
+    }
+
+    .addon-card:hover { transform: translateY(-4px); }
+
+    .addon-img-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fdf2f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .addon-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 14px;
+    }
+
+    /* emoji placeholder — shown when no image provided */
+    .addon-emoji {
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .addon-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1f2937;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .addon-price {
+      font-size: 11px;
+      color: #f43f5e;
+      font-weight: 700;
+    }
+
+    .addon-add-btn {
+      margin-top: 2px;
+      background: #fdf2f8;
+      border: 1.5px solid #fce7f3;
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #e11d48;
+      cursor: default;
+    }
+
+    /* revenue callout */
+    .addon-callout {
+      margin-top: 32px;
+      background: linear-gradient(135deg, #fff1f2, #fdf2f8);
+      border: 1.5px solid #fce7f3;
+      border-radius: 24px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .addon-callout-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-align: left;
+    }
+
+    .addon-callout-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      background: #fff;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(244,63,94,0.12);
+    }
+
+    .addon-callout-text strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 2px;
+    }
+
+    .addon-callout-text span {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    /* ── SECCIÓN 7 — CRM / MEJORES CLIENTES ─────── */
+    .section7 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section7-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section7-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section7-title .grad-violet {
+      background: linear-gradient(90deg, #7C3AED, #4F46E5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section7-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+
+    /* CRM card */
+    .crm-card {
+      background: #fff;
+      border: 1.5px solid #ede9fe;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.08);
+      text-align: left;
+      animation: float 5s ease-in-out infinite;
+      position: relative;
+    }
+
+    .crm-glow {
+      position: absolute;
+      inset: -24px;
+      border-radius: 36px;
+      background: radial-gradient(ellipse at 50% 60%, rgba(124,58,237,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .crm-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .crm-header-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #111827;
+      letter-spacing: 0.2px;
+    }
+
+    .crm-header-sub {
+      font-size: 10px;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+
+    .crm-period-chip {
+      font-size: 10px;
+      font-weight: 700;
+      color: #7C3AED;
+      background: #ede9fe;
+      border-radius: 20px;
+      padding: 4px 10px;
+    }
+
+    /* client rows */
+    .crm-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .crm-row:last-child { border-bottom: none; }
+
+    .crm-rank {
+      font-size: 11px;
+      font-weight: 800;
+      color: #d1d5db;
+      width: 16px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .crm-row:nth-child(1) .crm-rank { color: #F59E0B; }
+    .crm-row:nth-child(2) .crm-rank { color: #9ca3af; }
+    .crm-row:nth-child(3) .crm-rank { color: #b45309; }
+
+    .crm-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .crm-info { flex: 1; min-width: 0; }
+
+    .crm-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .crm-meta {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .crm-right { text-align: right; flex-shrink: 0; }
+
+    .crm-total {
+      font-size: 13px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .crm-orders {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .crm-vip-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #F59E0B, #D97706);
+      color: #fff;
+      border-radius: 6px;
+      padding: 2px 6px;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    /* sparkline bar */
+    .crm-bar-wrap {
+      width: 48px;
+      height: 4px;
+      background: #f3f4f6;
+      border-radius: 2px;
+      margin-top: 3px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .crm-bar {
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #7C3AED, #4F46E5);
+    }
+
+    /* summary strip */
+    .crm-summary {
+      display: flex;
+      gap: 0;
+      margin-top: 20px;
+      background: #faf5ff;
+      border: 1.5px solid #ede9fe;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .crm-stat {
+      flex: 1;
+      padding: 14px 10px;
+      text-align: center;
+      border-right: 1px solid #ede9fe;
+    }
+
+    .crm-stat:last-child { border-right: none; }
+
+    .crm-stat-val {
+      font-size: 18px;
+      font-weight: 900;
+      color: #7C3AED;
+      letter-spacing: -0.5px;
+    }
+
+    .crm-stat-lbl {
+      font-size: 10px;
+      color: #9ca3af;
+      font-weight: 600;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    /* ── SECCIÓN 8 — RESEÑAS ────────────────────── */
+    .section8 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section8-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section8-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section8-title .grad-amber {
+      background: linear-gradient(90deg, #F59E0B, #D97706);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section8-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+
+    /* rating summary pill */
+    .review-summary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .review-score {
+      font-size: 52px;
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+
+    .review-score-right { text-align: left; }
+
+    .review-stars {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 4px;
+    }
+
+    .review-stars svg {
+      width: 18px; height: 18px;
+      fill: #F59E0B;
+    }
+
+    .review-count {
+      font-size: 12px;
+      color: #9ca3af;
+      font-weight: 600;
+    }
+
+    /* bars */
+    .review-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 28px;
+    }
+
+    .review-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .review-bar-label {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 600;
+      width: 12px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .review-bar-track {
+      flex: 1;
+      height: 6px;
+      background: #fef3c7;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .review-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #F59E0B, #FBBF24);
+    }
+
+    .review-bar-pct {
+      font-size: 10px;
+      color: #9ca3af;
+      font-weight: 600;
+      width: 28px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* review cards */
+    .review-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .review-card {
+      background: #fff;
+      border: 1.5px solid #fef3c7;
+      border-radius: 18px;
+      padding: 16px;
+      text-align: left;
+      box-shadow: 0 2px 10px rgba(245,158,11,0.07);
+    }
+
+    .review-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .review-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .review-name-wrap { flex: 1; min-width: 0; }
+
+    .review-card-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .review-card-date {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .review-card-stars {
+      display: flex;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .review-card-stars svg {
+      width: 13px; height: 13px;
+      fill: #F59E0B;
+    }
+
+    .review-card-text {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.6;
+    }
+
+    /* verified badge */
+    .review-verified {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #10B981;
+    }
+
+    .review-verified svg {
+      width: 11px; height: 11px;
+      fill: #10B981;
+    }
+
+    /* CTA strip */
+    .review-cta-strip {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1.5px solid #fde68a;
+      border-radius: 20px;
+      padding: 20px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-align: left;
+    }
+
+    .review-cta-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .review-cta-text strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 800;
+      color: #92400e;
+      margin-bottom: 3px;
+    }
+
+    .review-cta-text span {
+      font-size: 12px;
+      color: #78716c;
+      line-height: 1.4;
+    }
+
+    /* ── SECCIÓN 9 — DASHBOARD / ESTADÍSTICAS ────── */
+    .section9 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section9-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section9-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section9-title .grad-teal {
+      background: linear-gradient(90deg, #0D9488, #0891B2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section9-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+
+    /* dashboard card */
+    .dash-card {
+      background: #fff;
+      border: 1.5px solid #ccfbf1;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(13,148,136,0.08);
+      text-align: left;
+      animation: float 5.5s ease-in-out infinite;
+      position: relative;
+    }
+
+    .dash-glow {
+      position: absolute;
+      inset: -24px;
+      border-radius: 36px;
+      background: radial-gradient(ellipse at 50% 60%, rgba(13,148,136,0.10) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .dash-header-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .dash-header-sub {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .dash-period-chip {
+      font-size: 10px;
+      font-weight: 700;
+      color: #0D9488;
+      background: #ccfbf1;
+      border-radius: 20px;
+      padding: 4px 10px;
+    }
+
+    /* KPI grid */
+    .dash-kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .dash-kpi {
+      background: #f0fdfa;
+      border: 1px solid #ccfbf1;
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    .dash-kpi-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: #0D9488;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .dash-kpi-label {
+      font-size: 10px;
+      color: #6b7280;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .dash-kpi-delta {
+      font-size: 10px;
+      font-weight: 700;
+      color: #10B981;
+      margin-top: 2px;
+    }
+
+    /* mini bar chart */
+    .dash-chart-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 10px;
+    }
+
+    .dash-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      height: 64px;
+      margin-bottom: 6px;
+    }
+
+    .dash-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+    }
+
+    .dash-bar-fill {
+      width: 100%;
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+    }
+
+    .dash-bar-day {
+      font-size: 9px;
+      color: #9ca3af;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .dash-divider {
+      height: 1px;
+      background: #f0fdfa;
+      margin: 14px 0;
+    }
+
+    /* top products */
+    .dash-top-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 10px;
+    }
+
+    .dash-product-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .dash-product-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dash-product-name {
+      flex: 1;
+      font-size: 12px;
+      color: #374151;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dash-product-bar-track {
+      width: 72px;
+      height: 6px;
+      background: #f0fdfa;
+      border-radius: 3px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .dash-product-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #0D9488, #0891B2);
+    }
+
+    .dash-product-pct {
+      font-size: 10px;
+      color: #9ca3af;
+      font-weight: 700;
+      width: 28px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ── SECCIÓN 10 — MÉTODOS DE PAGO ────────────── */
+    .section10 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 64px;
+      text-align: center;
+    }
+
+    .section10-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section10-title {
+      font-size: clamp(40px, 10vw, 44px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -1.5px;
+      line-height: 1.08;
+      margin-bottom: 24px;
+    }
+
+    .section10-title .grad-indigo {
+      background: linear-gradient(90deg, #4F46E5, #7C3AED);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section10-hint {
+      font-size: 18px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+
+    /* payment method cards grid */
+    .pay-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .pay-card {
+      background: #fff;
+      border: 1.5px solid #e0e7ff;
+      border-radius: 18px;
+      padding: 18px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      box-shadow: 0 2px 10px rgba(79,70,229,0.06);
+      transition: transform 0.2s;
+    }
+
+    .pay-card:hover { transform: translateY(-3px); }
+
+    .pay-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .pay-card-name {
+      font-size: 12px;
+      font-weight: 800;
+      color: #111827;
+      text-align: center;
+    }
+
+    .pay-card-desc {
+      font-size: 10px;
+      color: #9ca3af;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .pay-new-badge {
+      position: absolute;
+      top: -6px;
+      right: 10px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      background: linear-gradient(90deg, #4F46E5, #7C3AED);
+      color: #fff;
+      border-radius: 6px;
+      padding: 2px 7px;
+    }
+
+    /* link preview card */
+    .pay-link-card {
+      background: #fafafa;
+      border: 1.5px solid #e0e7ff;
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .pay-link-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      margin-bottom: 10px;
+    }
+
+    .pay-link-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #fff;
+      border: 1.5px solid #e0e7ff;
+      border-radius: 12px;
+      padding: 10px 14px;
+    }
+
+    .pay-link-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4F46E5;
+      flex-shrink: 0;
+    }
+
+    .pay-link-text {
+      flex: 1;
+      font-size: 13px;
+      color: #4F46E5;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pay-link-copy {
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      background: #4F46E5;
+      border-radius: 8px;
+      padding: 4px 10px;
+      flex-shrink: 0;
+    }
+
+    /* bottom note */
+    .pay-note {
+      font-size: 13px;
+      color: #9ca3af;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .pay-note strong {
+      color: #4F46E5;
+      font-weight: 700;
+    }
+
+    /* ── SECCIÓN 11 — CTA FINAL ──────────────────── */
+    .section11 {
+      max-width: 448px;
+      margin: 0 auto;
+      padding: 80px 20px 48px;
+      text-align: center;
+    }
+
+    .cta-eyebrow {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .cta-headline {
+      font-size: clamp(38px, 10vw, 48px);
+      font-weight: 900;
+      color: #111827;
+      letter-spacing: -2px;
+      line-height: 1.06;
+      margin-bottom: 20px;
+    }
+
+    .cta-headline .grad-full {
+      background: linear-gradient(90deg, #10B981, #3B82F6, #8B5CF6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cta-sub {
+      font-size: 17px;
+      color: #6b7280;
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+
+    /* urgency pill */
+    .cta-urgency {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff7ed;
+      border: 1.5px solid #fed7aa;
+      border-radius: 30px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #c2410c;
+      margin-bottom: 28px;
+    }
+
+    .cta-urgency-dot {
+      width: 7px;
+      height: 7px;
+      background: #f97316;
+      border-radius: 50%;
+      animation: pulse-dot 1.4s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(1.5); }
+    }
+
+    /* CTA button */
+    .cta-btn-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 40px;
+    }
+
+    .cta-btn-primary {
+      display: inline-block;
+      width: 100%;
+      max-width: 320px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 800;
+      border-radius: 18px;
+      padding: 18px 32px;
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(16,185,129,0.35);
+      letter-spacing: -0.3px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .cta-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(16,185,129,0.45);
+    }
+
+    .cta-btn-note {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .cta-btn-note strong { color: #10B981; }
+
+    /* social proof mini strip */
+    .cta-proof {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 40px;
+    }
+
+    .cta-proof-avatars {
+      display: flex;
+    }
+
+    .cta-proof-av {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      margin-left: -8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .cta-proof-av:first-child { margin-left: 0; }
+
+    .cta-proof-text {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.4;
+      text-align: left;
+    }
+
+    .cta-proof-text strong { color: #111827; }
+
+    /* final footer note */
+    .cta-footer-note {
+      font-size: 12px;
+      color: #d1d5db;
+      padding-bottom: 16px;
+    }
+
+    /* ── FOOTER ──────────────────────────────────── */
+    .site-footer {
+      background: #111827;
+      color: #9ca3af;
+      padding: 56px 24px 32px;
+    }
+
+    .footer-top {
+      max-width: 448px;
+      margin: 0 auto;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .footer-brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #10B981, #047857);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(16,185,129,0.30);
+      flex-shrink: 0;
+    }
+
+    .footer-brand-icon svg { width: 16px; height: 16px; color: #fff; }
+
+    .footer-brand-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+
+    .footer-tagline {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    .footer-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px 20px;
+      margin-bottom: 40px;
+    }
+
+    .footer-col-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+
+    .footer-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .footer-links li a {
+      font-size: 13px;
+      color: #6b7280;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links li a:hover { color: #d1d5db; }
+
+    .footer-link-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      background: #10B981;
+      color: #fff;
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    .footer-divider {
+      height: 1px;
+      background: #1f2937;
+      margin-bottom: 20px;
+    }
+
+    .footer-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      text-align: center;
+    }
+
+    .footer-legal-links {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .footer-legal-links a {
+      font-size: 11px;
+      color: #4b5563;
+      text-decoration: none;
+    }
+
+    .footer-legal-links a:hover { color: #6b7280; }
+
+    .footer-copy {
+      font-size: 11px;
+      color: #374151;
+    }
+
+    /* ── STICKY BOTTOM CTA ───────────────────────── */
+    .sticky-cta {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 50;
+      padding: 12px 20px 20px;
+      background: linear-gradient(to top, rgba(255,255,255,0.98) 70%, transparent);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .sticky-cta.hidden {
+      transform: translateY(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sticky-cta-btn {
+      display: block;
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 800;
+      border-radius: 16px;
+      padding: 15px 24px;
+      text-align: center;
+      text-decoration: none;
+      box-shadow: 0 6px 20px rgba(16,185,129,0.40);
+      letter-spacing: -0.2px;
+    }
+
+    /* ── WHATSAPP FLOTANTE ───────────────────────── */
+    .wa-float {
+      position: fixed;
+      bottom: 88px;
+      right: 20px;
+      z-index: 49;
+      width: 52px;
+      height: 52px;
+      background: #25D366;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(37,211,102,0.45);
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+
+    .wa-float:hover { transform: scale(1.08); }
+    .wa-float svg { width: 28px; height: 28px; fill: #fff; }
+
+  </style>
+</head>
+
+<body>
+
+  <!-- BLOBS -->
+  <div class="blobs">
+    <div class="blob blob-pink"></div>
+    <div class="blob blob-green"></div>
+    <div class="blob blob-purple"></div>
+  </div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-icon">
+        <!-- Sparkles icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#fff;width:18px;height:18px">
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/>
+          <path d="M5 3l.75 2.25L8 6l-2.25.75L5 9l-.75-2.25L2 6l2.25-.75z"/>
+          <path d="M19 15l.75 2.25L22 18l-2.25.75L19 21l-.75-2.25L16 18l2.25-.75z"/>
+        </svg>
+      </div>
+      <span class="nav-brand">tusflores.app</span>
+    </div>
+    <a class="nav-btn" href="https://www.tusflores.app/login" target="_blank" rel="noopener">Entrar</a>
+  </nav>
+
+  <!-- ══════════ SECCIÓN 1 — HERO ══════════ -->
+  <main>
+    <header>
+
+      <!-- Chip -->
+      <div class="chip">
+        <!-- Heart icon -->
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        Hecho para Florerías
+      </div>
+
+      <!-- Headline -->
+      <h1>
+        Vende flores<br/>
+        <span class="grad">en minutos</span>
+      </h1>
+
+      <!-- Sub -->
+      <p class="hero-sub">
+        Comparte el link de tu catálogo, recibe pedidos por whatsapp con estilo profesional.
+      </p>
+
+      <!-- Phone mockup -->
+      <div class="phone-wrap">
+        <div class="phone-glow"></div>
+        <div class="phone-shell">
+          <div class="phone-notch"></div>
+
+          <img
+            class="phone-img"
+            src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?auto=format&fit=crop&q=80&w=400"
+            alt="Ramo de flores"
+          />
+
+          <div class="price-badge">$850 MXN</div>
+
+          <div class="phone-card">
+            <div>
+              <div class="phone-card-title">Ramo Antárctica</div>
+              <div class="phone-card-desc">Rosas blancas de invernadero con follaje fino e importado.</div>
+            </div>
+            <button class="btn-whatsapp">
+              <!-- MessageCircle -->
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Realiza tu compra
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </header>
+
+    <!-- Social proof -->
+    <section class="social-proof">
+      <p class="social-label">Conectando Florerías y Proveedores</p>
+      <div class="scroll-track-wrap">
+        <div class="scroll-track">
+          <!-- bloque 1 -->
+          <div class="scroll-item">Maxiflores</div>
+          <div class="scroll-item">Flor Colombia</div>
+          <div class="scroll-item">Rosas de Ecuador</div>
+          <div class="scroll-item">Rancho Andino</div>
+          <div class="scroll-item">Mercado Jamaica Vive</div>
+          <div class="scroll-item">Mercado de Flores de Bogotá</div>
+          <div class="scroll-item">Flores Medellín</div>
+          <div class="scroll-item">Flores de Tijuana</div>
+          <!-- bloque 2 duplicado para loop -->
+          <div class="scroll-item">Maxiflores</div>
+          <div class="scroll-item">Flor Colombia</div>
+          <div class="scroll-item">Rosas de Ecuador</div>
+          <div class="scroll-item">Rancho Andino</div>
+          <div class="scroll-item">Mercado Jamaica Vive</div>
+          <div class="scroll-item">Mercado de Flores de Bogotá</div>
+          <div class="scroll-item">Flores Medellín</div>
+          <div class="scroll-item">Flores de Tijuana</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  <!-- ══════════ FIN SECCIÓN 1 ══════════ -->
+
+
+  <!-- SECCIÓN 2 — EL CAOS -->
+  <section class="section2">
+    <p class="section2-label">El problema</p>
+    <h2 class="section2-title">Tu <span class="grad-pink">negocio</span><br/>te controla a ti</h2>
+    <p class="section2-hint">Pedidos por WhatsApp, apuntes en papel,<br/>llamadas que no paran. ¿Te suena familiar?</p>
+
+    <div class="wa-feed-wrap">
+      <div class="wa-feed" id="waFeed"></div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 3 — CATÁLOGO DIGITAL -->
+  <section class="section3">
+    <p class="section3-label">Tu tienda online</p>
+    <h2 class="section3-title">Tu catálogo,<br/><span class="grad-green">siempre visible</span></h2>
+    <p class="section3-hint">Comparte un link y tus clientes ven tus productos,<br/>precios y fotos — sin llamarte, sin preguntar.</p>
+
+    <a class="url-card" href="https://www.tusflores.app/mx/floreria-hermosillo" target="_blank" rel="noopener">
+      <div class="url-text">
+        <span>Tu link personalizado</span>
+        tusflores.app/mx/floreria-hermosillo
+      </div>
+      <button class="url-copy-btn" onclick="event.preventDefault(); navigator.clipboard.writeText('https://www.tusflores.app/mx/floreria-hermosillo').then(()=>{ this.textContent='¡Copiado!'; setTimeout(()=>{ this.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><rect x=\'9\' y=\'9\' width=\'13\' height=\'13\' rx=\'2\'/><path d=\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\'/></svg> Copiar'; }, 2000) })">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copiar
+      </button>
+    </a>
+
+    <div class="phone2-wrap">
+      <div class="phone2-glow" style="background: linear-gradient(135deg, #10B981, #059669);"></div>
+      <img
+        class="phone2-img"
+        src="catalogo_de_productos.jpg"
+        alt="Catálogo de productos de la florería"
+      />
+    </div>
+  </section>
+
+  <!-- SECCIÓN 4 — GESTIÓN DE PEDIDOS -->
+  <section class="section4">
+    <p class="section4-label">Control total</p>
+    <h2 class="section4-title">Nunca más<br/>pierdas un <span class="grad-orange">pedido</span></h2>
+    <p class="section4-hint">Cada orden tiene su estado. Sabes qué sigue,<br/>quién lo espera y a qué hora tiene que salir.</p>
+
+    <div class="status-track">
+      <span class="status-pill waiting">⏳ Nuevo</span>
+      <span class="status-arrow">→</span>
+      <span class="status-pill processing">🌸 Preparando</span>
+      <span class="status-arrow">→</span>
+      <span class="status-pill transit">🚚 En camino</span>
+      <span class="status-arrow">→</span>
+      <span class="status-pill delivered">✓ Entregado</span>
+    </div>
+
+    <div class="phone2-wrap">
+      <div class="phone2-glow" style="background: linear-gradient(135deg, #F59E0B, #D97706);"></div>
+      <img
+        class="phone2-img"
+        src="estados_pedido.jpg"
+        alt="Estados de pedido en la app de tusflores"
+      />
+    </div>
+  </section>
+
+  <!-- SECCIÓN 5 — SEGUIMIENTO DE PEDIDO -->
+  <section class="section5">
+    <p class="section5-label">Cero llamadas</p>
+    <h2 class="section5-title">El cliente deja<br/>de <span class="grad-blue">llamarte</span></h2>
+    <p class="section5-hint">Tu cliente rastrea su pedido con su folio — sin app, sin cuenta, sin molestarte.</p>
+
+    <!-- stat highlight -->
+    <div class="folio-stat">
+      <div class="folio-stat-num">80%</div>
+      <div class="folio-stat-desc">de las llamadas que recibes son<br/><strong>¿dónde está mi pedido?</strong></div>
+    </div>
+
+    <!-- folio tracker mockup -->
+    <div class="folio-card">
+      <div class="folio-label">Rastrear mi pedido</div>
+      <div class="folio-input-row">
+        <div class="folio-input">Folio #0055</div>
+        <div class="folio-btn">Buscar</div>
+      </div>
+      <div class="folio-divider"></div>
+      <div class="folio-status-row">
+        <div class="folio-dot"></div>
+        <div>
+          <div class="folio-status-text">En Tránsito — 2:30 pm</div>
+          <div class="folio-status-sub">Ramo Antárctica · Rosas del Sur Florería</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- tracking card flotante -->
+    <div class="tracking-wrap">
+      <div class="tracking-glow"></div>
+      <div class="tracking-card">
+
+        <!-- header florería -->
+        <div class="tc-header">
+          <div class="tc-avatar">🌸</div>
+          <div>
+            <div class="tc-shop">floreria hermosillo</div>
+            <div class="tc-folio">Folio #0055</div>
+          </div>
+        </div>
+
+        <!-- banner en tránsito -->
+        <div class="tc-status-banner">
+          <span class="tc-truck">🚚</span>
+          <span class="tc-status-text">En tránsito</span>
+        </div>
+
+        <!-- timeline -->
+        <div class="tc-timeline-label">Estado del pedido</div>
+        <div class="tc-timeline">
+
+          <div class="tc-step done">
+            <div class="tc-dot orange">⏱</div>
+            <div class="tc-line"></div>
+            <span class="tc-step-label done">En espera</span>
+          </div>
+
+          <div class="tc-step done">
+            <div class="tc-dot blue">🌿</div>
+            <div class="tc-line"></div>
+            <span class="tc-step-label done">Elaborando</span>
+          </div>
+
+          <div class="tc-step active">
+            <div class="tc-dot purple">🚚</div>
+            <div class="tc-line gray"></div>
+            <span class="tc-step-label active">En tránsito</span>
+          </div>
+
+          <div class="tc-step">
+            <div class="tc-dot empty">✓</div>
+            <span class="tc-step-label muted">Entregado</span>
+          </div>
+
+        </div>
+
+        <!-- detalles -->
+        <div class="tc-details">
+          <div class="tc-details-title">Detalles del pedido</div>
+          <div class="tc-row"><span class="tc-icon">🪴</span><span class="tc-key">Producto</span><span class="tc-val">Cilindro cerámica amarilla</span></div>
+          <div class="tc-row"><span class="tc-icon">👤</span><span class="tc-key">Para</span><span class="tc-val">María López</span></div>
+          <div class="tc-row"><span class="tc-icon">🚚</span><span class="tc-key">Entrega</span><span class="tc-val">Envío a domicilio</span></div>
+          <div class="tc-row"><span class="tc-icon">📅</span><span class="tc-key">Fecha / Hora</span><span class="tc-val">Mañana, 08:00 – 14:00</span></div>
+          <div class="tc-row"><span class="tc-icon">📍</span><span class="tc-key">Ciudad</span><span class="tc-val">Gustavo A. Madero</span></div>
+          <div class="tc-row"><span class="tc-icon">💲</span><span class="tc-key">Total</span><span class="tc-val">$500.00 MXN</span></div>
+        </div>
+
+        <div class="tc-powered">Powered by TusFlores.app</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- SECCIÓN 6 — VENDE MÁS EN CADA PEDIDO -->
+  <section class="section6">
+    <p class="section6-label">Extras & add-ons</p>
+    <h2 class="section6-title">Vende más<br/>en cada <span class="grad-rose">pedido</span></h2>
+    <p class="section6-hint">Agrega globos, peluches, vino y más directamente en el pedido — tu cliente los elige al comprar.</p>
+
+    <!-- scrolling add-on strip -->
+    <div class="addon-strip-wrap">
+      <div class="addon-strip" id="addonStrip">
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎈</span></div>
+          <div class="addon-name">Globo metálico</div>
+          <div class="addon-price">+$60 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎂</span></div>
+          <div class="addon-name">Globo cumpleaños</div>
+          <div class="addon-price">+$65 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">❤️</span></div>
+          <div class="addon-name">Globo te quiero</div>
+          <div class="addon-price">+$65 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🧸</span></div>
+          <div class="addon-name">Oso de peluche</div>
+          <div class="addon-price">+$150 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🍷</span></div>
+          <div class="addon-name">Vino tinto</div>
+          <div class="addon-price">+$220 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🍫</span></div>
+          <div class="addon-name">Chocolates</div>
+          <div class="addon-price">+$90 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎂</span></div>
+          <div class="addon-name">Pastel</div>
+          <div class="addon-price">+$280 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎊</span></div>
+          <div class="addon-name">Ramo de globos</div>
+          <div class="addon-price">+$120 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🍓</span></div>
+          <div class="addon-name">Fresas con chocolate</div>
+          <div class="addon-price">+$110 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🕯️</span></div>
+          <div class="addon-name">Velas aromáticas</div>
+          <div class="addon-price">+$95 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">💆</span></div>
+          <div class="addon-name">Kit de spa</div>
+          <div class="addon-price">+$180 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">📿</span></div>
+          <div class="addon-name">Pulseras</div>
+          <div class="addon-price">+$75 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">💍</span></div>
+          <div class="addon-name">Joyas sencillas</div>
+          <div class="addon-price">+$250 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <!-- duplicate for seamless loop -->
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎈</span></div>
+          <div class="addon-name">Globo metálico</div>
+          <div class="addon-price">+$60 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎂</span></div>
+          <div class="addon-name">Globo cumpleaños</div>
+          <div class="addon-price">+$65 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">❤️</span></div>
+          <div class="addon-name">Globo te quiero</div>
+          <div class="addon-price">+$65 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🧸</span></div>
+          <div class="addon-name">Oso de peluche</div>
+          <div class="addon-price">+$150 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🍷</span></div>
+          <div class="addon-name">Vino tinto</div>
+          <div class="addon-price">+$220 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🍫</span></div>
+          <div class="addon-name">Chocolates</div>
+          <div class="addon-price">+$90 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎂</span></div>
+          <div class="addon-name">Pastel</div>
+          <div class="addon-price">+$280 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🎊</span></div>
+          <div class="addon-name">Ramo de globos</div>
+          <div class="addon-price">+$120 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🍓</span></div>
+          <div class="addon-name">Fresas con chocolate</div>
+          <div class="addon-price">+$110 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">🕯️</span></div>
+          <div class="addon-name">Velas aromáticas</div>
+          <div class="addon-price">+$95 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">💆</span></div>
+          <div class="addon-name">Kit de spa</div>
+          <div class="addon-price">+$180 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">📿</span></div>
+          <div class="addon-name">Pulseras</div>
+          <div class="addon-price">+$75 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+        <div class="addon-card">
+          <div class="addon-img-wrap"><span class="addon-emoji">💍</span></div>
+          <div class="addon-name">Joyas sencillas</div>
+          <div class="addon-price">+$250 MXN</div>
+          <div class="addon-add-btn">+ Agregar</div>
+        </div>
+
+
+
+      </div>
+    </div>
+
+    <!-- benefit callout -->
+    <div class="addon-callout">
+      <div class="addon-callout-row">
+        <div class="addon-callout-icon">💰</div>
+        <div class="addon-callout-text">
+          <strong>Ticket promedio más alto</strong>
+          <span>Los extras se suman automáticamente al total del pedido. Sin cálculos extra.</span>
+        </div>
+      </div>
+      <div class="addon-callout-row">
+        <div class="addon-callout-icon">🎁</div>
+        <div class="addon-callout-text">
+          <strong>Tu catálogo, tus precios</strong>
+          <span>Agrega o quita productos en segundos. Sin límite de extras.</span>
+        </div>
+      </div>
+      <div class="addon-callout-row">
+        <div class="addon-callout-icon">⚡</div>
+        <div class="addon-callout-text">
+          <strong>El cliente elige al comprar</strong>
+          <span>Aparecen en tu tienda online. No tienes que sugerirlos tú.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 7 — CONOCE A TUS MEJORES CLIENTES (CRM) -->
+  <section class="section7">
+    <p class="section7-label">CRM inteligente</p>
+    <h2 class="section7-title">Conoce a tus<br/><span class="grad-violet">mejores clientes</span></h2>
+    <p class="section7-hint">Sabe quién compra más, con qué frecuencia y cuánto gasta — sin hojas de cálculo, sin esfuerzo extra.</p>
+
+    <div style="position:relative; margin-bottom: 36px;">
+      <div class="crm-glow"></div>
+      <div class="crm-card">
+
+        <div class="crm-header">
+          <div>
+            <div class="crm-header-title">Top clientes</div>
+            <div class="crm-header-sub">Florería Hermosillo</div>
+          </div>
+          <div class="crm-period-chip">Este mes</div>
+        </div>
+
+        <!-- Row 1 -->
+        <div class="crm-row">
+          <div class="crm-rank">1</div>
+          <div class="crm-avatar" style="background:#EC4899;">V</div>
+          <div class="crm-info">
+            <div class="crm-name">Valeria Ríos <span class="crm-vip-badge">VIP</span></div>
+            <div class="crm-meta">Último pedido: hace 2 días</div>
+          </div>
+          <div>
+            <div class="crm-bar-wrap"><div class="crm-bar" style="width:100%"></div></div>
+          </div>
+          <div class="crm-right">
+            <div class="crm-total">$4,200</div>
+            <div class="crm-orders">12 pedidos</div>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="crm-row">
+          <div class="crm-rank">2</div>
+          <div class="crm-avatar" style="background:#3B82F6;">R</div>
+          <div class="crm-info">
+            <div class="crm-name">Rodrigo Méndez</div>
+            <div class="crm-meta">Último pedido: hace 5 días</div>
+          </div>
+          <div>
+            <div class="crm-bar-wrap"><div class="crm-bar" style="width:74%"></div></div>
+          </div>
+          <div class="crm-right">
+            <div class="crm-total">$3,100</div>
+            <div class="crm-orders">8 pedidos</div>
+          </div>
+        </div>
+
+        <!-- Row 3 -->
+        <div class="crm-row">
+          <div class="crm-rank">3</div>
+          <div class="crm-avatar" style="background:#F59E0B;">S</div>
+          <div class="crm-info">
+            <div class="crm-name">Sofía Garza</div>
+            <div class="crm-meta">Último pedido: hace 1 semana</div>
+          </div>
+          <div>
+            <div class="crm-bar-wrap"><div class="crm-bar" style="width:58%"></div></div>
+          </div>
+          <div class="crm-right">
+            <div class="crm-total">$2,450</div>
+            <div class="crm-orders">7 pedidos</div>
+          </div>
+        </div>
+
+        <!-- Row 4 -->
+        <div class="crm-row">
+          <div class="crm-rank">4</div>
+          <div class="crm-avatar" style="background:#10B981;">F</div>
+          <div class="crm-info">
+            <div class="crm-name">Fernanda Cruz</div>
+            <div class="crm-meta">Último pedido: hace 10 días</div>
+          </div>
+          <div>
+            <div class="crm-bar-wrap"><div class="crm-bar" style="width:41%"></div></div>
+          </div>
+          <div class="crm-right">
+            <div class="crm-total">$1,720</div>
+            <div class="crm-orders">5 pedidos</div>
+          </div>
+        </div>
+
+        <!-- Row 5 -->
+        <div class="crm-row">
+          <div class="crm-rank">5</div>
+          <div class="crm-avatar" style="background:#6366F1;">M</div>
+          <div class="crm-info">
+            <div class="crm-name">Miguel Torres</div>
+            <div class="crm-meta">Último pedido: hace 2 semanas</div>
+          </div>
+          <div>
+            <div class="crm-bar-wrap"><div class="crm-bar" style="width:29%"></div></div>
+          </div>
+          <div class="crm-right">
+            <div class="crm-total">$1,200</div>
+            <div class="crm-orders">3 pedidos</div>
+          </div>
+        </div>
+
+        <!-- summary stats -->
+        <div class="crm-summary">
+          <div class="crm-stat">
+            <div class="crm-stat-val">284</div>
+            <div class="crm-stat-lbl">Clientes activos</div>
+          </div>
+          <div class="crm-stat">
+            <div class="crm-stat-val">$680</div>
+            <div class="crm-stat-lbl">Ticket promedio</div>
+          </div>
+          <div class="crm-stat">
+            <div class="crm-stat-val">38%</div>
+            <div class="crm-stat-lbl">Regresan al mes</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+
+  <!-- SECCIÓN 8 — REPUTACIÓN / RESEÑAS -->
+  <section class="section8">
+    <p class="section8-label">Reseñas y reputación</p>
+    <h2 class="section8-title">Tu reputación,<br/><span class="grad-amber">protegida</span></h2>
+    <p class="section8-hint">Cada cliente puede dejar su reseña al recibir su pedido. Tú la ves primero y decides qué publicar.</p>
+
+    <!-- Score -->
+    <div class="review-summary">
+      <div class="review-score">4.9</div>
+      <div class="review-score-right">
+        <div class="review-stars">
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div class="review-count">247 reseñas verificadas</div>
+      </div>
+    </div>
+
+    <!-- Rating bars -->
+    <div class="review-bars">
+      <div class="review-bar-row">
+        <div class="review-bar-label">5</div>
+        <div class="review-bar-track"><div class="review-bar-fill" style="width:87%"></div></div>
+        <div class="review-bar-pct">87%</div>
+      </div>
+      <div class="review-bar-row">
+        <div class="review-bar-label">4</div>
+        <div class="review-bar-track"><div class="review-bar-fill" style="width:9%"></div></div>
+        <div class="review-bar-pct">9%</div>
+      </div>
+      <div class="review-bar-row">
+        <div class="review-bar-label">3</div>
+        <div class="review-bar-track"><div class="review-bar-fill" style="width:3%"></div></div>
+        <div class="review-bar-pct">3%</div>
+      </div>
+      <div class="review-bar-row">
+        <div class="review-bar-label">2</div>
+        <div class="review-bar-track"><div class="review-bar-fill" style="width:1%"></div></div>
+        <div class="review-bar-pct">1%</div>
+      </div>
+      <div class="review-bar-row">
+        <div class="review-bar-label">1</div>
+        <div class="review-bar-track"><div class="review-bar-fill" style="width:0%"></div></div>
+        <div class="review-bar-pct">0%</div>
+      </div>
+    </div>
+
+    <!-- Review cards -->
+    <div class="review-cards">
+
+      <div class="review-card">
+        <div class="review-card-top">
+          <div class="review-avatar" style="background:#EC4899;">V</div>
+          <div class="review-name-wrap">
+            <div class="review-card-name">Valeria Ríos</div>
+            <div class="review-card-date">Hace 2 días</div>
+          </div>
+          <div class="review-card-stars">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+        </div>
+        <div class="review-card-text">¡Excelente servicio! El arreglo llegó justo a tiempo y más bonito de lo que esperaba. Mi mamá quedó encantada 💐</div>
+        <div class="review-verified">
+          <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+          Compra verificada
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-card-top">
+          <div class="review-avatar" style="background:#3B82F6;">R</div>
+          <div class="review-name-wrap">
+            <div class="review-card-name">Rodrigo Méndez</div>
+            <div class="review-card-date">Hace 1 semana</div>
+          </div>
+          <div class="review-card-stars">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+        </div>
+        <div class="review-card-text">El seguimiento del pedido estuvo increíble. Supe en todo momento dónde estaba mi arreglo. ¡Volveré a pedir! 🚚</div>
+        <div class="review-verified">
+          <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+          Compra verificada
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-card-top">
+          <div class="review-avatar" style="background:#10B981;">F</div>
+          <div class="review-name-wrap">
+            <div class="review-card-name">Fernanda Cruz</div>
+            <div class="review-card-date">Hace 2 semanas</div>
+          </div>
+          <div class="review-card-stars">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+        </div>
+        <div class="review-card-text">Pedí un ramo buchón con oso de peluche — llegó todo perfecto y la florería fue súper atenta. 100% recomendada ✨</div>
+        <div class="review-verified">
+          <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+          Compra verificada
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CTA strip -->
+    <div class="review-cta-strip">
+      <div class="review-cta-icon">🛡️</div>
+      <div class="review-cta-text">
+        <strong>Tú apruebas antes de publicar</strong>
+        <span>Ninguna reseña aparece en tu tienda sin tu visto bueno. Tu reputación siempre bajo control.</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- SECCIÓN 9 — SABE CÓMO VA TU NEGOCIO HOY -->
+  <section class="section9">
+    <p class="section9-label">Dashboard en tiempo real</p>
+    <h2 class="section9-title">Sabe cómo va<br/>tu negocio <span class="grad-teal">hoy</span></h2>
+    <p class="section9-hint">Ventas del día, pedidos en curso y tus productos estrella — todo de un vistazo, sin reportes manuales.</p>
+
+    <div style="position:relative; margin-bottom: 36px;">
+      <div class="dash-glow"></div>
+      <div class="dash-card">
+
+        <div class="dash-header">
+          <div>
+            <div class="dash-header-title">Resumen del negocio</div>
+            <div class="dash-header-sub">Florería Hermosillo</div>
+          </div>
+          <div class="dash-period-chip">Hoy</div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dash-kpi-grid">
+          <div class="dash-kpi">
+            <div class="dash-kpi-val">$8,340</div>
+            <div class="dash-kpi-label">Ventas del día</div>
+            <div class="dash-kpi-delta">↑ +22% vs ayer</div>
+          </div>
+          <div class="dash-kpi">
+            <div class="dash-kpi-val">17</div>
+            <div class="dash-kpi-label">Pedidos activos</div>
+            <div class="dash-kpi-delta">↑ +5 nuevos hoy</div>
+          </div>
+          <div class="dash-kpi">
+            <div class="dash-kpi-val">$490</div>
+            <div class="dash-kpi-label">Ticket promedio</div>
+            <div class="dash-kpi-delta">↑ +$40 esta semana</div>
+          </div>
+          <div class="dash-kpi">
+            <div class="dash-kpi-val">4.9★</div>
+            <div class="dash-kpi-label">Calificación</div>
+            <div class="dash-kpi-delta">247 reseñas</div>
+          </div>
+        </div>
+
+        <!-- Mini bar chart — pedidos últimos 7 días -->
+        <div class="dash-chart-label">Pedidos — últimos 7 días</div>
+        <div class="dash-bars">
+          <div class="dash-bar-col">
+            <div class="dash-bar-fill" style="height:38%;background:linear-gradient(180deg,#0D9488,#0891B2);opacity:.5"></div>
+            <div class="dash-bar-day">L</div>
+          </div>
+          <div class="dash-bar-col">
+            <div class="dash-bar-fill" style="height:55%;background:linear-gradient(180deg,#0D9488,#0891B2);opacity:.6"></div>
+            <div class="dash-bar-day">M</div>
+          </div>
+          <div class="dash-bar-col">
+            <div class="dash-bar-fill" style="height:47%;background:linear-gradient(180deg,#0D9488,#0891B2);opacity:.6"></div>
+            <div class="dash-bar-day">X</div>
+          </div>
+          <div class="dash-bar-col">
+            <div class="dash-bar-fill" style="height:70%;background:linear-gradient(180deg,#0D9488,#0891B2);opacity:.7"></div>
+            <div class="dash-bar-day">J</div>
+          </div>
+          <div class="dash-bar-col">
+            <div class="dash-bar-fill" style="height:88%;background:linear-gradient(180deg,#0D9488,#0891B2);opacity:.8"></div>
+            <div class="dash-bar-day">V</div>
+          </div>
+          <div class="dash-bar-col">
+            <div class="dash-bar-fill" style="height:100%;background:linear-gradient(180deg,#0D9488,#0891B2)"></div>
+            <div class="dash-bar-day">S</div>
+          </div>
+          <div class="dash-bar-col">
+            <div class="dash-bar-fill" style="height:62%;background:linear-gradient(180deg,#0D9488,#0891B2);opacity:.65"></div>
+            <div class="dash-bar-day">D</div>
+          </div>
+        </div>
+
+        <div class="dash-divider"></div>
+
+        <!-- Top productos -->
+        <div class="dash-top-label">Productos más vendidos</div>
+
+        <div class="dash-product-row">
+          <div class="dash-product-dot" style="background:#0D9488"></div>
+          <div class="dash-product-name">Ramo buchón premium</div>
+          <div class="dash-product-bar-track"><div class="dash-product-bar-fill" style="width:92%"></div></div>
+          <div class="dash-product-pct">92%</div>
+        </div>
+        <div class="dash-product-row">
+          <div class="dash-product-dot" style="background:#0891B2"></div>
+          <div class="dash-product-name">Cilindro cerámica</div>
+          <div class="dash-product-bar-track"><div class="dash-product-bar-fill" style="width:67%"></div></div>
+          <div class="dash-product-pct">67%</div>
+        </div>
+        <div class="dash-product-row">
+          <div class="dash-product-dot" style="background:#6366F1"></div>
+          <div class="dash-product-name">Caja de rosas + globo</div>
+          <div class="dash-product-bar-track"><div class="dash-product-bar-fill" style="width:48%"></div></div>
+          <div class="dash-product-pct">48%</div>
+        </div>
+        <div class="dash-product-row">
+          <div class="dash-product-dot" style="background:#F59E0B"></div>
+          <div class="dash-product-name">Arreglo de girasoles</div>
+          <div class="dash-product-bar-track"><div class="dash-product-bar-fill" style="width:31%"></div></div>
+          <div class="dash-product-pct">31%</div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+
+  <!-- SECCIÓN 10 — COBRA COMO TUS CLIENTES QUIEREN PAGAR -->
+  <section class="section10">
+    <p class="section10-label">Formas de pago</p>
+    <h2 class="section10-title">Cobra como<br/>quieren <span class="grad-indigo">pagarte</span></h2>
+    <p class="section10-hint">Configura tus métodos de pago una vez. Tu cliente los ve en el pedido y elige el que prefiere.</p>
+
+    <!-- grid de métodos -->
+    <div class="pay-grid">
+
+      <div class="pay-card">
+        <div class="pay-card-icon" style="background:#fff3e0;">🏦</div>
+        <div class="pay-card-name">Transferencia BBVA</div>
+        <div class="pay-card-desc">Clabe o número de cuenta para depósito directo</div>
+      </div>
+
+      <div class="pay-card">
+        <div class="pay-card-icon" style="background:#e8f5e9;">💵</div>
+        <div class="pay-card-name">Efectivo</div>
+        <div class="pay-card-desc">Pago al recibir el pedido en domicilio o sucursal</div>
+      </div>
+
+      <div class="pay-card">
+        <div class="pay-new-badge">NUEVO</div>
+        <div class="pay-card-icon" style="background:#e8eaf6;">
+          <!-- PayPal icon simplified -->
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.5 8.5c.3 2.2-1.1 4.7-3.2 5.7-.6.3-1.3.4-2 .4H13l-.7 4H9.8l2-11.6h4.5c1.6 0 2.9.6 3.2 1.5z" fill="#003087"/>
+            <path d="M9.8 18.6H7.3l.7-4h2.3l-.5 4zM7.8 14.6H5.3L7 5h4.5c1 0 1.8.3 2.3.8-.9.2-1.7.7-2.3 1.3-1 1.1-1.5 2.6-1.5 4.1 0 .5.1 1 .2 1.4H7.8z" fill="#009cde"/>
+          </svg>
+        </div>
+        <div class="pay-card-name">PayPal.me</div>
+        <div class="pay-card-desc">Link directo para pago internacional al instante</div>
+      </div>
+
+      <div class="pay-card">
+        <div class="pay-new-badge">NUEVO</div>
+        <div class="pay-card-icon" style="background:#e3f2fd;">
+          <!-- Mercado Pago icon -->
+          <svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="#009ee3"/>
+            <path d="M7 12.5l2.5 2.5 2-2 2 2 2.5-2.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="12" cy="8.5" r="1.5" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="pay-card-name">Mercado Pago</div>
+        <div class="pay-card-desc">Link de cobro, QR o tarjeta — sin terminal física</div>
+      </div>
+
+    </div>
+
+    <!-- link preview -->
+    <div class="pay-link-card">
+      <div class="pay-link-label">Tu link de pago se ve así</div>
+      <div class="pay-link-row">
+        <div class="pay-link-dot"></div>
+        <div class="pay-link-text">paypal.me/floreriahermosillo</div>
+        <div class="pay-link-copy">Copiar</div>
+      </div>
+    </div>
+
+    <p class="pay-note">
+      Tu cliente ve los métodos que tú activas.<br/>
+      <strong>Sin comisiones de nuestra parte.</strong> Siempre.
+    </p>
+
+  </section>
+
+  <!-- SECCIÓN 11 — CTA FINAL -->
+  <section class="section11">
+    <p class="cta-eyebrow">Empieza hoy</p>
+    <h2 class="cta-headline">Tu florería,<br/><span class="grad-full">al siguiente nivel</span></h2>
+    <p class="cta-sub">Únete a las florerías que ya venden más, atienden mejor y duermen tranquilas.</p>
+
+    <!-- urgency pill -->
+    <div class="cta-urgency">
+      <div class="cta-urgency-dot"></div>
+      14 florerías se registraron esta semana
+    </div>
+
+    <!-- CTA buttons -->
+    <div class="cta-btn-wrap">
+      <a class="cta-btn-primary" href="https://www.tusflores.app/login" target="_blank" rel="noopener">
+        Empieza gratis — es en minutos
+      </a>
+      <div class="cta-btn-note">Sin tarjeta. Sin contratos. <strong>Gratis para siempre en el plan básico.</strong></div>
+    </div>
+
+    <!-- mini social proof -->
+    <div class="cta-proof">
+      <div class="cta-proof-avatars">
+        <div class="cta-proof-av" style="background:#EC4899;">V</div>
+        <div class="cta-proof-av" style="background:#3B82F6;">R</div>
+        <div class="cta-proof-av" style="background:#10B981;">F</div>
+        <div class="cta-proof-av" style="background:#F59E0B;">S</div>
+        <div class="cta-proof-av" style="background:#8B5CF6;">C</div>
+      </div>
+      <div class="cta-proof-text">
+        <strong>+2,400 florerías</strong> ya usan tusflores.app<br/>en México, Colombia y Latinoamérica
+      </div>
+    </div>
+
+    <div class="cta-footer-note">tusflores.app · Hecho con 💚 para florerías</div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="footer-top">
+
+      <div class="footer-brand">
+        <div class="footer-brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/>
+            <path d="M5 3l.75 2.25L8 6l-2.25.75L5 9l-.75-2.25L2 6l2.25-.75z"/>
+          </svg>
+        </div>
+        <span class="footer-brand-name">tusflores.app</span>
+      </div>
+      <p class="footer-tagline">La plataforma todo-en-uno para florerías en Latinoamérica.<br/>Vende más. Trabaja menos.</p>
+
+      <div class="footer-cols">
+
+        <!-- Producto -->
+        <div>
+          <div class="footer-col-title">Producto</div>
+          <ul class="footer-links">
+            <li><a href="#">Funcionalidades</a></li>
+            <li><a href="#">Precios y planes</a></li>
+            <li><a href="#">Cómo funciona</a></li>
+            <li><a href="#">Extras y add-ons <span class="footer-link-badge">NEW</span></a></li>
+            <li><a href="#">Actualizaciones</a></li>
+          </ul>
+        </div>
+
+        <!-- Recursos -->
+        <div>
+          <div class="footer-col-title">Recursos</div>
+          <ul class="footer-links">
+            <li><a href="#">Centro de ayuda</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Guías para florerías</a></li>
+            <li><a href="#">API para desarrolladores</a></li>
+            <li><a href="#">Estado del servicio</a></li>
+          </ul>
+        </div>
+
+        <!-- Empresa -->
+        <div>
+          <div class="footer-col-title">Empresa</div>
+          <ul class="footer-links">
+            <li><a href="#">Acerca de nosotros</a></li>
+            <li><a href="#">Proveedores</a></li>
+            <li><a href="#">Prensa</a></li>
+            <li><a href="#">Trabaja con nosotros</a></li>
+            <li><a href="#">Contacto</a></li>
+          </ul>
+        </div>
+
+        <!-- Soporte -->
+        <div>
+          <div class="footer-col-title">Soporte</div>
+          <ul class="footer-links">
+            <li><a href="https://wa.me/521XXXXXXXXXX">WhatsApp directo</a></li>
+            <li><a href="#">Preguntas frecuentes</a></li>
+            <li><a href="#">Tutoriales en video</a></li>
+            <li><a href="#">Comunidad</a></li>
+            <li><a href="#">Reportar un problema</a></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="footer-divider"></div>
+
+      <div class="footer-bottom">
+        <div class="footer-legal-links">
+          <a href="#">Términos y condiciones</a>
+          <a href="#">Política de privacidad</a>
+          <a href="#">Cookies</a>
+          <a href="#">Aviso legal</a>
+        </div>
+        <div class="footer-copy">© 2026 tusflores.app — México 🇲🇽 · Colombia 🇨🇴 · Latinoamérica 🌎</div>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- WhatsApp flotante -->
+  <a class="wa-float" href="https://wa.me/521XXXXXXXXXX" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  </a>
+
+  <!-- Sticky bottom CTA -->
+  <div class="sticky-cta" id="stickyCta">
+    <a class="sticky-cta-btn" href="https://www.tusflores.app/login" target="_blank" rel="noopener">Empieza gratis — es en minutos 🌸</a>
+  </div>
+
+  <script>
+    (function () {
+      const waIcon = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>';
+
+      const msgs = [
+        { name: 'Valeria',    msg: '¿A qué hora llega mi arreglo? 🌸',          time: '10:32', color: '#EC4899' },
+        { name: 'Juan',       msg: 'Quiero un oso de peluche 🧸',                time: '10:35', color: '#8B5CF6' },
+        { name: 'Sofía',      msg: '¡Compárteme tu catálogo!',                   time: '10:41', color: '#F59E0B' },
+        { name: 'Rodrigo',    msg: '¿Cómo va mi pedido?',                        time: '10:58', color: '#3B82F6' },
+        { name: 'Fernanda',   msg: '¿Cuánto cuesta el envío?',                   time: '11:03', color: '#10B981' },
+        { name: 'Mariana',    msg: '¡Quiero un envío en Bogotá! 🚚',             time: '11:15', color: '#db2777' },
+        { name: 'Carlos',     msg: '¡Un ramo buchón! 💐',                        time: '11:22', color: '#7C3AED' },
+        { name: 'Lucía',      msg: '¿Puedo incluir una dedicatoria? 💌',         time: '11:30', color: '#EC4899' },
+        { name: 'Andrés',     msg: '¿Envían foto del arreglo terminado? 📸',     time: '11:38', color: '#0EA5E9' },
+        { name: 'Daniela',    msg: '¿Puedo seleccionar rango de entrega? 🕐',    time: '11:45', color: '#F59E0B' },
+        { name: 'Patricia',   msg: '¡Quiero dejar una buena reseña! ⭐',         time: '11:52', color: '#10B981' },
+        { name: 'Miguel',     msg: '¡Ya vi tus formas de pago! 💳',              time: '12:01', color: '#6366F1' },
+      ];
+
+      let idx = 0;
+      const feed = document.getElementById('waFeed');
+
+      function addCard() {
+        const m = msgs[idx % msgs.length];
+        idx++;
+
+        const card = document.createElement('div');
+        card.className = 'wa-notif';
+        card.innerHTML =
+          '<div class="wa-avatar" style="background:' + m.color + '">' + m.name.charAt(0) + '</div>' +
+          '<div class="wa-body">' +
+            '<div class="wa-app-badge">' +
+              '<div class="wa-app-dot">' + waIcon + '</div>' +
+              '<span class="wa-app-name">WhatsApp</span>' +
+            '</div>' +
+            '<div class="wa-header">' +
+              '<span class="wa-name">' + m.name + '</span>' +
+              '<span class="wa-time">' + m.time + ' a.m.</span>' +
+            '</div>' +
+            '<div class="wa-msg">' + m.msg + '</div>' +
+          '</div>';
+
+        feed.insertBefore(card, feed.firstChild);
+        while (feed.children.length > 5) feed.removeChild(feed.lastChild);
+      }
+
+      addCard();
+      setInterval(addCard, 1800);
+    })();
+
+    // Sticky CTA — se oculta cuando el botón principal del CTA es visible
+    (function () {
+      const sticky = document.getElementById('stickyCta');
+      const ctaSection = document.querySelector('.section11');
+      if (!sticky || !ctaSection) return;
+      const obs = new IntersectionObserver(
+        ([e]) => sticky.classList.toggle('hidden', e.isIntersecting),
+        { threshold: 0.1 }
+      );
+      obs.observe(ctaSection);
+    })();
+  </script>
+
+</body>
+</html>

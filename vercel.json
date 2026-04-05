@@ -50,6 +50,8 @@
     }
   ],
   "rewrites": [
+    { "source": "/",        "destination": "/landing.html" },
+    { "source": "/galeria", "destination": "/galeria.html" },
     {
       "source": "/(.*)",
       "destination": "/index.html"
