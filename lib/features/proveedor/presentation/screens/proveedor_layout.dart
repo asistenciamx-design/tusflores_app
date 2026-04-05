@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'proveedor_dashboard_screen.dart';
+import 'proveedor_inventory_screen.dart';
 
 class ProveedorLayout extends StatefulWidget {
   const ProveedorLayout({super.key});
@@ -125,7 +126,7 @@ class _ProveedorLayoutState extends State<ProveedorLayout> {
         children: const [
           ProveedorDashboardScreen(),
           _PlaceholderTab(icon: Icons.shopping_bag_rounded, label: 'Pedidos'),
-          _PlaceholderTab(icon: Icons.inventory_2_rounded, label: 'Inventario'),
+          ProveedorInventoryScreen(),
           _PlaceholderTab(icon: Icons.groups_rounded, label: 'CRM'),
           _PlaceholderTab(icon: Icons.account_circle_rounded, label: 'Perfil'),
         ],
