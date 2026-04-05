@@ -32,12 +32,16 @@ class _ProveedorLayoutState extends State<ProveedorLayout> {
     try {
       final row = await Supabase.instance.client
           .from('profiles')
-          .select('shop_name, role')
+          .select('shop_name, role, is_proveedor, can_be_proveedor')
           .eq('id', user.id)
           .maybeSingle();
       if (!mounted) return;
       final role = row?['role'] as String? ?? '';
-      if (role != 'proveedor') {
+      final isProveedor = row?['is_proveedor'] as bool? ?? false;
+      final canBeProveedor = row?['can_be_proveedor'] as bool? ?? false;
+      // Autorizado si es proveedor puro OR si es shop_owner con is_proveedor activo
+      final authorized = role == 'proveedor' || (isProveedor && canBeProveedor);
+      if (!authorized) {
         context.go('/');
         return;
       }
